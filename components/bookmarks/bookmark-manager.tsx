@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { ArrowLeft, ChevronRight, FolderPlus, Home, Plus, Search, Settings } from "lucide-react"
+import { ArrowLeft, ChevronRight, EyeOff, FolderPlus, Home, Plus, Search, Settings } from "lucide-react"
 
 import {
   type BookmarkNode,
@@ -9,6 +9,7 @@ import {
   getPath,
   useBookmarks,
 } from "@/hooks/use-bookmarks"
+import { useHiddenFolders } from "@/hooks/use-hidden-folders"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { FolderTree } from "@/components/bookmarks/folder-tree"
@@ -20,6 +21,7 @@ import {
 } from "@/components/bookmarks/bookmark-form-dialog"
 import { ConfirmDeleteDialog } from "@/components/bookmarks/confirm-delete-dialog"
 import { BookmarkOrganizerDialog } from "@/components/bookmarks/bookmark-organizer-dialog"
+import { HiddenFoldersDialog } from "@/components/bookmarks/hidden-folders-dialog"
 
 interface FormDialogState {
   mode: BookmarkFormMode
@@ -39,7 +41,9 @@ export function BookmarkManager({
   const [formDialog, setFormDialog] = React.useState<FormDialogState | null>(null)
   const [deleteTarget, setDeleteTarget] = React.useState<BookmarkNode | null>(null)
   const [organizerOpen, setOrganizerOpen] = React.useState(false)
+  const [hiddenFoldersOpen, setHiddenFoldersOpen] = React.useState(false)
   const [appliedInitialFolderId, setAppliedInitialFolderId] = React.useState<string | null>(null)
+  const { hiddenIds, hideFolder, unhideFolder } = useHiddenFolders()
 
   const { root, currentFolderId, currentFolder, setCurrentFolderId } = bookmarks
 
@@ -146,6 +150,21 @@ export function BookmarkManager({
           <Button
             variant="outline"
             size="icon-sm"
+            className="relative border-white/15 bg-white/5 text-white hover:bg-white/10"
+            onClick={() => setHiddenFoldersOpen(true)}
+            aria-label="Hidden folders"
+            title="Hidden folders"
+          >
+            <EyeOff />
+            {hiddenIds.size > 0 && (
+              <span className="absolute -top-1 -right-1 flex size-4 items-center justify-center rounded-full bg-primary text-[10px] leading-none text-primary-foreground">
+                {hiddenIds.size}
+              </span>
+            )}
+          </Button>
+          <Button
+            variant="outline"
+            size="icon-sm"
             className="border-white/15 bg-white/5 text-white hover:bg-white/10"
             onClick={() => setOrganizerOpen(true)}
             aria-label="Bookmark Organizer"
@@ -164,6 +183,7 @@ export function BookmarkManager({
             onRename={(node) => setFormDialog({ mode: "edit", node, parentId: node.parentId ?? "" })}
             onNewSubfolder={(parentId) => setFormDialog({ mode: "create-folder", node: null, parentId })}
             onDelete={setDeleteTarget}
+            onHide={hideFolder}
           />
         </aside>
 
@@ -216,6 +236,14 @@ export function BookmarkManager({
         onOpenChange={setOrganizerOpen}
         root={root}
         bookmarks={bookmarks}
+      />
+
+      <HiddenFoldersDialog
+        open={hiddenFoldersOpen}
+        onOpenChange={setHiddenFoldersOpen}
+        root={root}
+        hiddenIds={hiddenIds}
+        onUnhide={unhideFolder}
       />
     </div>
   )

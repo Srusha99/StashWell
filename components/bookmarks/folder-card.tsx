@@ -4,6 +4,7 @@ import * as React from "react"
 import {
   BookmarkPlus,
   ExternalLink,
+  EyeOff,
   Folder,
   FolderCog,
   Grid2x2,
@@ -51,6 +52,7 @@ export interface FolderCardActions {
   onRename: (node: BookmarkNode) => void
   onDelete: (node: BookmarkNode) => void
   onViewInManager: (folderId: string) => void
+  onHide: (folderId: string) => void
 }
 
 export function FolderCard({
@@ -180,6 +182,9 @@ export function FolderCard({
             )}
             <DropdownMenuItem onClick={() => actions.onViewInManager(id)}>
               <ExternalLink /> View in manager
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => actions.onHide(id)}>
+              <EyeOff /> Hide folder
             </DropdownMenuItem>
             {isRealFolder && (
               <>

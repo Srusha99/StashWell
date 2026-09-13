@@ -10,6 +10,7 @@ import {
   useBookmarks,
 } from "@/hooks/use-bookmarks"
 import { useCardOrder } from "@/hooks/use-card-order"
+import { useHiddenFolders } from "@/hooks/use-hidden-folders"
 import { DashboardHeader } from "@/components/bookmarks/dashboard-header"
 import { FolderCard } from "@/components/bookmarks/folder-card"
 import {
@@ -36,6 +37,7 @@ interface CardData {
 export function DashboardView({ onOpenManager }: { onOpenManager: (folderId: string) => void }) {
   const bookmarks = useBookmarks()
   const { root } = bookmarks
+  const { hiddenIds, hideFolder } = useHiddenFolders()
 
   const [formDialog, setFormDialog] = React.useState<FormDialogState | null>(null)
   const [deleteTarget, setDeleteTarget] = React.useState<BookmarkNode | null>(null)
@@ -67,7 +69,9 @@ export function DashboardView({ onOpenManager }: { onOpenManager: (folderId: str
 
   const defaultOrder = React.useMemo(() => Array.from(cardsById.keys()), [cardsById])
   const [cardOrder, moveCard] = useCardOrder(defaultOrder)
-  const cards = cardOrder.map((id) => cardsById.get(id)).filter((card): card is CardData => !!card)
+  const cards = cardOrder
+    .map((id) => cardsById.get(id))
+    .filter((card): card is CardData => !!card && !hiddenIds.has(card.id))
 
   function handleCardDrop(targetId: string) {
     if (!draggedCardId || !dropTarget) return
@@ -125,6 +129,7 @@ export function DashboardView({ onOpenManager }: { onOpenManager: (folderId: str
             onRename={(node) => setFormDialog({ mode: "edit", node, parentId: node.parentId ?? "" })}
             onDelete={setDeleteTarget}
             onViewInManager={onOpenManager}
+            onHide={hideFolder}
             isDragging={draggedCardId === card.id}
             dropIndicator={dropTarget?.id === card.id ? dropTarget.position : null}
             onCardDragStart={() => setDraggedCardId(card.id)}

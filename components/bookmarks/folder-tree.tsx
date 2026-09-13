@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { ChevronRight, Folder, FolderPlus, MoreVertical, Pencil, Trash2 } from "lucide-react"
+import { ChevronRight, EyeOff, Folder, FolderPlus, MoreVertical, Pencil, Trash2 } from "lucide-react"
 
 import { type BookmarkNode, isFolder } from "@/hooks/use-bookmarks"
 import { cn, deferred } from "@/lib/utils"
@@ -18,6 +18,7 @@ export interface FolderTreeActions {
   onRename: (node: BookmarkNode) => void
   onNewSubfolder: (parentId: string) => void
   onDelete: (node: BookmarkNode) => void
+  onHide: (folderId: string) => void
 }
 
 export function FolderTree({
@@ -55,6 +56,7 @@ function FolderTreeItem({
   onRename,
   onNewSubfolder,
   onDelete,
+  onHide,
 }: FolderTreeActions & {
   node: BookmarkNode
   currentFolderId: string
@@ -114,6 +116,9 @@ function FolderTreeItem({
             <DropdownMenuItem onClick={deferred(() => onRename(node))}>
               <Pencil /> Rename
             </DropdownMenuItem>
+            <DropdownMenuItem onClick={deferred(() => onHide(node.id))}>
+              <EyeOff /> Hide from dashboard
+            </DropdownMenuItem>
             <DropdownMenuItem variant="destructive" onClick={deferred(() => onDelete(node))}>
               <Trash2 /> Delete
             </DropdownMenuItem>
@@ -130,6 +135,7 @@ function FolderTreeItem({
           onRename={onRename}
           onNewSubfolder={onNewSubfolder}
           onDelete={onDelete}
+          onHide={onHide}
         />
       )}
     </div>
