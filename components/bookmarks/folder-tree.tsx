@@ -62,7 +62,7 @@ function FolderTreeItem({
   currentFolderId: string
   depth: number
 }) {
-  const [expanded, setExpanded] = React.useState(depth === 0)
+  const [expanded, setExpanded] = React.useState(depth <= 1)
   const childFolders = (node.children ?? []).filter(isFolder)
   const hasChildFolders = childFolders.length > 0
   const isActive = node.id === currentFolderId
