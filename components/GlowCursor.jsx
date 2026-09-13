@@ -273,6 +273,7 @@ const GlowCursor = ({
       target.y = y;
       pointerInside = true;
       lastInputTime = performance.now();
+      startLoop();
     };
 
     const onPointerLeave = () => {
@@ -280,16 +281,40 @@ const GlowCursor = ({
       lastInputTime = performance.now();
     };
 
+    let running = false;
+    let isIntersecting = true;
+    let isPageVisible = !document.hidden;
+
+    const stopLoop = () => {
+      if (raf) cancelAnimationFrame(raf);
+      raf = 0;
+      running = false;
+    };
+
+    const startLoop = () => {
+      if (running || destroyed || !isIntersecting || !isPageVisible) return;
+      running = true;
+      lastFrameTime = performance.now();
+      raf = requestAnimationFrame(render);
+    };
+
     const render = now => {
       if (destroyed) return;
+      let idleAndFaded = false;
       try {
-        renderFrame(now);
+        idleAndFaded = renderFrame(now);
       } catch (error) {
         console.error('GlowCursor: render loop failed, disabling effect', error);
         destroyed = true;
         return;
       }
-      if (!destroyed) raf = requestAnimationFrame(render);
+      if (destroyed) return;
+      if (idleAndFaded) {
+        running = false;
+        raf = 0;
+        return;
+      }
+      raf = requestAnimationFrame(render);
     };
 
     const renderFrame = now => {
@@ -340,6 +365,8 @@ const GlowCursor = ({
       program.uniforms.uFade.value = fade;
 
       renderer.render({ scene: mesh });
+
+      return fade < 0.002 && (!config.enabled || !pointerInside);
     };
 
     const resizeObserver = new ResizeObserver(resize);
@@ -348,12 +375,32 @@ const GlowCursor = ({
     container.addEventListener('pointerenter', updatePointer);
     container.addEventListener('pointerleave', onPointerLeave);
     resize();
-    raf = requestAnimationFrame(render);
+
+    const intersectionObserver = new IntersectionObserver(
+      ([entry]) => {
+        isIntersecting = entry.isIntersecting;
+        if (isIntersecting) startLoop();
+        else stopLoop();
+      },
+      { threshold: 0 }
+    );
+    intersectionObserver.observe(container);
+
+    const onVisibilityChange = () => {
+      isPageVisible = !document.hidden;
+      if (isPageVisible) startLoop();
+      else stopLoop();
+    };
+    document.addEventListener('visibilitychange', onVisibilityChange);
+
+    startLoop();
 
     return () => {
       destroyed = true;
       cancelAnimationFrame(raf);
       resizeObserver.disconnect();
+      intersectionObserver.disconnect();
+      document.removeEventListener('visibilitychange', onVisibilityChange);
       container.removeEventListener('pointermove', updatePointer);
       container.removeEventListener('pointerenter', updatePointer);
       container.removeEventListener('pointerleave', onPointerLeave);
