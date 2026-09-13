@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { Settings } from "lucide-react"
 
 import {
   BOOKMARKS_BAR_ID,
@@ -11,6 +12,7 @@ import {
 } from "@/hooks/use-bookmarks"
 import { useCardOrder } from "@/hooks/use-card-order"
 import { useHiddenFolders } from "@/hooks/use-hidden-folders"
+import { Button } from "@/components/ui/button"
 import { DashboardHeader } from "@/components/bookmarks/dashboard-header"
 import { FolderCard } from "@/components/bookmarks/folder-card"
 import {
@@ -34,7 +36,13 @@ interface CardData {
   items: BookmarkNode[]
 }
 
-export function DashboardView({ onOpenManager }: { onOpenManager: (folderId: string) => void }) {
+export function DashboardView({
+  onOpenManager,
+  onOpenSettings,
+}: {
+  onOpenManager: (folderId: string) => void
+  onOpenSettings: () => void
+}) {
   const bookmarks = useBookmarks()
   const { root } = bookmarks
   const { hiddenIds, hideFolder } = useHiddenFolders()
@@ -128,7 +136,6 @@ export function DashboardView({ onOpenManager }: { onOpenManager: (folderId: str
             onOrganize={setOrganizerFolderId}
             onRename={(node) => setFormDialog({ mode: "edit", node, parentId: node.parentId ?? "" })}
             onDelete={setDeleteTarget}
-            onViewInManager={onOpenManager}
             onHide={hideFolder}
             isDragging={draggedCardId === card.id}
             dropIndicator={dropTarget?.id === card.id ? dropTarget.position : null}
@@ -168,6 +175,17 @@ export function DashboardView({ onOpenManager }: { onOpenManager: (folderId: str
         initialRootId={organizerFolderId ?? undefined}
         bookmarks={bookmarks}
       />
+
+      <Button
+        variant="secondary"
+        size="icon-lg"
+        className="fixed right-6 bottom-6 rounded-full border border-white/15 bg-black/40 text-white shadow-lg backdrop-blur-md hover:bg-black/60"
+        onClick={onOpenSettings}
+        aria-label="Open manager settings"
+        title="Manager settings"
+      >
+        <Settings />
+      </Button>
     </div>
   )
 }

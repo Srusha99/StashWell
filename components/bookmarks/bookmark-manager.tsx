@@ -42,16 +42,18 @@ const NAV_TABS: { id: ManagerTab; label: string; icon: typeof Bookmark }[] = [
 
 export function BookmarkManager({
   initialFolderId,
+  initialTab,
   onBack,
 }: {
   initialFolderId?: string
+  initialTab?: ManagerTab
   onBack?: () => void
 } = {}) {
   const bookmarks = useBookmarks()
   const [query, setQuery] = React.useState("")
   const [formDialog, setFormDialog] = React.useState<FormDialogState | null>(null)
   const [deleteTarget, setDeleteTarget] = React.useState<BookmarkNode | null>(null)
-  const [activeTab, setActiveTab] = React.useState<ManagerTab>("manager")
+  const [activeTab, setActiveTab] = React.useState<ManagerTab>(initialTab ?? "manager")
   const [managerView, setManagerView] = React.useState<ManagerView>("grid")
   const [rootExpanded, setRootExpanded] = React.useState(true)
   const [hiddenFoldersOpen, setHiddenFoldersOpen] = React.useState(false)
