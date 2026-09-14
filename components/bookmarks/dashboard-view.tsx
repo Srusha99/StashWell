@@ -220,7 +220,7 @@ export function DashboardView({
       <Button
         variant="secondary"
         size="icon-lg"
-        className="fixed right-6 bottom-6 rounded-full border border-white/15 bg-black/40 text-white shadow-lg backdrop-blur-md hover:bg-black/60"
+        className="fixed right-6 bottom-6 rounded-full border border-black/10 bg-white text-[#1c1c1e] shadow-[var(--shadow-soft)] backdrop-blur-md hover:bg-[#fafafa] dark:border-white/15 dark:bg-black/40 dark:text-white dark:shadow-lg dark:hover:bg-black/60"
         onClick={onOpenSettings}
         aria-label="Open manager settings"
         title="Manager settings"

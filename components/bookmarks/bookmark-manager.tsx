@@ -37,7 +37,7 @@ type ManagerTab = "manager" | "appearance"
 type ManagerView = "grid" | "tree"
 
 const NAV_TABS: { id: ManagerTab; label: string; icon: typeof Bookmark }[] = [
-  { id: "manager", label: "Bookmark Manager", icon: Bookmark },
+  { id: "manager", label: "StashWell", icon: Bookmark },
   { id: "appearance", label: "Appearance", icon: Palette },
 ]
 
@@ -130,23 +130,23 @@ export function BookmarkManager({
 
   return (
     <div className="relative flex h-screen w-screen flex-col overflow-hidden text-foreground">
-      <header className="flex h-14 shrink-0 items-center gap-3 border-b border-white/10 bg-black/30 px-4 backdrop-blur-md">
+      <header className="flex h-14 shrink-0 items-center gap-3 border-b border-black/[0.06] bg-white/80 px-4 backdrop-blur-md dark:border-white/10 dark:bg-black/30">
         {onBack && (
           <Button
             variant="ghost"
             size="icon-sm"
-            className="text-white/70 hover:bg-white/10 hover:text-white"
+            className="text-[#8e8e93] hover:bg-black/[0.04] hover:text-[#1c1c1e] dark:text-white/70 dark:hover:bg-white/10 dark:hover:text-white"
             onClick={onBack}
             aria-label="Back to dashboard"
           >
             <ArrowLeft />
           </Button>
         )}
-        <h1 className="text-sm font-semibold whitespace-nowrap text-white">Bookmarks</h1>
+        <h1 className="text-sm font-semibold whitespace-nowrap text-[#1c1c1e] dark:text-white">Bookmarks</h1>
       </header>
 
       <div className="flex flex-1 overflow-hidden">
-        <aside className="flex w-56 shrink-0 flex-col overflow-y-auto border-r border-white/10 bg-black/20 p-2 backdrop-blur-md">
+        <aside className="flex w-56 shrink-0 flex-col overflow-y-auto border-r border-black/[0.06] bg-black/[0.015] p-2 backdrop-blur-md dark:border-white/10 dark:bg-black/20">
           <nav className="flex flex-col gap-1">
             {NAV_TABS.map((tab) => (
               <React.Fragment key={tab.id}>
@@ -156,8 +156,8 @@ export function BookmarkManager({
                   className={cn(
                     "flex items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors",
                     activeTab === tab.id
-                      ? "bg-white/10 text-white"
-                      : "text-white/60 hover:bg-white/5 hover:text-white"
+                      ? "bg-black/[0.06] text-[#1c1c1e] dark:bg-white/10 dark:text-white"
+                      : "text-[#8e8e93] hover:bg-black/[0.04] hover:text-[#1c1c1e] dark:text-white/60 dark:hover:bg-white/5 dark:hover:text-white"
                   )}
                 >
                   <tab.icon className="size-4 shrink-0" />
@@ -168,15 +168,17 @@ export function BookmarkManager({
                   <div className="flex flex-col gap-0.5 pl-4">
                     <div
                       className={cn(
-                        "group flex items-center gap-1 rounded-md pr-1 text-sm text-white/80 hover:bg-white/10",
-                        root && currentFolderId === root.id && "bg-white/15 font-medium text-white"
+                        "group flex items-center gap-1 rounded-md pr-1 text-sm text-[#3c3c43] hover:bg-black/[0.04] dark:text-white/80 dark:hover:bg-white/10",
+                        root &&
+                          currentFolderId === root.id &&
+                          "bg-black/[0.06] font-medium text-[#1c1c1e] dark:bg-white/15 dark:text-white"
                       )}
                       style={{ paddingLeft: "4px" }}
                     >
                       <button
                         type="button"
                         onClick={() => setRootExpanded((value) => !value)}
-                        className="flex size-5 shrink-0 items-center justify-center rounded text-white/50"
+                        className="flex size-5 shrink-0 items-center justify-center rounded text-[#8e8e93] dark:text-white/50"
                         aria-label={rootExpanded ? "Collapse" : "Expand"}
                       >
                         <ChevronRight
@@ -189,7 +191,7 @@ export function BookmarkManager({
                         onClick={() => root && setCurrentFolderId(root.id)}
                         className="flex min-w-0 flex-1 items-center gap-1.5 py-1 text-left"
                       >
-                        <Library className="size-3.5 shrink-0 text-white/50" />
+                        <Library className="size-3.5 shrink-0 text-[#8e8e93] dark:text-white/50" />
                         <span className="truncate">All Bookmarks</span>
                       </button>
                     </div>
@@ -215,28 +217,28 @@ export function BookmarkManager({
 
         {activeTab === "manager" && (
           <div className="flex flex-1 flex-col overflow-hidden">
-            <div className="flex h-14 shrink-0 items-center gap-3 border-b border-white/10 bg-black/10 px-4 backdrop-blur-md">
+            <div className="flex h-14 shrink-0 items-center gap-3 border-b border-black/[0.06] bg-white/60 px-4 backdrop-blur-md dark:border-white/10 dark:bg-black/10">
               {managerView === "grid" && (
                 <div className="relative max-w-sm flex-1">
-                  <Search className="pointer-events-none absolute top-1/2 left-2 size-3.5 -translate-y-1/2 text-white/50" />
+                  <Search className="pointer-events-none absolute top-1/2 left-2 size-3.5 -translate-y-1/2 text-[#8e8e93] dark:text-white/50" />
                   <Input
                     value={query}
                     onChange={(event) => setQuery(event.target.value)}
                     placeholder="Search this folder"
-                    className="border-white/15 bg-white/5 pl-7 text-white placeholder:text-white/40"
+                    className="border-[#e5e5ea] bg-white pl-7 text-[#1c1c1e] placeholder:text-[#8e8e93] dark:border-white/15 dark:bg-white/5 dark:text-white dark:placeholder:text-white/40"
                   />
                 </div>
               )}
 
               <div className="ml-auto flex items-center gap-2">
-                <div className="flex items-center gap-0.5 rounded-lg border border-white/15 bg-white/5 p-0.5">
+                <div className="flex items-center gap-0.5 rounded-lg border border-[#e5e5ea] bg-white p-0.5 dark:border-white/15 dark:bg-white/5">
                   <Button
                     variant={managerView === "grid" ? "secondary" : "ghost"}
                     size="icon-sm"
                     className={
                       managerView === "grid"
-                        ? "text-white"
-                        : "text-white/60 hover:bg-white/10 hover:text-white"
+                        ? "text-[#1c1c1e] dark:text-white"
+                        : "text-[#8e8e93] hover:bg-black/[0.04] hover:text-[#1c1c1e] dark:text-white/60 dark:hover:bg-white/10 dark:hover:text-white"
                     }
                     onClick={() => setManagerView("grid")}
                     aria-label="Grid view"
@@ -249,8 +251,8 @@ export function BookmarkManager({
                     size="icon-sm"
                     className={
                       managerView === "tree"
-                        ? "text-white"
-                        : "text-white/60 hover:bg-white/10 hover:text-white"
+                        ? "text-[#1c1c1e] dark:text-white"
+                        : "text-[#8e8e93] hover:bg-black/[0.04] hover:text-[#1c1c1e] dark:text-white/60 dark:hover:bg-white/10 dark:hover:text-white"
                     }
                     onClick={() => setManagerView("tree")}
                     aria-label="Tree view"
@@ -265,7 +267,7 @@ export function BookmarkManager({
                     <Button
                       variant="outline"
                       size="sm"
-                      className="border-white/15 bg-white/5 text-white hover:bg-white/10"
+                      className="border-[#e5e5ea] bg-white text-[#1c1c1e] hover:bg-[#fafafa] dark:border-white/15 dark:bg-white/5 dark:text-white dark:hover:bg-white/10"
                       onClick={() =>
                         setFormDialog({ mode: "create-folder", node: null, parentId: currentFolderId })
                       }
@@ -286,7 +288,7 @@ export function BookmarkManager({
                 <Button
                   variant="outline"
                   size="icon-sm"
-                  className="relative border-white/15 bg-white/5 text-white hover:bg-white/10"
+                  className="relative border-[#e5e5ea] bg-white text-[#1c1c1e] hover:bg-[#fafafa] dark:border-white/15 dark:bg-white/5 dark:text-white dark:hover:bg-white/10"
                   onClick={() => setHiddenFoldersOpen(true)}
                   aria-label="Hidden folders"
                   title="Hidden folders"
@@ -303,7 +305,7 @@ export function BookmarkManager({
 
             {managerView === "grid" ? (
               <main className="flex flex-1 flex-col overflow-y-auto">
-                <div className="flex items-center gap-1 border-b border-white/10 bg-black/10 px-4 py-2 text-xs text-white/60 backdrop-blur-md">
+                <div className="flex items-center gap-1 border-b border-black/[0.06] bg-white/60 px-4 py-2 text-xs text-[#8e8e93] backdrop-blur-md dark:border-white/10 dark:bg-black/10 dark:text-white/60">
                   <Home className="size-3.5" />
                   {path.map((node) => (
                     <React.Fragment key={node.id}>
@@ -311,7 +313,7 @@ export function BookmarkManager({
                       <button
                         type="button"
                         onClick={() => setCurrentFolderId(node.id)}
-                        className="truncate hover:text-white hover:underline"
+                        className="truncate hover:text-[#1c1c1e] hover:underline dark:hover:text-white"
                       >
                         {node.title || "(untitled)"}
                       </button>

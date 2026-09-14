@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { useTheme } from "next-themes"
 
 import MoltenMetal from "@/components/MoltenMetal"
 import ColorBends from "@/components/ColorBends"
@@ -29,6 +30,8 @@ interface CustomBackgroundItem {
 export function BookmarkApp() {
   const [managerFolderId, setManagerFolderId] = React.useState<string | null>(null)
   const [managerTab, setManagerTab] = React.useState<"manager" | "appearance">("manager")
+  const { resolvedTheme } = useTheme()
+  const isLight = resolvedTheme === "light"
   const appearance = useAppearanceSettings()
   const { settings, setColorMode, setCustomBackgroundId } = appearance
   const [customBackgrounds, setCustomBackgrounds] = React.useState<CustomBackgroundItem[]>([])
@@ -118,7 +121,8 @@ export function BookmarkApp() {
   return (
     <div className="relative h-screen w-screen text-foreground">
       <div className="fixed inset-0 -z-10 bg-background">
-        {(settings.colorMode === "custom" ? Boolean(activeCustomBackground) : settings.backgroundEnabled) &&
+        {!isLight &&
+          (settings.colorMode === "custom" ? Boolean(activeCustomBackground) : settings.backgroundEnabled) &&
           (settings.colorMode === "custom" ? (
             activeCustomBackground &&
             (activeCustomBackground.kind === "video" ? (

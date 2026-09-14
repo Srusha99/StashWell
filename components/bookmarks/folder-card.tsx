@@ -118,7 +118,7 @@ export function FolderCard({
       }}
       onDragEnd={onCardDragEnd}
       className={cn(
-        "relative rounded-2xl bg-white/[0.04] p-4",
+        "relative rounded-2xl border border-[var(--card-border)] bg-white p-4 shadow-[var(--shadow-soft)] transition-all duration-150 ease-out dark:border-transparent dark:bg-white/[0.04] dark:shadow-none",
         isDragging && "opacity-40"
       )}
     >
@@ -130,14 +130,14 @@ export function FolderCard({
       )}
 
       <div className="mb-3 flex items-center gap-2">
-        <GripVertical className="size-4 shrink-0 cursor-grab text-white/30 active:cursor-grabbing" />
-        <h2 className="min-w-0 flex-1 truncate text-sm font-semibold text-white">{title}</h2>
+        <GripVertical className="size-4 shrink-0 cursor-grab text-[#8e8e93] active:cursor-grabbing dark:text-white/30" />
+        <h2 className="min-w-0 flex-1 truncate text-sm font-semibold text-[#1c1c1e] dark:text-white">{title}</h2>
         {allUrls.length > 0 && (
           <Button
             variant="ghost"
             size="icon-xs"
             title="Open all bookmarks"
-            className="shrink-0 text-white/40 hover:bg-white/10 hover:text-white/70"
+            className="shrink-0 text-[#8e8e93] hover:bg-black/[0.04] hover:text-[#1c1c1e] dark:text-white/40 dark:hover:bg-white/10 dark:hover:text-white/70"
             onClick={handleOpenAll}
           >
             <SquareArrowOutUpRight />
@@ -149,7 +149,7 @@ export function FolderCard({
               <Button
                 variant="ghost"
                 size="icon-xs"
-                className="shrink-0 text-white/40 hover:bg-white/10 hover:text-white/70"
+                className="shrink-0 text-[#8e8e93] hover:bg-black/[0.04] hover:text-[#1c1c1e] dark:text-white/40 dark:hover:bg-white/10 dark:hover:text-white/70"
               />
             }
           >
@@ -194,7 +194,7 @@ export function FolderCard({
       </div>
 
       {items.length === 0 ? (
-        <p className="text-xs text-white/40">Empty</p>
+        <p className="text-xs text-[#8e8e93] dark:text-white/40">Empty</p>
       ) : viewMode === "grid" ? (
         <FolderIconGrid items={items} onDrillInto={actions.onDrillInto} />
       ) : (
@@ -232,7 +232,7 @@ function FolderIconGrid({
             title={item.title}
             className="flex aspect-square items-center justify-center opacity-90 hover:opacity-100"
           >
-            <Folder className="size-12 text-white/50" />
+            <Folder className="size-12 text-[#8e8e93] dark:text-white/50" />
           </button>
         ) : (
           <GridIconItem key={item.id} item={item} />
@@ -256,7 +256,7 @@ function GridIconItem({ item }: { item: BookmarkNode }) {
         // eslint-disable-next-line @next/next/no-img-element
         <img src={icon} alt="" className="size-12 rounded-xl object-contain" />
       ) : (
-        <Grid2x2 className="size-12 text-white/50" />
+        <Grid2x2 className="size-12 text-[#8e8e93] dark:text-white/50" />
       )}
     </a>
   )

@@ -36,14 +36,14 @@ export function DashboardHeader({
   const greeting = getGreeting(now.getHours(), greetingName)
 
   return (
-    <div className="mb-8 flex flex-col items-center gap-2 pt-6 text-center text-white">
+    <div className="mb-8 flex flex-col items-center gap-2 pt-6 text-center text-[#1c1c1e] dark:text-white">
       <span className="text-6xl font-bold tracking-tight tabular-nums">{time}</span>
-      <div className="text-lg text-white/60">{date}</div>
+      <div className="text-lg text-[#8e8e93] dark:text-white/60">{date}</div>
       {greetingEnabled && (
         <TextType
           as="div"
           text={greeting}
-          className="text-xl text-white/80"
+          className="text-xl text-[#1c1c1e]/80 dark:text-white/80"
           typingSpeed={120}
           initialDelay={200}
           loop={false}

@@ -49,8 +49,8 @@ function OptionButton({
       className={cn(
         "flex flex-1 flex-col items-center gap-1.5 rounded-lg border px-3 py-3 text-xs font-medium transition-colors",
         active
-          ? "border-white/20 bg-white/10 text-white"
-          : "border-white/10 bg-white/5 text-white/60 hover:bg-white/10 hover:text-white"
+          ? "border-black/10 bg-black/[0.05] text-[#1c1c1e] dark:border-white/20 dark:bg-white/10 dark:text-white"
+          : "border-[#e5e5ea] bg-white text-[#8e8e93] hover:bg-black/[0.03] hover:text-[#1c1c1e] dark:border-white/10 dark:bg-white/5 dark:text-white/60 dark:hover:bg-white/10 dark:hover:text-white"
       )}
     >
       <Icon className="size-4" />
@@ -63,8 +63,8 @@ function Section({ title, description, children }: { title: string; description?
   return (
     <div className="flex flex-col gap-2.5">
       <div>
-        <h3 className="text-sm font-medium text-white">{title}</h3>
-        {description && <p className="text-xs text-white/50">{description}</p>}
+        <h3 className="text-sm font-medium text-[#1c1c1e] dark:text-white">{title}</h3>
+        {description && <p className="text-xs text-[#8e8e93] dark:text-white/50">{description}</p>}
       </div>
       {children}
     </div>
@@ -106,8 +106,8 @@ export function AppearancePanel({
   return (
     <div className="flex max-w-md flex-col gap-6">
       <Section title="Greeting" description="Personalize the welcome line shown on the dashboard.">
-        <div className="flex flex-col gap-3 rounded-lg border border-white/10 bg-white/5 p-3">
-          <label className="flex items-center justify-between text-sm text-white/80">
+        <div className="flex flex-col gap-3 rounded-lg border border-[#e5e5ea] bg-white p-3 dark:border-white/10 dark:bg-white/5">
+          <label className="flex items-center justify-between text-sm text-[#3c3c43] dark:text-white/80">
             Show greeting
             <Switch
               checked={settings.greetingEnabled}
@@ -115,7 +115,7 @@ export function AppearancePanel({
             />
           </label>
           <div className="flex flex-col gap-1.5">
-            <span className="text-xs text-white/50">Your name</span>
+            <span className="text-xs text-[#8e8e93] dark:text-white/50">Your name</span>
             <Input
               value={settings.greetingName}
               onChange={(event) => onGreetingNameChange(event.target.value)}
@@ -172,7 +172,9 @@ export function AppearancePanel({
                   onClick={() => onSelectCustomBackground(item.id)}
                   className={cn(
                     "size-full overflow-hidden rounded-lg border transition-colors",
-                    active ? "border-white/60" : "border-white/10 hover:border-white/30"
+                    active
+                      ? "border-[#5227ff]/60 dark:border-white/60"
+                      : "border-[#e5e5ea] hover:border-black/20 dark:border-white/10 dark:hover:border-white/30"
                   )}
                 >
                   {item.kind === "video" ? (
@@ -184,7 +186,7 @@ export function AppearancePanel({
                 <button
                   type="button"
                   onClick={() => onDeleteCustomBackground(item.id)}
-                  className="absolute top-1 right-1 flex size-5 items-center justify-center rounded-md bg-black/70 text-white/80 opacity-0 transition-opacity group-hover:opacity-100 hover:text-white"
+                  className="absolute top-1 right-1 flex size-5 items-center justify-center rounded-md bg-black/60 text-white/90 opacity-0 transition-opacity group-hover:opacity-100 hover:text-white dark:bg-black/70 dark:text-white/80"
                   aria-label={`Remove ${item.name}`}
                 >
                   <Trash2 className="size-3" />
@@ -196,7 +198,7 @@ export function AppearancePanel({
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
-            className="flex aspect-square flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-white/20 text-white/50 transition-colors hover:border-white/40 hover:text-white/80"
+            className="flex aspect-square flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-[#e5e5ea] text-[#8e8e93] transition-colors hover:border-black/20 hover:text-[#1c1c1e] dark:border-white/20 dark:text-white/50 dark:hover:border-white/40 dark:hover:text-white/80"
           >
             <Plus className="size-4" />
             <span className="text-[0.65rem]">Add</span>
@@ -205,17 +207,19 @@ export function AppearancePanel({
       </Section>
 
       <Section title="Effects">
-        <div className="flex flex-col gap-3 rounded-lg border border-white/10 bg-white/5 p-3">
+        <div className="flex flex-col gap-3 rounded-lg border border-[#e5e5ea] bg-white p-3 dark:border-white/10 dark:bg-white/5">
           <label
             className={cn(
               "flex items-center justify-between text-sm",
-              settings.colorMode === "custom" ? "text-white/40" : "text-white/80"
+              settings.colorMode === "custom"
+                ? "text-[#8e8e93]/60 dark:text-white/40"
+                : "text-[#3c3c43] dark:text-white/80"
             )}
           >
             <span>
               Animated background
               {settings.colorMode === "custom" && (
-                <span className="ml-1.5 text-xs text-white/30">(not used with Custom)</span>
+                <span className="ml-1.5 text-xs text-[#8e8e93]/70 dark:text-white/30">(not used with Custom)</span>
               )}
             </span>
             <Switch
@@ -224,7 +228,7 @@ export function AppearancePanel({
               disabled={settings.colorMode === "custom"}
             />
           </label>
-          <label className="flex items-center justify-between text-sm text-white/80">
+          <label className="flex items-center justify-between text-sm text-[#3c3c43] dark:text-white/80">
             Cursor glow
             <Switch
               checked={settings.cursorGlowEnabled}

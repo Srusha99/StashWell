@@ -29,8 +29,8 @@ export function BookmarkRow({
         onClick={() => onDrillInto(node.id)}
         className="flex w-full items-center gap-2.5 py-1.5 text-left"
       >
-        <Folder className="size-[18px] shrink-0 text-white/50" />
-        <span className="truncate text-sm text-white/85">{node.title || "(untitled)"}</span>
+        <Folder className="size-[18px] shrink-0 text-[#8e8e93] dark:text-white/50" />
+        <span className="truncate text-sm text-[#1c1c1e] dark:text-white/85">{node.title || "(untitled)"}</span>
       </button>
     )
   }
@@ -56,16 +56,16 @@ export function BookmarkRow({
           // eslint-disable-next-line @next/next/no-img-element
           <img src={icon} alt="" className="size-[18px] shrink-0 rounded-sm" />
         ) : (
-          <Folder className="size-[18px] shrink-0 text-white/50" />
+          <Folder className="size-[18px] shrink-0 text-[#8e8e93] dark:text-white/50" />
         )}
-        <span className="truncate text-sm text-white/85">{node.title || node.url}</span>
+        <span className="truncate text-sm text-[#1c1c1e] dark:text-white/85">{node.title || node.url}</span>
       </a>
 
-      <div className="absolute inset-y-0 right-0 flex items-center gap-0.5 rounded-md bg-black/50 px-1 opacity-0 backdrop-blur-sm group-hover:opacity-100">
+      <div className="absolute inset-y-0 right-0 flex items-center gap-0.5 rounded-md bg-white/90 px-1 opacity-0 backdrop-blur-sm group-hover:opacity-100 dark:bg-black/50">
         <Button
           variant="ghost"
           size="icon-xs"
-          className="text-white/70 hover:bg-white/10 hover:text-white"
+          className="text-[#8e8e93] hover:bg-black/[0.04] hover:text-[#1c1c1e] dark:text-white/70 dark:hover:bg-white/10 dark:hover:text-white"
           onClick={(event: React.MouseEvent) => {
             event.preventDefault()
             onEdit(node)
@@ -77,7 +77,7 @@ export function BookmarkRow({
         <Button
           variant="ghost"
           size="icon-xs"
-          className="text-white/70 hover:bg-white/10 hover:text-white"
+          className="text-[#8e8e93] hover:bg-black/[0.04] hover:text-[#1c1c1e] dark:text-white/70 dark:hover:bg-white/10 dark:hover:text-white"
           onClick={handleCopy}
           aria-label="Copy URL"
         >
@@ -86,7 +86,7 @@ export function BookmarkRow({
         <Button
           variant="ghost"
           size="icon-xs"
-          className="text-white/70 hover:bg-white/10 hover:text-white"
+          className="text-[#8e8e93] hover:bg-black/[0.04] hover:text-[#1c1c1e] dark:text-white/70 dark:hover:bg-white/10 dark:hover:text-white"
           render={<a href={node.url} target="_blank" rel="noreferrer" />}
           aria-label="Open in new tab"
         >
@@ -95,7 +95,7 @@ export function BookmarkRow({
         <Button
           variant="ghost"
           size="icon-xs"
-          className="text-white/70 hover:bg-destructive/20 hover:text-destructive"
+          className="text-[#8e8e93] hover:bg-destructive/10 hover:text-destructive dark:text-white/70 dark:hover:bg-destructive/20"
           onClick={(event: React.MouseEvent) => {
             event.preventDefault()
             onDelete(node)
@@ -105,7 +105,7 @@ export function BookmarkRow({
           <Trash2 />
         </Button>
         {copied && (
-          <span className="absolute -top-5 right-0 text-[10px] text-white/60">Copied!</span>
+          <span className="absolute -top-5 right-0 text-[10px] text-[#8e8e93] dark:text-white/60">Copied!</span>
         )}
       </div>
     </div>

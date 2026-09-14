@@ -196,7 +196,7 @@ export function BookmarkOrganizerPanel({
           </div>
         </div>
 
-        <div className="min-h-0 max-h-[60vh] overflow-y-auto rounded-lg bg-black/20 p-2">
+        <div className="min-h-0 max-h-[60vh] overflow-y-auto rounded-lg bg-black/[0.03] p-2 dark:bg-black/20">
           {scopedNodes.length === 0 ? (
             <p className="p-2 text-sm text-muted-foreground">This folder is empty.</p>
           ) : (
@@ -217,7 +217,7 @@ export function BookmarkOrganizerPanel({
           <div className="flex flex-col gap-1.5">
             <span className="text-xs font-medium text-muted-foreground">Hidden folders</span>
             {hiddenList.length === 0 ? (
-              <p className="rounded-lg bg-black/20 p-2 text-sm text-muted-foreground">
+              <p className="rounded-lg bg-black/[0.03] p-2 text-sm text-muted-foreground dark:bg-black/20">
                 No folders are hidden from the dashboard.
               </p>
             ) : (
@@ -225,7 +225,7 @@ export function BookmarkOrganizerPanel({
                 {hiddenList.map((id) => (
                   <div
                     key={id}
-                    className="flex items-center gap-2 rounded-lg bg-black/20 px-3 py-2 text-sm"
+                    className="flex items-center gap-2 rounded-lg bg-black/[0.03] px-3 py-2 text-sm dark:bg-black/20"
                   >
                     <Folder className="size-3.5 shrink-0 text-muted-foreground" />
                     <span className="min-w-0 flex-1 truncate">{labelFor(root, id)}</span>

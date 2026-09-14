@@ -145,7 +145,7 @@ function BookmarkFormFields({
           <div className="flex flex-col gap-1.5">
             <span className="text-xs font-medium text-muted-foreground">Icon</span>
             <div className="flex items-center gap-3">
-              <div className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-white/5 ring-1 ring-white/10">
+              <div className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-black/[0.03] ring-1 ring-black/[0.06] dark:bg-white/5 dark:ring-white/10">
                 {customIcon || (url && faviconUrl(url, 64)) ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
@@ -154,7 +154,7 @@ function BookmarkFormFields({
                     className="size-full object-contain"
                   />
                 ) : (
-                  <Globe className="size-5 text-white/40" />
+                  <Globe className="size-5 text-[#8e8e93] dark:text-white/40" />
                 )}
               </div>
               <input

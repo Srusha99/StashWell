@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { useTheme } from "next-themes"
 import { Folder, FolderOpen, MoreVertical, Pencil, Trash2, FolderInput } from "lucide-react"
 
 import { type BookmarkNode, type FlatFolder, isFolder } from "@/hooks/use-bookmarks"
@@ -20,8 +21,20 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 
-const GLOW_COLORS = ["#c084fc", "#f472b6", "#38bdf8"]
-const GLOW_CARD_BG = "rgba(15, 12, 20, 0.55)"
+const GLOW_COLORS_DARK = ["#c084fc", "#f472b6", "#38bdf8"]
+const GLOW_CARD_BG_DARK = "rgba(15, 12, 20, 0.55)"
+const GLOW_COLORS_LIGHT = ["#5227ff", "#8f6cff", "#c4b5fd"]
+const GLOW_CARD_BG_LIGHT = "#ffffff"
+
+function useTileGlowProps() {
+  const { resolvedTheme } = useTheme()
+  const isLight = resolvedTheme === "light"
+  return {
+    colors: isLight ? GLOW_COLORS_LIGHT : GLOW_COLORS_DARK,
+    backgroundColor: isLight ? GLOW_CARD_BG_LIGHT : GLOW_CARD_BG_DARK,
+    glowIntensity: isLight ? 0.15 : 0.9,
+  }
+}
 
 export function BookmarkGrid({
   items,
@@ -46,7 +59,7 @@ export function BookmarkGrid({
 }) {
   if (items.length === 0) {
     return (
-      <div className="flex flex-1 items-center justify-center text-sm text-white/50">
+      <div className="flex flex-1 items-center justify-center text-sm text-[#8e8e93] dark:text-white/50">
         This folder is empty.
       </div>
     )
@@ -119,7 +132,7 @@ function TileActionsMenu({ children }: { children: React.ReactNode }) {
           <Button
             variant="ghost"
             size="icon-xs"
-            className="absolute top-1.5 right-1.5 text-white/70 opacity-0 hover:bg-white/10 hover:text-white group-hover:opacity-100 data-[popup-open]:opacity-100"
+            className="absolute top-1.5 right-1.5 text-[#8e8e93] opacity-0 hover:bg-black/[0.04] hover:text-[#1c1c1e] group-hover:opacity-100 data-[popup-open]:opacity-100 dark:text-white/70 dark:hover:bg-white/10 dark:hover:text-white"
             onClick={(event: React.MouseEvent) => {
               event.preventDefault()
               event.stopPropagation()
@@ -152,23 +165,22 @@ function FolderTile({
   onMove: (parentId: string) => void
 }) {
   const count = node.children?.length ?? 0
+  const glowProps = useTileGlowProps()
 
   return (
     <div className="group relative h-full cursor-pointer" onClick={onOpen}>
       <BorderGlow
         className="h-full"
-        backgroundColor={GLOW_CARD_BG}
         borderRadius={16}
         glowRadius={36}
-        glowIntensity={0.9}
         coneSpread={22}
-        colors={GLOW_COLORS}
+        {...glowProps}
       >
-        <div className="relative flex h-full flex-col gap-2 p-3 text-left text-white">
-          <FolderOpen className="size-8 text-white/70" />
+        <div className="relative flex h-full flex-col gap-2 p-3 text-left text-[#1c1c1e] dark:text-white">
+          <FolderOpen className="size-8 text-[#8e8e93] dark:text-white/70" />
           <div className="flex flex-col">
             <span className="truncate text-sm font-medium">{node.title || "(untitled)"}</span>
-            <span className="text-xs text-white/50">
+            <span className="text-xs text-[#8e8e93] dark:text-white/50">
               {count} item{count === 1 ? "" : "s"}
             </span>
           </div>
@@ -205,28 +217,27 @@ function BookmarkTile({
 }) {
   const [customIcon] = useCustomIcon(node.url ?? null)
   const icon = customIcon ?? (node.url ? faviconUrl(node.url) : undefined)
+  const glowProps = useTileGlowProps()
 
   return (
     <a href={node.url} className="group relative block h-full">
       <BorderGlow
         className="h-full"
-        backgroundColor={GLOW_CARD_BG}
         borderRadius={16}
         glowRadius={36}
-        glowIntensity={0.9}
         coneSpread={22}
-        colors={GLOW_COLORS}
+        {...glowProps}
       >
-        <div className="relative flex h-full flex-col gap-2 p-3 text-white">
+        <div className="relative flex h-full flex-col gap-2 p-3 text-[#1c1c1e] dark:text-white">
           {icon ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={icon} alt="" className="size-8 rounded" />
           ) : (
-            <Folder className="size-8 text-white/70" />
+            <Folder className="size-8 text-[#8e8e93] dark:text-white/70" />
           )}
           <div className="flex flex-col">
             <span className="truncate text-sm font-medium">{node.title || node.url}</span>
-            <span className="truncate text-xs text-white/50">{node.url}</span>
+            <span className="truncate text-xs text-[#8e8e93] dark:text-white/50">{node.url}</span>
           </div>
 
           <button
@@ -237,7 +248,7 @@ function BookmarkTile({
               onEdit()
             }}
             className={cn(
-              "absolute top-1.5 right-9 flex size-6 items-center justify-center rounded-md text-white/70 opacity-0 hover:bg-white/10 hover:text-white group-hover:opacity-100"
+              "absolute top-1.5 right-9 flex size-6 items-center justify-center rounded-md text-[#8e8e93] opacity-0 hover:bg-black/[0.04] hover:text-[#1c1c1e] group-hover:opacity-100 dark:text-white/70 dark:hover:bg-white/10 dark:hover:text-white"
             )}
             aria-label="Edit bookmark"
           >

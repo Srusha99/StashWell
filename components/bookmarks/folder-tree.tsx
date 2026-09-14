@@ -71,8 +71,8 @@ function FolderTreeItem({
     <div>
       <div
         className={cn(
-          "group flex items-center gap-1 rounded-md pr-1 text-sm text-white/80 hover:bg-white/10",
-          isActive && "bg-white/15 font-medium text-white"
+          "group flex items-center gap-1 rounded-md pr-1 text-sm text-[#3c3c43] hover:bg-black/[0.04] dark:text-white/80 dark:hover:bg-white/10",
+          isActive && "bg-black/[0.06] font-medium text-[#1c1c1e] dark:bg-white/15 dark:text-white"
         )}
         style={{ paddingLeft: `${depth * 16 + 4}px` }}
       >
@@ -80,7 +80,7 @@ function FolderTreeItem({
           type="button"
           onClick={() => setExpanded((value) => !value)}
           className={cn(
-            "flex size-5 shrink-0 items-center justify-center rounded text-white/50",
+            "flex size-5 shrink-0 items-center justify-center rounded text-[#8e8e93] dark:text-white/50",
             !hasChildFolders && "invisible"
           )}
           aria-label={expanded ? "Collapse" : "Expand"}
@@ -93,7 +93,7 @@ function FolderTreeItem({
           onClick={() => onSelect(node.id)}
           className="flex min-w-0 flex-1 items-center gap-1.5 py-1 text-left"
         >
-          <Folder className="size-3.5 shrink-0 text-white/50" />
+          <Folder className="size-3.5 shrink-0 text-[#8e8e93] dark:text-white/50" />
           <span className="truncate">{node.title || "(untitled)"}</span>
         </button>
 
@@ -103,7 +103,7 @@ function FolderTreeItem({
               <Button
                 variant="ghost"
                 size="icon-xs"
-                className="text-white/70 opacity-0 hover:bg-white/10 hover:text-white group-hover:opacity-100 data-[popup-open]:opacity-100"
+                className="text-[#8e8e93] opacity-0 hover:bg-black/[0.04] hover:text-[#1c1c1e] group-hover:opacity-100 data-[popup-open]:opacity-100 dark:text-white/70 dark:hover:bg-white/10 dark:hover:text-white"
               />
             }
           >

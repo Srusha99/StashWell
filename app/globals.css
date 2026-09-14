@@ -116,6 +116,45 @@
     --sidebar-ring: oklch(0.556 0 0);
 }
 
+/*
+ * Lovable-style iOS-minimal light theme.
+ * Scoped to :root:not(.dark) only — never applies when the manual
+ * next-themes toggle has added .dark to <html>, and never keys off
+ * prefers-color-scheme (this app uses a manual toggle, not the OS setting).
+ */
+:root:not(.dark) {
+    --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", Inter, sans-serif;
+
+    --background: #ffffff;
+    --foreground: #1c1c1e;
+    --card: #ffffff;
+    --card-foreground: #1c1c1e;
+    --card-border: rgba(0, 0, 0, 0.06);
+    --popover: #ffffff;
+    --popover-foreground: #1c1c1e;
+    --primary: #5227ff;
+    --primary-foreground: #ffffff;
+    --secondary: #fafafa;
+    --secondary-foreground: #1c1c1e;
+    --muted: #fafafa;
+    --muted-foreground: #8e8e93;
+    --accent: #f5f3ff;
+    --accent-foreground: #5227ff;
+    --border: #e5e5ea;
+    --input: #e5e5ea;
+    --ring: #5227ff;
+    --sidebar: #fafafa;
+    --sidebar-foreground: #1c1c1e;
+    --sidebar-border: #e5e5ea;
+    --sidebar-ring: #5227ff;
+
+    --radius: 0.75rem;
+    --radius-2xl: 1.125rem;
+    --radius-3xl: 1.25rem;
+
+    --shadow-soft: 0 1px 2px rgba(0, 0, 0, 0.04), 0 8px 24px rgba(0, 0, 0, 0.04);
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

@@ -153,7 +153,7 @@ function OrganizerTreeItem({
           setDropTarget(null)
         }}
         className={cn(
-          "group relative flex items-center gap-1 rounded-md pr-1 text-sm text-white/80 hover:bg-white/10",
+          "group relative flex items-center gap-1 rounded-md pr-1 text-sm text-[#3c3c43] hover:bg-black/[0.04] dark:text-white/80 dark:hover:bg-white/10",
           isDragging && "opacity-40",
           isDropTarget && dropTarget?.zone === "into" && "bg-primary/20 ring-1 ring-primary/50"
         )}
@@ -166,13 +166,13 @@ function OrganizerTreeItem({
           <div className="absolute inset-x-1 bottom-0 h-0.5 rounded-full bg-primary" />
         )}
 
-        <GripVertical className="size-3.5 shrink-0 cursor-grab text-white/30 active:cursor-grabbing" />
+        <GripVertical className="size-3.5 shrink-0 cursor-grab text-[#8e8e93] active:cursor-grabbing dark:text-white/30" />
 
         <button
           type="button"
           onClick={() => onToggleExpand(node.id)}
           className={cn(
-            "flex size-5 shrink-0 items-center justify-center rounded text-white/50",
+            "flex size-5 shrink-0 items-center justify-center rounded text-[#8e8e93] dark:text-white/50",
             !hasChildren && "invisible"
           )}
           aria-label={expanded ? "Collapse" : "Expand"}
@@ -182,12 +182,12 @@ function OrganizerTreeItem({
 
         <span className="flex min-w-0 flex-1 items-center gap-1.5 py-1 text-left">
           {folder ? (
-            <Folder className="size-3.5 shrink-0 text-white/50" />
+            <Folder className="size-3.5 shrink-0 text-[#8e8e93] dark:text-white/50" />
           ) : icon ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={icon} alt="" className="size-3.5 shrink-0 rounded-sm" />
           ) : (
-            <Folder className="size-3.5 shrink-0 text-white/50" />
+            <Folder className="size-3.5 shrink-0 text-[#8e8e93] dark:text-white/50" />
           )}
           <span className="truncate">{node.title || "(untitled)"}</span>
         </span>
@@ -197,7 +197,7 @@ function OrganizerTreeItem({
             <Button
               variant="ghost"
               size="icon-xs"
-              className="text-white/70 hover:bg-white/10 hover:text-white"
+              className="text-[#8e8e93] hover:bg-black/[0.04] hover:text-[#1c1c1e] dark:text-white/70 dark:hover:bg-white/10 dark:hover:text-white"
               onClick={() => onNewChild(node.id)}
               aria-label="Add child"
             >
@@ -207,7 +207,7 @@ function OrganizerTreeItem({
           <Button
             variant="ghost"
             size="icon-xs"
-            className="text-white/70 hover:bg-white/10 hover:text-white"
+            className="text-[#8e8e93] hover:bg-black/[0.04] hover:text-[#1c1c1e] dark:text-white/70 dark:hover:bg-white/10 dark:hover:text-white"
             onClick={() => onRename(node)}
             aria-label="Rename"
           >
@@ -216,7 +216,7 @@ function OrganizerTreeItem({
           <Button
             variant="ghost"
             size="icon-xs"
-            className="text-white/70 hover:bg-destructive/20 hover:text-destructive"
+            className="text-[#8e8e93] hover:bg-destructive/10 hover:text-destructive dark:text-white/70 dark:hover:bg-destructive/20"
             onClick={() => onDelete(node)}
             aria-label="Delete"
           >

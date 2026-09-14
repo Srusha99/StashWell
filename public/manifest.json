@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
-  "name": "Bookmark Manager",
-  "description": "A visual bookmark manager that replaces the New Tab page.",
+  "name": "StashWell",
+  "description": "Your bookmarks, beautifully organized. StashWell replaces New Tab with a visual, stress-free way to stash and find what matters.",
   "version": "1.0.0",
   "chrome_url_overrides": {
     "newtab": "index.html"
