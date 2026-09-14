@@ -3,6 +3,7 @@
 import * as React from "react"
 
 import MoltenMetal from "@/components/MoltenMetal"
+import ColorBends from "@/components/ColorBends"
 import GlowCursor from "@/components/GlowCursor"
 import { BOOKMARKS_BAR_ID } from "@/hooks/use-bookmarks"
 import { useAppearanceSettings } from "@/hooks/use-appearance-settings"
@@ -129,6 +130,23 @@ export function BookmarkApp() {
             ) : (
               <img src={activeCustomBackground.url} alt="" className="size-full object-cover" />
             ))
+          ) : settings.colorMode === "colorbends" ? (
+            <ColorBends
+              rotation={90}
+              speed={0.03}
+              colors={["#5227FF", "#0d5fe6", "#151be3"]}
+              transparent
+              autoRotate={0}
+              scale={1}
+              frequency={1}
+              warpStrength={1}
+              mouseInfluence={1}
+              parallax={0.5}
+              noise={0.1}
+              iterations={1}
+              intensity={2}
+              bandWidth={6}
+            />
           ) : (
             <MoltenMetal
               color1="#362287"
