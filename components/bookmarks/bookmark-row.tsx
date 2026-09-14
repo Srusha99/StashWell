@@ -20,7 +20,7 @@ export function BookmarkRow({
   onDrillInto: (folderId: string) => void
 }) {
   const [copied, setCopied] = React.useState(false)
-  const [customIcon] = useCustomIcon(node.id)
+  const [customIcon] = useCustomIcon(node.url ?? null)
 
   if (isFolder(node)) {
     return (

@@ -72,7 +72,9 @@ function BookmarkFormFields({
   const [title, setTitle] = React.useState(mode === "edit" && node ? node.title : "")
   const [url, setUrl] = React.useState(mode === "edit" && node ? node.url ?? "" : "")
   const [isSubmitting, setIsSubmitting] = React.useState(false)
-  const [customIcon, setCustomIcon, clearCustomIcon] = useCustomIcon(showIconField ? node!.id : null)
+  const [customIcon, setCustomIcon, clearCustomIcon] = useCustomIcon(
+    showIconField ? node!.url ?? null : null
+  )
   const fileInputRef = React.useRef<HTMLInputElement>(null)
 
   async function handleIconChange(event: React.ChangeEvent<HTMLInputElement>) {

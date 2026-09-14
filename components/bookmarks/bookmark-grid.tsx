@@ -203,7 +203,7 @@ function BookmarkTile({
   onDelete: () => void
   onMove: (parentId: string) => void
 }) {
-  const [customIcon] = useCustomIcon(node.id)
+  const [customIcon] = useCustomIcon(node.url ?? null)
   const icon = customIcon ?? (node.url ? faviconUrl(node.url) : undefined)
 
   return (

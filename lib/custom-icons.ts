@@ -1,25 +1,33 @@
+import defaultIcons from "./default-icons.json"
+
 const PREFIX = "bm:icon:"
 const ICON_SIZE = 64
 
-export function getCustomIcon(id: string): string | null {
+// Custom icons are keyed by the bookmark's URL rather than its internal
+// (chrome-generated, per-profile) id, so a local override and the
+// baked-in defaults below both work regardless of which PC or profile
+// the bookmark was created on.
+export function getCustomIcon(url: string): string | null {
   try {
-    return window.localStorage.getItem(PREFIX + id)
+    const stored = window.localStorage.getItem(PREFIX + url)
+    if (stored) return stored
   } catch {
-    return null
+    // ignore read failures
   }
+  return (defaultIcons as Record<string, string>)[url] ?? null
 }
 
-export function setCustomIcon(id: string, dataUrl: string): void {
+export function setCustomIcon(url: string, dataUrl: string): void {
   try {
-    window.localStorage.setItem(PREFIX + id, dataUrl)
+    window.localStorage.setItem(PREFIX + url, dataUrl)
   } catch {
     // ignore write failures (e.g. storage disabled or quota exceeded)
   }
 }
 
-export function clearCustomIcon(id: string): void {
+export function clearCustomIcon(url: string): void {
   try {
-    window.localStorage.removeItem(PREFIX + id)
+    window.localStorage.removeItem(PREFIX + url)
   } catch {
     // ignore
   }

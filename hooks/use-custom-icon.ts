@@ -5,24 +5,24 @@ import * as React from "react"
 import { clearCustomIcon, getCustomIcon, setCustomIcon } from "@/lib/custom-icons"
 
 export function useCustomIcon(
-  id: string | null
+  url: string | null
 ): [string | null, (dataUrl: string) => void, () => void] {
-  const [icon, setIconState] = React.useState<string | null>(() => (id ? getCustomIcon(id) : null))
+  const [icon, setIconState] = React.useState<string | null>(() => (url ? getCustomIcon(url) : null))
 
   const update = React.useCallback(
     (dataUrl: string) => {
-      if (!id) return
-      setCustomIcon(id, dataUrl)
+      if (!url) return
+      setCustomIcon(url, dataUrl)
       setIconState(dataUrl)
     },
-    [id]
+    [url]
   )
 
   const clear = React.useCallback(() => {
-    if (!id) return
-    clearCustomIcon(id)
-    setIconState(null)
-  }, [id])
+    if (!url) return
+    clearCustomIcon(url)
+    setIconState(url ? getCustomIcon(url) : null)
+  }, [url])
 
   return [icon, update, clear]
 }

@@ -243,7 +243,7 @@ function FolderIconGrid({
 }
 
 function GridIconItem({ item }: { item: BookmarkNode }) {
-  const [customIcon] = useCustomIcon(item.id)
+  const [customIcon] = useCustomIcon(item.url ?? null)
   const icon = customIcon ?? (item.url ? faviconUrl(item.url, 128) : undefined)
 
   return (
