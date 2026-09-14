@@ -4,6 +4,7 @@ import * as React from "react"
 
 import MoltenMetal from "@/components/MoltenMetal"
 import ColorBends from "@/components/ColorBends"
+import WebThreads from "@/components/WebThreads"
 import GlowCursor from "@/components/GlowCursor"
 import { BOOKMARKS_BAR_ID } from "@/hooks/use-bookmarks"
 import { useAppearanceSettings } from "@/hooks/use-appearance-settings"
@@ -146,6 +147,30 @@ export function BookmarkApp() {
               iterations={1}
               intensity={2}
               bandWidth={6}
+            />
+          ) : settings.colorMode === "webthreads" ? (
+            <WebThreads
+              color1="#5227FF"
+              color2="#FF9FFC"
+              color3="#FFFFFF"
+              speed={0.05}
+              threadCount={6}
+              frequency={5.0}
+              spread={0.17}
+              taper={1.0}
+              position={0.5}
+              fanMode="center"
+              glow={0.02}
+              falloff={0.6}
+              thickness={0.7}
+              brightness={0.6}
+              opacity={1.0}
+              mirror={true}
+              shimmer={false}
+              grain={true}
+              grainIntensity={0.01}
+              mouseInteraction={true}
+              mouseStrength={0.3}
             />
           ) : (
             <MoltenMetal
