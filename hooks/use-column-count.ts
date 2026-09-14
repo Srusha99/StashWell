@@ -19,7 +19,10 @@ function computeColumnCount(): number {
 }
 
 export function useColumnCount(): number {
-  const [count, setCount] = React.useState(computeColumnCount)
+  // Always starts at 1 so the client's first render matches the
+  // window-less static export markup exactly; the real column count is
+  // only picked up in the effect below, after hydration has completed.
+  const [count, setCount] = React.useState(1)
 
   React.useEffect(() => {
     const mediaQueries = BREAKPOINTS.map((bp) => window.matchMedia(bp.query))
