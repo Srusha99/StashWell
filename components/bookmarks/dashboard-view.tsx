@@ -117,7 +117,7 @@ export function DashboardView({
   return (
     <div className="h-screen w-screen overflow-y-auto p-6">
       <DashboardHeader />
-      <div className="columns-1 gap-5 sm:columns-2 lg:columns-3 xl:columns-4">
+      <div className="grid grid-cols-1 items-start gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {cards.map((card) => (
           <FolderCard
             key={card.id}

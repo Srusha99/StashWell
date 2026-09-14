@@ -118,7 +118,7 @@ export function FolderCard({
       }}
       onDragEnd={onCardDragEnd}
       className={cn(
-        "relative mb-5 break-inside-avoid rounded-2xl bg-white/[0.04] p-4",
+        "relative rounded-2xl bg-white/[0.04] p-4",
         isDragging && "opacity-40"
       )}
     >
