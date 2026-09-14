@@ -10,7 +10,8 @@ import {
   isFolder,
   useBookmarks,
 } from "@/hooks/use-bookmarks"
-import { useCardOrder } from "@/hooks/use-card-order"
+import { useCardColumns } from "@/hooks/use-card-columns"
+import { useColumnCount } from "@/hooks/use-column-count"
 import { useHiddenFolders } from "@/hooks/use-hidden-folders"
 import { Button } from "@/components/ui/button"
 import { DashboardHeader } from "@/components/bookmarks/dashboard-header"
@@ -51,9 +52,11 @@ export function DashboardView({
   const [deleteTarget, setDeleteTarget] = React.useState<BookmarkNode | null>(null)
   const [organizerFolderId, setOrganizerFolderId] = React.useState<string | null>(null)
   const [draggedCardId, setDraggedCardId] = React.useState<string | null>(null)
-  const [dropTarget, setDropTarget] = React.useState<{ id: string; position: "before" | "after" } | null>(
-    null
-  )
+  const [dropTarget, setDropTarget] = React.useState<{
+    columnIndex: number
+    id: string | null
+    position: "before" | "after"
+  } | null>(null)
 
   const bar = root ? findNode([root], BOOKMARKS_BAR_ID) : null
 
@@ -76,14 +79,17 @@ export function DashboardView({
   }, [bar])
 
   const defaultOrder = React.useMemo(() => Array.from(cardsById.keys()), [cardsById])
-  const [cardOrder, moveCard] = useCardOrder(defaultOrder)
-  const cards = cardOrder
-    .map((id) => cardsById.get(id))
-    .filter((card): card is CardData => !!card && !hiddenIds.has(card.id))
+  const columnCount = useColumnCount()
+  const [columns, moveCard] = useCardColumns(defaultOrder, columnCount)
+  const visibleColumns = columns.map((colIds) =>
+    colIds
+      .map((id) => cardsById.get(id))
+      .filter((card): card is CardData => !!card && !hiddenIds.has(card.id))
+  )
 
-  function handleCardDrop(targetId: string) {
+  function handleCardDrop(columnIndex: number, targetId: string | null) {
     if (!draggedCardId || !dropTarget) return
-    moveCard(draggedCardId, targetId, dropTarget.position)
+    moveCard(draggedCardId, columnIndex, targetId, dropTarget.position)
     setDraggedCardId(null)
     setDropTarget(null)
   }
@@ -117,41 +123,72 @@ export function DashboardView({
   return (
     <div className="h-screen w-screen overflow-y-auto p-6">
       <DashboardHeader />
-      <div className="grid grid-cols-1 items-start gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-        {cards.map((card) => (
-          <FolderCard
-            key={card.id}
-            id={card.id}
-            title={card.title}
-            node={card.node}
-            items={card.items}
-            onEditBookmark={(node) =>
-              setFormDialog({ mode: "edit", node, parentId: node.parentId ?? "" })
-            }
-            onDeleteBookmark={setDeleteTarget}
-            onDrillInto={onOpenManager}
-            onNewBookmark={(parentId) =>
-              setFormDialog({ mode: "create-bookmark", node: null, parentId })
-            }
-            onOrganize={setOrganizerFolderId}
-            onRename={(node) => setFormDialog({ mode: "edit", node, parentId: node.parentId ?? "" })}
-            onDelete={setDeleteTarget}
-            onHide={hideFolder}
-            isDragging={draggedCardId === card.id}
-            dropIndicator={dropTarget?.id === card.id ? dropTarget.position : null}
-            onCardDragStart={() => setDraggedCardId(card.id)}
-            onCardDragOver={(position) => {
-              if (draggedCardId && draggedCardId !== card.id) {
-                setDropTarget({ id: card.id, position })
-              }
-            }}
-            onCardDragLeave={() => setDropTarget((current) => (current?.id === card.id ? null : current))}
-            onCardDrop={() => handleCardDrop(card.id)}
-            onCardDragEnd={() => {
-              setDraggedCardId(null)
-              setDropTarget(null)
-            }}
-          />
+      <div className="flex gap-5">
+        {visibleColumns.map((cards, columnIndex) => (
+          <div key={columnIndex} className="flex min-w-0 flex-1 flex-col gap-5">
+            {cards.map((card) => (
+              <FolderCard
+                key={card.id}
+                id={card.id}
+                title={card.title}
+                node={card.node}
+                items={card.items}
+                onEditBookmark={(node) =>
+                  setFormDialog({ mode: "edit", node, parentId: node.parentId ?? "" })
+                }
+                onDeleteBookmark={setDeleteTarget}
+                onDrillInto={onOpenManager}
+                onNewBookmark={(parentId) =>
+                  setFormDialog({ mode: "create-bookmark", node: null, parentId })
+                }
+                onOrganize={setOrganizerFolderId}
+                onRename={(node) =>
+                  setFormDialog({ mode: "edit", node, parentId: node.parentId ?? "" })
+                }
+                onDelete={setDeleteTarget}
+                onHide={hideFolder}
+                isDragging={draggedCardId === card.id}
+                dropIndicator={dropTarget?.id === card.id ? dropTarget.position : null}
+                onCardDragStart={() => setDraggedCardId(card.id)}
+                onCardDragOver={(position) => {
+                  if (draggedCardId && draggedCardId !== card.id) {
+                    setDropTarget({ columnIndex, id: card.id, position })
+                  }
+                }}
+                onCardDragLeave={() =>
+                  setDropTarget((current) => (current?.id === card.id ? null : current))
+                }
+                onCardDrop={() => handleCardDrop(columnIndex, card.id)}
+                onCardDragEnd={() => {
+                  setDraggedCardId(null)
+                  setDropTarget(null)
+                }}
+              />
+            ))}
+
+            {draggedCardId && (
+              <div
+                className="relative min-h-6 flex-1"
+                onDragOver={(event) => {
+                  event.preventDefault()
+                  setDropTarget({ columnIndex, id: null, position: "after" })
+                }}
+                onDragLeave={() =>
+                  setDropTarget((current) =>
+                    current?.columnIndex === columnIndex && current.id === null ? null : current
+                  )
+                }
+                onDrop={(event) => {
+                  event.preventDefault()
+                  handleCardDrop(columnIndex, null)
+                }}
+              >
+                {dropTarget?.columnIndex === columnIndex && dropTarget.id === null && (
+                  <div className="absolute inset-x-2 top-0 h-0.5 rounded-full bg-primary" />
+                )}
+              </div>
+            )}
+          </div>
         ))}
       </div>
 
