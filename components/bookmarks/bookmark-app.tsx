@@ -5,6 +5,7 @@ import * as React from "react"
 import MoltenMetal from "@/components/MoltenMetal"
 import ColorBends from "@/components/ColorBends"
 import WebThreads from "@/components/WebThreads"
+import LightRays from "@/components/LightRays"
 import GlowCursor from "@/components/GlowCursor"
 import { BOOKMARKS_BAR_ID } from "@/hooks/use-bookmarks"
 import { useAppearanceSettings } from "@/hooks/use-appearance-settings"
@@ -171,6 +172,21 @@ export function BookmarkApp() {
               grainIntensity={0.01}
               mouseInteraction={true}
               mouseStrength={0.3}
+            />
+          ) : settings.colorMode === "lightrays" ? (
+            <LightRays
+              raysOrigin="top-center"
+              raysColor="#5227FF"
+              raysSpeed={0.5}
+              lightSpread={1.3}
+              rayLength={3}
+              followMouse={true}
+              mouseInfluence={0.1}
+              noiseAmount={0}
+              distortion={0}
+              pulsating={false}
+              fadeDistance={1}
+              saturation={1}
             />
           ) : (
             <MoltenMetal
