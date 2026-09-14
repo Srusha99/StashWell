@@ -6,6 +6,7 @@ import MoltenMetal from "@/components/MoltenMetal"
 import ColorBends from "@/components/ColorBends"
 import WebThreads from "@/components/WebThreads"
 import LightRays from "@/components/LightRays"
+import SoftAurora from "@/components/SoftAurora"
 import GlowCursor from "@/components/GlowCursor"
 import { BOOKMARKS_BAR_ID } from "@/hooks/use-bookmarks"
 import { useAppearanceSettings } from "@/hooks/use-appearance-settings"
@@ -187,6 +188,23 @@ export function BookmarkApp() {
               pulsating={false}
               fadeDistance={1}
               saturation={1}
+            />
+          ) : settings.colorMode === "softaurora" ? (
+            <SoftAurora
+              speed={0.3}
+              scale={1.5}
+              brightness={1.2}
+              color1="#f7f7f7"
+              color2="#e100ff"
+              noiseFrequency={2.5}
+              noiseAmplitude={1}
+              bandHeight={0.75}
+              bandSpread={0.3}
+              octaveDecay={0.25}
+              layerOffset={0}
+              colorSpeed={0.6}
+              enableMouseInteraction
+              mouseInfluence={0.25}
             />
           ) : (
             <MoltenMetal

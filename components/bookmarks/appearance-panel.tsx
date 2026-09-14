@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { useTheme } from "next-themes"
-import { Flashlight, Laptop, Moon, Plus, Sparkles, Spline, Sun, Trash2, Waves } from "lucide-react"
+import { Flashlight, Laptop, Moon, Plus, Sparkles, Spline, Sun, Trash2, Waves, Wind } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import { Switch } from "@/components/ui/switch"
@@ -21,6 +21,7 @@ const BACKGROUND_OPTIONS: { value: BackgroundColorMode; label: string; icon: typ
   { value: "colorbends", label: "Color Bends", icon: Sparkles },
   { value: "webthreads", label: "Web Threads", icon: Spline },
   { value: "lightrays", label: "Light Rays", icon: Flashlight },
+  { value: "softaurora", label: "Soft Aurora", icon: Wind },
 ]
 
 interface CustomBackgroundItem {
