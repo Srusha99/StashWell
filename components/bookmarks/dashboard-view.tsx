@@ -40,9 +40,13 @@ interface CardData {
 export function DashboardView({
   onOpenManager,
   onOpenSettings,
+  greetingName,
+  greetingEnabled,
 }: {
   onOpenManager: (folderId: string) => void
   onOpenSettings: () => void
+  greetingName: string
+  greetingEnabled: boolean
 }) {
   const bookmarks = useBookmarks()
   const { root } = bookmarks
@@ -122,7 +126,7 @@ export function DashboardView({
 
   return (
     <div className="h-screen w-screen overflow-y-auto p-6">
-      <DashboardHeader />
+      <DashboardHeader greetingName={greetingName} greetingEnabled={greetingEnabled} />
       <div className="flex gap-5">
         {visibleColumns.map((cards, columnIndex) => (
           <div key={columnIndex} className="flex min-w-0 flex-1 flex-col gap-5">

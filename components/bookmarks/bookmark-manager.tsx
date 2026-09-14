@@ -11,6 +11,7 @@ import {
 } from "@/hooks/use-bookmarks"
 import { useHiddenFolders } from "@/hooks/use-hidden-folders"
 import { useAppearanceSettings } from "@/hooks/use-appearance-settings"
+import type { CustomBackgroundKind } from "@/lib/custom-background-store"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -44,11 +45,21 @@ export function BookmarkManager({
   initialFolderId,
   initialTab,
   onBack,
+  appearance,
+  customBackgrounds,
+  onUploadCustomBackground,
+  onSelectCustomBackground,
+  onDeleteCustomBackground,
 }: {
   initialFolderId?: string
   initialTab?: ManagerTab
   onBack?: () => void
-} = {}) {
+  appearance: ReturnType<typeof useAppearanceSettings>
+  customBackgrounds: { id: string; url: string; kind: CustomBackgroundKind; name: string }[]
+  onUploadCustomBackground: (file: File) => void
+  onSelectCustomBackground: (id: string) => void
+  onDeleteCustomBackground: (id: string) => void
+}) {
   const bookmarks = useBookmarks()
   const [query, setQuery] = React.useState("")
   const [formDialog, setFormDialog] = React.useState<FormDialogState | null>(null)
@@ -59,7 +70,6 @@ export function BookmarkManager({
   const [hiddenFoldersOpen, setHiddenFoldersOpen] = React.useState(false)
   const [appliedInitialFolderId, setAppliedInitialFolderId] = React.useState<string | null>(null)
   const { hiddenIds, hideFolder, unhideFolder } = useHiddenFolders()
-  const appearance = useAppearanceSettings()
 
   const { root, currentFolderId, currentFolder, setCurrentFolderId } = bookmarks
 
@@ -341,6 +351,12 @@ export function BookmarkManager({
               onColorModeChange={appearance.setColorMode}
               onBackgroundEnabledChange={appearance.setBackgroundEnabled}
               onCursorGlowEnabledChange={appearance.setCursorGlowEnabled}
+              customBackgrounds={customBackgrounds}
+              onUploadCustomBackground={onUploadCustomBackground}
+              onSelectCustomBackground={onSelectCustomBackground}
+              onDeleteCustomBackground={onDeleteCustomBackground}
+              onGreetingNameChange={appearance.setGreetingName}
+              onGreetingEnabledChange={appearance.setGreetingEnabled}
             />
           </main>
         )}

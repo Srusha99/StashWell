@@ -2,12 +2,15 @@
 
 import * as React from "react"
 
-export type BackgroundColorMode = "molten" | "ember" | "frost"
+export type BackgroundColorMode = "molten" | "ember" | "frost" | "custom"
 
 export interface AppearanceSettings {
   colorMode: BackgroundColorMode
   backgroundEnabled: boolean
   cursorGlowEnabled: boolean
+  customBackgroundId: string | null
+  greetingName: string
+  greetingEnabled: boolean
 }
 
 const STORAGE_KEY = "bm:appearance"
@@ -16,6 +19,9 @@ const DEFAULT_SETTINGS: AppearanceSettings = {
   colorMode: "molten",
   backgroundEnabled: true,
   cursorGlowEnabled: true,
+  customBackgroundId: null,
+  greetingName: "Srush",
+  greetingEnabled: true,
 }
 
 function readStoredSettings(): AppearanceSettings {
@@ -42,6 +48,9 @@ export function useAppearanceSettings(): {
   setColorMode: (mode: BackgroundColorMode) => void
   setBackgroundEnabled: (enabled: boolean) => void
   setCursorGlowEnabled: (enabled: boolean) => void
+  setCustomBackgroundId: (id: string | null) => void
+  setGreetingName: (name: string) => void
+  setGreetingEnabled: (enabled: boolean) => void
 } {
   const [settings, setSettings] = React.useState<AppearanceSettings>(() => readStoredSettings())
 
@@ -58,5 +67,8 @@ export function useAppearanceSettings(): {
     setColorMode: (mode) => update({ colorMode: mode }),
     setBackgroundEnabled: (enabled) => update({ backgroundEnabled: enabled }),
     setCursorGlowEnabled: (enabled) => update({ cursorGlowEnabled: enabled }),
+    setCustomBackgroundId: (id) => update({ customBackgroundId: id }),
+    setGreetingName: (name) => update({ greetingName: name }),
+    setGreetingEnabled: (enabled) => update({ greetingEnabled: enabled }),
   }
 }
