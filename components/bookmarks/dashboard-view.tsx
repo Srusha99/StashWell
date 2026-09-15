@@ -42,11 +42,13 @@ export function DashboardView({
   onOpenSettings,
   greetingName,
   greetingEnabled,
+  searchBarEnabled,
 }: {
   onOpenManager: (folderId: string) => void
   onOpenSettings: () => void
   greetingName: string
   greetingEnabled: boolean
+  searchBarEnabled: boolean
 }) {
   const bookmarks = useBookmarks()
   const { root } = bookmarks
@@ -126,7 +128,7 @@ export function DashboardView({
 
   return (
     <div className="h-screen w-screen overflow-y-auto p-6">
-      <DashboardHeader greetingName={greetingName} greetingEnabled={greetingEnabled} />
+      <DashboardHeader greetingName={greetingName} greetingEnabled={greetingEnabled} searchBarEnabled={searchBarEnabled} />
       <div className="flex gap-5">
         {visibleColumns.map((cards, columnIndex) => (
           <div key={columnIndex} className="flex min-w-0 flex-1 flex-col gap-5">

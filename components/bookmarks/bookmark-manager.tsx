@@ -359,6 +359,7 @@ export function BookmarkManager({
               onDeleteCustomBackground={onDeleteCustomBackground}
               onGreetingNameChange={appearance.setGreetingName}
               onGreetingEnabledChange={appearance.setGreetingEnabled}
+              onSearchBarEnabledChange={appearance.setSearchBarEnabled}
             />
           </main>
         )}

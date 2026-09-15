@@ -82,6 +82,7 @@ export function AppearancePanel({
   onDeleteCustomBackground,
   onGreetingNameChange,
   onGreetingEnabledChange,
+  onSearchBarEnabledChange,
 }: {
   settings: AppearanceSettings
   onColorModeChange: (mode: BackgroundColorMode) => void
@@ -93,6 +94,7 @@ export function AppearancePanel({
   onDeleteCustomBackground: (id: string) => void
   onGreetingNameChange: (name: string) => void
   onGreetingEnabledChange: (enabled: boolean) => void
+  onSearchBarEnabledChange: (enabled: boolean) => void
 }) {
   const { theme, setTheme, resolvedTheme } = useTheme()
   const isLight = resolvedTheme === "light"
@@ -130,6 +132,18 @@ export function AppearancePanel({
               maxLength={40}
             />
           </div>
+        </div>
+      </Section>
+
+      <Section title="Search Bar" description="Show a Google search bar on the dashboard.">
+        <div className="flex flex-col gap-3 rounded-lg border border-[#e5e5ea] bg-white p-3 dark:border-white/10 dark:bg-white/5">
+          <label className="flex items-center justify-between text-sm text-[#3c3c43] dark:text-white/80">
+            Show search bar
+            <Switch
+              checked={settings.searchBarEnabled}
+              onCheckedChange={onSearchBarEnabledChange}
+            />
+          </label>
         </div>
       </Section>
 

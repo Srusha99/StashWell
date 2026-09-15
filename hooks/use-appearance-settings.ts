@@ -11,6 +11,7 @@ export interface AppearanceSettings {
   customBackgroundId: string | null
   greetingName: string
   greetingEnabled: boolean
+  searchBarEnabled: boolean
 }
 
 const STORAGE_KEY = "bm:appearance"
@@ -22,6 +23,7 @@ const DEFAULT_SETTINGS: AppearanceSettings = {
   customBackgroundId: null,
   greetingName: "Srush",
   greetingEnabled: true,
+  searchBarEnabled: true,
 }
 
 function readStoredSettings(): AppearanceSettings {
@@ -51,6 +53,7 @@ export function useAppearanceSettings(): {
   setCustomBackgroundId: (id: string | null) => void
   setGreetingName: (name: string) => void
   setGreetingEnabled: (enabled: boolean) => void
+  setSearchBarEnabled: (enabled: boolean) => void
 } {
   const [settings, setSettings] = React.useState<AppearanceSettings>(() => readStoredSettings())
 
@@ -70,5 +73,6 @@ export function useAppearanceSettings(): {
     setCustomBackgroundId: (id) => update({ customBackgroundId: id }),
     setGreetingName: (name) => update({ greetingName: name }),
     setGreetingEnabled: (enabled) => update({ greetingEnabled: enabled }),
+    setSearchBarEnabled: (enabled) => update({ searchBarEnabled: enabled }),
   }
 }

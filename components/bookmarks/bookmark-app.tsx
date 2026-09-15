@@ -115,6 +115,7 @@ export function BookmarkApp() {
         onOpenSettings={openSettings}
         greetingName={settings.greetingName}
         greetingEnabled={settings.greetingEnabled}
+        searchBarEnabled={settings.searchBarEnabled}
       />
     )
 
