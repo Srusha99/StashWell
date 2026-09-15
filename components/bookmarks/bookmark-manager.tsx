@@ -37,7 +37,7 @@ type ManagerTab = "manager" | "appearance"
 type ManagerView = "grid" | "tree"
 
 const NAV_TABS: { id: ManagerTab; label: string; icon: typeof Bookmark }[] = [
-  { id: "manager", label: "StashWell", icon: Bookmark },
+  { id: "manager", label: "Bookmark Organiser", icon: Bookmark },
   { id: "appearance", label: "Appearance", icon: Palette },
 ]
 
