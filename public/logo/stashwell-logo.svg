@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="320" height="320">
+  <defs>
+    <linearGradient id="r1" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#3D3880"/>
+      <stop offset="100%" stop-color="#2E2A6B"/>
+    </linearGradient>
+    <linearGradient id="r2" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#2E2A6B"/>
+      <stop offset="100%" stop-color="#151235"/>
+    </linearGradient>
+    <linearGradient id="r3" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#A79BE8"/>
+      <stop offset="100%" stop-color="#3D3880"/>
+    </linearGradient>
+    <filter id="ribbonShadow" x="-50%" y="-50%" width="200%" height="200%">
+      <feDropShadow dx="0" dy="1.8" stdDeviation="1.8" flood-color="#000000" flood-opacity="0.18"/>
+    </filter>
+  </defs>
+
+  <!-- Circle background -->
+  <circle cx="64" cy="64" r="64" fill="#e6e1fa"/>
+
+  <!-- Icon (ribbons), 87.5% of the badge, nudged left -->
+  <g transform="translate(-3.2 0)">
+    <g transform="translate(64 64) scale(0.875) translate(-64 -64)" filter="url(#ribbonShadow)">
+      <!-- Back ribbon -->
+      <g transform="rotate(-14 64 64)">
+        <path d="M 40 34 Q 40 28 46 28 L 66 28 Q 72 28 72 34
+                 L 72 96 L 56 84 L 40 96 Z"
+              fill="url(#r1)"/>
+      </g>
+
+      <!-- Middle ribbon -->
+      <g transform="rotate(-5 64 64)">
+        <path d="M 50 30 Q 50 24 56 24 L 76 24 Q 82 24 82 30
+                 L 82 100 L 66 88 L 50 100 Z"
+              fill="url(#r2)"/>
+      </g>
+
+      <!-- Front ribbon (lavender accent) -->
+      <g transform="rotate(5 64 64)">
+        <path d="M 60 28 Q 60 22 66 22 L 86 22 Q 92 22 92 28
+                 L 92 104 L 76 92 L 60 104 Z"
+              fill="url(#r3)"/>
+      </g>
+    </g>
+  </g>
+</svg>

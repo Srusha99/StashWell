@@ -14,6 +14,10 @@ const fontMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "StashWell",
+  icons: {
+    icon: "/icons/icon256.png",
+    apple: "/icons/apple-touch-icon.png",
+  },
 }
 
 export default function RootLayout({
