@@ -3,7 +3,7 @@
 import * as React from "react"
 import { ChevronRight, Folder, GripVertical, Pencil, Plus, Trash2 } from "lucide-react"
 
-import { type BookmarkNode, isFolder } from "@/hooks/use-bookmarks"
+import { type BookmarkNode, findNode, isFolder } from "@/hooks/use-bookmarks"
 import { cn } from "@/lib/utils"
 import { faviconUrl } from "@/lib/favicon"
 import { Button } from "@/components/ui/button"
@@ -50,6 +50,7 @@ export function OrganizerTree({
         <OrganizerTreeItem
           key={node.id}
           node={node}
+          roots={nodes}
           depth={0}
           foldersOnly={foldersOnly}
           expandedIds={expandedIds}
@@ -67,6 +68,7 @@ export function OrganizerTree({
 
 function OrganizerTreeItem({
   node,
+  roots,
   depth,
   foldersOnly,
   expandedIds,
@@ -81,6 +83,7 @@ function OrganizerTreeItem({
   onMove,
 }: OrganizerTreeActions & {
   node: BookmarkNode
+  roots: BookmarkNode[]
   depth: number
   foldersOnly: boolean
   expandedIds: Set<string>
@@ -132,10 +135,19 @@ function OrganizerTreeItem({
     if (containsNode(node, draggedNodeId)) return
 
     const zone = dropTarget?.zone ?? "after"
+    const draggedNode = findNode(roots, draggedNodeId)
     if (zone === "into" && folder) {
       onMove(draggedNodeId, { parentId: node.id, index: node.children?.length ?? 0 })
     } else if (node.parentId) {
-      const index = zone === "before" ? node.index ?? 0 : (node.index ?? 0) + 1
+      let index = zone === "before" ? node.index ?? 0 : (node.index ?? 0) + 1
+      if (
+        draggedNode?.parentId === node.parentId &&
+        (draggedNode.index ?? 0) < index
+      ) {
+        // The move API removes the dragged node first, which shifts every
+        // later sibling's index down by one before inserting at `index`.
+        index -= 1
+      }
       onMove(draggedNodeId, { parentId: node.parentId, index })
     }
   }
@@ -231,6 +243,7 @@ function OrganizerTreeItem({
             <OrganizerTreeItem
               key={child.id}
               node={child}
+              roots={roots}
               depth={depth + 1}
               foldersOnly={foldersOnly}
               expandedIds={expandedIds}

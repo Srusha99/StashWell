@@ -92,7 +92,12 @@ export function useCardColumns(
     setLastKey(key)
     setLastCount(columnCount)
     setColumns((current) => reconcile(defaultIds, hasHydrated ? current : stored, columnCount))
-    if (!hasHydrated) setHasHydrated(true)
+    // Only treat the persisted layout as consumed once bookmarks have
+    // actually loaded - a columnCount-only change while defaultIds is still
+    // empty (viewport resize firing before the async bookmark fetch resolves)
+    // must not mark hydration as done, or the real reconciliation later
+    // discards `stored` in favor of the empty `current`.
+    if (!hasHydrated && defaultIds.length > 0) setHasHydrated(true)
   }
 
   function moveCard(
