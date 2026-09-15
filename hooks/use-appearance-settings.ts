@@ -64,7 +64,7 @@ export function useAppearanceSettings(): {
 
   return {
     settings,
-    setColorMode: (mode) => update({ colorMode: mode }),
+    setColorMode: (mode) => update(mode === "custom" ? { colorMode: mode } : { colorMode: mode, backgroundEnabled: true }),
     setBackgroundEnabled: (enabled) => update({ backgroundEnabled: enabled }),
     setCursorGlowEnabled: (enabled) => update({ cursorGlowEnabled: enabled }),
     setCustomBackgroundId: (id) => update({ customBackgroundId: id }),

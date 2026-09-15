@@ -94,13 +94,19 @@ export function AppearancePanel({
   onGreetingNameChange: (name: string) => void
   onGreetingEnabledChange: (enabled: boolean) => void
 }) {
-  const { theme, setTheme } = useTheme()
+  const { theme, setTheme, resolvedTheme } = useTheme()
+  const isLight = resolvedTheme === "light"
   const fileInputRef = React.useRef<HTMLInputElement>(null)
 
   function handleFileChange(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0]
     if (file) onUploadCustomBackground(file)
     event.target.value = ""
+  }
+
+  function handleBackgroundOptionClick(mode: BackgroundColorMode) {
+    if (isLight) setTheme("dark")
+    onColorModeChange(mode)
   }
 
   return (
@@ -146,8 +152,8 @@ export function AppearancePanel({
           {BACKGROUND_OPTIONS.map((option) => (
             <OptionButton
               key={option.value}
-              active={settings.colorMode === option.value}
-              onClick={() => onColorModeChange(option.value)}
+              active={!isLight && settings.colorMode === option.value}
+              onClick={() => handleBackgroundOptionClick(option.value)}
               icon={option.icon}
               label={option.label}
             />
@@ -164,12 +170,15 @@ export function AppearancePanel({
 
         <div className="grid grid-cols-4 gap-2">
           {customBackgrounds.map((item) => {
-            const active = settings.colorMode === "custom" && settings.customBackgroundId === item.id
+            const active = !isLight && settings.colorMode === "custom" && settings.customBackgroundId === item.id
             return (
               <div key={item.id} className="group relative aspect-square">
                 <button
                   type="button"
-                  onClick={() => onSelectCustomBackground(item.id)}
+                  onClick={() => {
+                    if (isLight) setTheme("dark")
+                    onSelectCustomBackground(item.id)
+                  }}
                   className={cn(
                     "size-full overflow-hidden rounded-lg border transition-colors",
                     active
@@ -211,20 +220,26 @@ export function AppearancePanel({
           <label
             className={cn(
               "flex items-center justify-between text-sm",
-              settings.colorMode === "custom"
+              isLight || settings.colorMode === "custom"
                 ? "text-[#8e8e93]/60 dark:text-white/40"
                 : "text-[#3c3c43] dark:text-white/80"
             )}
           >
             <span>
               Animated background
-              {settings.colorMode === "custom" && (
+              {!isLight && settings.colorMode === "custom" && (
                 <span className="ml-1.5 text-xs text-[#8e8e93]/70 dark:text-white/30">(not used with Custom)</span>
+              )}
+              {isLight && (
+                <span className="ml-1.5 text-xs text-[#8e8e93]/70 dark:text-white/30">(switches off Light theme)</span>
               )}
             </span>
             <Switch
-              checked={settings.backgroundEnabled}
-              onCheckedChange={onBackgroundEnabledChange}
+              checked={!isLight && settings.backgroundEnabled}
+              onCheckedChange={(enabled) => {
+                if (isLight && enabled) setTheme("dark")
+                onBackgroundEnabledChange(enabled)
+              }}
               disabled={settings.colorMode === "custom"}
             />
           </label>
