@@ -11,6 +11,7 @@ import SoftAurora from "@/components/SoftAurora"
 import GlowCursor from "@/components/GlowCursor"
 import { BOOKMARKS_BAR_ID } from "@/hooks/use-bookmarks"
 import { useAppearanceSettings } from "@/hooks/use-appearance-settings"
+import { useDailyWallpaper } from "@/hooks/use-daily-wallpaper"
 import { DashboardView } from "@/components/bookmarks/dashboard-view"
 import { BookmarkManager } from "@/components/bookmarks/bookmark-manager"
 import {
@@ -35,6 +36,7 @@ export function BookmarkApp() {
   const appearance = useAppearanceSettings()
   const { settings, setColorMode, setCustomBackgroundId } = appearance
   const [customBackgrounds, setCustomBackgrounds] = React.useState<CustomBackgroundItem[]>([])
+  const [customBackgroundsLoaded, setCustomBackgroundsLoaded] = React.useState(false)
   const activeCustomBackground =
     customBackgrounds.find((item) => item.id === settings.customBackgroundId) ?? null
 
@@ -48,11 +50,24 @@ export function BookmarkApp() {
         name: record.name,
       }))
       setCustomBackgrounds(items)
+      setCustomBackgroundsLoaded(true)
     })
     return () => {
       items.forEach((item) => URL.revokeObjectURL(item.url))
     }
   }, [])
+
+  const customBackgroundIds = React.useMemo(
+    () => customBackgrounds.map((item) => item.id),
+    [customBackgrounds]
+  )
+
+  useDailyWallpaper({
+    settings,
+    customBackgroundIds,
+    customBackgroundsLoaded,
+    applyDailyWallpaper: appearance.applyDailyWallpaper,
+  })
 
   async function handleCustomBackgroundUpload(file: File) {
     const record = await saveCustomBackground(file)

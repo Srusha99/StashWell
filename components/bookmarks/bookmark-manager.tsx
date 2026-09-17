@@ -360,6 +360,7 @@ export function BookmarkManager({
               onGreetingNameChange={appearance.setGreetingName}
               onGreetingEnabledChange={appearance.setGreetingEnabled}
               onSearchBarEnabledChange={appearance.setSearchBarEnabled}
+              onDailyWallpaperEnabledChange={appearance.setDailyWallpaperEnabled}
             />
           </main>
         )}

@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils"
 import { Switch } from "@/components/ui/switch"
 import { Input } from "@/components/ui/input"
 import type { AppearanceSettings, BackgroundColorMode } from "@/hooks/use-appearance-settings"
+import { ROTATING_BUILT_INS } from "@/hooks/use-daily-wallpaper"
 import type { CustomBackgroundKind } from "@/lib/custom-background-store"
 
 const THEME_OPTIONS = [
@@ -84,6 +85,7 @@ export function AppearancePanel({
   onGreetingNameChange,
   onGreetingEnabledChange,
   onSearchBarEnabledChange,
+  onDailyWallpaperEnabledChange,
 }: {
   settings: AppearanceSettings
   onColorModeChange: (mode: BackgroundColorMode) => void
@@ -96,10 +98,12 @@ export function AppearancePanel({
   onGreetingNameChange: (name: string) => void
   onGreetingEnabledChange: (enabled: boolean) => void
   onSearchBarEnabledChange: (enabled: boolean) => void
+  onDailyWallpaperEnabledChange: (enabled: boolean) => void
 }) {
   const { theme, setTheme, resolvedTheme } = useTheme()
   const isLight = resolvedTheme === "light"
   const fileInputRef = React.useRef<HTMLInputElement>(null)
+  const rotationPoolSize = ROTATING_BUILT_INS.length + customBackgrounds.length
 
   function handleFileChange(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0]
@@ -227,6 +231,26 @@ export function AppearancePanel({
             <Plus className="size-4" />
             <span className="text-[0.65rem]">Add</span>
           </button>
+        </div>
+      </Section>
+
+      <Section
+        title="Daily wallpaper"
+        description="Switch to the next wallpaper automatically at midnight, every day."
+      >
+        <div className="flex flex-col gap-3 rounded-lg border border-[#e5e5ea] bg-white p-3 dark:border-white/10 dark:bg-white/5">
+          <label className="flex items-center justify-between text-sm text-[#3c3c43] dark:text-white/80">
+            <span>
+              New wallpaper each day
+              <span className="ml-1.5 text-xs text-[#8e8e93]/70 dark:text-white/30">
+                {`(cycles ${rotationPoolSize}: ${ROTATING_BUILT_INS.length} built-in + ${customBackgrounds.length} uploaded)`}
+              </span>
+            </span>
+            <Switch
+              checked={settings.dailyWallpaperEnabled}
+              onCheckedChange={onDailyWallpaperEnabledChange}
+            />
+          </label>
         </div>
       </Section>
 

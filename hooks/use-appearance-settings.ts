@@ -12,9 +12,23 @@ export interface AppearanceSettings {
   greetingName: string
   greetingEnabled: boolean
   searchBarEnabled: boolean
+  dailyWallpaperEnabled: boolean
+  /** Local calendar day (YYYY-MM-DD) the wallpaper last rotated on. */
+  lastWallpaperRotation: string | null
 }
 
 const STORAGE_KEY = "bm:appearance"
+
+/**
+ * Local calendar day as YYYY-MM-DD. Built from local getters rather than
+ * toISOString(), which converts to UTC and would roll the day over at the
+ * wrong moment for anyone not on UTC.
+ */
+export function localDayKey(date: Date = new Date()): string {
+  const month = `${date.getMonth() + 1}`.padStart(2, "0")
+  const day = `${date.getDate()}`.padStart(2, "0")
+  return `${date.getFullYear()}-${month}-${day}`
+}
 
 const DEFAULT_SETTINGS: AppearanceSettings = {
   colorMode: "molten",
@@ -24,6 +38,8 @@ const DEFAULT_SETTINGS: AppearanceSettings = {
   greetingName: "Srush",
   greetingEnabled: true,
   searchBarEnabled: true,
+  dailyWallpaperEnabled: false,
+  lastWallpaperRotation: null,
 }
 
 function readStoredSettings(): AppearanceSettings {
@@ -54,6 +70,12 @@ export function useAppearanceSettings(): {
   setGreetingName: (name: string) => void
   setGreetingEnabled: (enabled: boolean) => void
   setSearchBarEnabled: (enabled: boolean) => void
+  setDailyWallpaperEnabled: (enabled: boolean) => void
+  applyDailyWallpaper: (pick: {
+    colorMode: BackgroundColorMode
+    customBackgroundId: string | null
+    date: string
+  }) => void
 } {
   const [settings, setSettings] = React.useState<AppearanceSettings>(() => readStoredSettings())
 
@@ -65,7 +87,23 @@ export function useAppearanceSettings(): {
     })
   }, [])
 
+  // Stable identity: the rotation hook calls this from an effect.
+  const applyDailyWallpaper = React.useCallback(
+    (pick: { colorMode: BackgroundColorMode; customBackgroundId: string | null; date: string }) => {
+      update({
+        colorMode: pick.colorMode,
+        customBackgroundId: pick.customBackgroundId,
+        lastWallpaperRotation: pick.date,
+        // Mirrors setColorMode: a rotated-in animated theme should be visible
+        // even if the animated-background switch was left off.
+        ...(pick.colorMode === "custom" ? null : { backgroundEnabled: true }),
+      })
+    },
+    [update]
+  )
+
   return {
+    applyDailyWallpaper,
     settings,
     setColorMode: (mode) => update(mode === "custom" ? { colorMode: mode } : { colorMode: mode, backgroundEnabled: true }),
     setBackgroundEnabled: (enabled) => update({ backgroundEnabled: enabled }),
@@ -74,5 +112,12 @@ export function useAppearanceSettings(): {
     setGreetingName: (name) => update({ greetingName: name }),
     setGreetingEnabled: (enabled) => update({ greetingEnabled: enabled }),
     setSearchBarEnabled: (enabled) => update({ searchBarEnabled: enabled }),
+    setDailyWallpaperEnabled: (enabled) =>
+      // Stamping today on enable means the first rotation happens at the next
+      // midnight, not the instant the switch is flipped.
+      update({
+        dailyWallpaperEnabled: enabled,
+        lastWallpaperRotation: enabled ? localDayKey() : null,
+      }),
   }
 }
