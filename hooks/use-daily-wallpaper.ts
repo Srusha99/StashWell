@@ -63,7 +63,13 @@ export function useDailyWallpaper({
   customBackgroundsLoaded: boolean
   applyDailyWallpaper: (pick: WallpaperChoice & { date: string }) => void
 }) {
-  const { dailyWallpaperEnabled, lastWallpaperRotation, colorMode, customBackgroundId } = settings
+  const {
+    dailyWallpaperEnabled,
+    backgroundEnabled,
+    lastWallpaperRotation,
+    colorMode,
+    customBackgroundId,
+  } = settings
 
   // Keyed on the joined ids so the effect below re-runs when uploads change
   // without depending on a fresh array identity every render.
@@ -89,8 +95,9 @@ export function useDailyWallpaper({
 
   React.useEffect(() => {
     // Uploads arrive asynchronously from IndexedDB; rotating before they land
-    // would only ever pick from the built-ins.
-    if (!dailyWallpaperEnabled || !customBackgroundsLoaded) return
+    // would only ever pick from the built-ins. Backgrounds switched off means a
+    // plain theme is in use, so there is nothing to rotate.
+    if (!dailyWallpaperEnabled || !backgroundEnabled || !customBackgroundsLoaded) return
 
     rotate()
 
@@ -114,5 +121,5 @@ export function useDailyWallpaper({
       window.clearTimeout(timer)
       document.removeEventListener("visibilitychange", onVisible)
     }
-  }, [dailyWallpaperEnabled, customBackgroundsLoaded, rotate])
+  }, [dailyWallpaperEnabled, backgroundEnabled, customBackgroundsLoaded, rotate])
 }

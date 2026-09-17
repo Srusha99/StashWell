@@ -90,13 +90,12 @@ export function useAppearanceSettings(): {
   // Stable identity: the rotation hook calls this from an effect.
   const applyDailyWallpaper = React.useCallback(
     (pick: { colorMode: BackgroundColorMode; customBackgroundId: string | null; date: string }) => {
+      // Deliberately leaves backgroundEnabled alone: if the user picked a plain
+      // theme, midnight must not switch a wallpaper back on behind their back.
       update({
         colorMode: pick.colorMode,
         customBackgroundId: pick.customBackgroundId,
         lastWallpaperRotation: pick.date,
-        // Mirrors setColorMode: a rotated-in animated theme should be visible
-        // even if the animated-background switch was left off.
-        ...(pick.colorMode === "custom" ? null : { backgroundEnabled: true }),
       })
     },
     [update]
@@ -105,7 +104,9 @@ export function useAppearanceSettings(): {
   return {
     applyDailyWallpaper,
     settings,
-    setColorMode: (mode) => update(mode === "custom" ? { colorMode: mode } : { colorMode: mode, backgroundEnabled: true }),
+    // backgroundEnabled is the master switch for every background, uploads
+    // included, so picking any wallpaper turns it back on.
+    setColorMode: (mode) => update({ colorMode: mode, backgroundEnabled: true }),
     setBackgroundEnabled: (enabled) => update({ backgroundEnabled: enabled }),
     setCursorGlowEnabled: (enabled) => update({ cursorGlowEnabled: enabled }),
     setCustomBackgroundId: (id) => update({ customBackgroundId: id }),

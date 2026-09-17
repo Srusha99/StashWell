@@ -138,7 +138,7 @@ export function BookmarkApp() {
     <div className="relative h-screen w-screen text-foreground">
       <div className="fixed inset-0 -z-10 bg-background">
         {!isLight &&
-          (settings.colorMode === "custom" ? Boolean(activeCustomBackground) : settings.backgroundEnabled) &&
+          settings.backgroundEnabled &&
           (settings.colorMode === "custom" ? (
             activeCustomBackground &&
             (activeCustomBackground.kind === "video" ? (

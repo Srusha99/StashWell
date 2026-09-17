@@ -116,6 +116,14 @@ export function AppearancePanel({
     onColorModeChange(mode)
   }
 
+  // Picking a theme means the plain flat theme: Dark is a solid dark UI, not
+  // dark-plus-whatever-wallpaper-was-last-selected. Choose a background again
+  // from "Background style" to bring one back.
+  function handleThemeClick(value: string) {
+    setTheme(value)
+    onBackgroundEnabledChange(false)
+  }
+
   return (
     <div className="flex max-w-md flex-col gap-6">
       <Section title="Greeting" description="Personalize the welcome line shown on the dashboard.">
@@ -157,8 +165,8 @@ export function AppearancePanel({
           {THEME_OPTIONS.map((option) => (
             <OptionButton
               key={option.value}
-              active={theme === option.value}
-              onClick={() => setTheme(option.value)}
+              active={theme === option.value && !settings.backgroundEnabled}
+              onClick={() => handleThemeClick(option.value)}
               icon={option.icon}
               label={option.label}
             />
@@ -259,16 +267,11 @@ export function AppearancePanel({
           <label
             className={cn(
               "flex items-center justify-between text-sm",
-              isLight || settings.colorMode === "custom"
-                ? "text-[#8e8e93]/60 dark:text-white/40"
-                : "text-[#3c3c43] dark:text-white/80"
+              isLight ? "text-[#8e8e93]/60 dark:text-white/40" : "text-[#3c3c43] dark:text-white/80"
             )}
           >
             <span>
-              Animated background
-              {!isLight && settings.colorMode === "custom" && (
-                <span className="ml-1.5 text-xs text-[#8e8e93]/70 dark:text-white/30">(not used with Custom)</span>
-              )}
+              Show background
               {isLight && (
                 <span className="ml-1.5 text-xs text-[#8e8e93]/70 dark:text-white/30">(switches off Light theme)</span>
               )}
@@ -279,7 +282,6 @@ export function AppearancePanel({
                 if (isLight && enabled) setTheme("dark")
                 onBackgroundEnabledChange(enabled)
               }}
-              disabled={settings.colorMode === "custom"}
             />
           </label>
           <label className="flex items-center justify-between text-sm text-[#3c3c43] dark:text-white/80">
