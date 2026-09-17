@@ -39,6 +39,11 @@ export function BookmarkApp() {
     customBackgrounds.find((item) => item.id === settings.customBackgroundId) ?? null
 
   React.useEffect(() => {
+    document.documentElement.dataset.textTone =
+      settings.blackText || isLight ? "dark" : "light"
+  }, [settings.blackText, isLight])
+
+  React.useEffect(() => {
     let items: CustomBackgroundItem[] = []
     listCustomBackgrounds().then((records) => {
       items = records.map((record) => ({

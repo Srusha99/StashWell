@@ -165,7 +165,7 @@ function OrganizerTreeItem({
           setDropTarget(null)
         }}
         className={cn(
-          "group relative flex items-center gap-1 rounded-md pr-1 text-sm text-[#3c3c43] hover:bg-black/[0.04] dark:text-white/80 dark:hover:bg-white/10",
+          "group relative flex items-center gap-1 rounded-md pr-1 text-sm text-[var(--text-mid)] hover:bg-black/[0.04] dark:hover:bg-white/10",
           isDragging && "opacity-40",
           isDropTarget && dropTarget?.zone === "into" && "bg-primary/20 ring-1 ring-primary/50"
         )}

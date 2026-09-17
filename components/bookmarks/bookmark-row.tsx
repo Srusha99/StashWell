@@ -30,7 +30,7 @@ export function BookmarkRow({
         className="flex w-full items-center gap-2.5 py-1.5 text-left"
       >
         <Folder className="size-[18px] shrink-0 text-[#8e8e93] dark:text-white/50" />
-        <span className="truncate text-sm text-[#1c1c1e] dark:text-white/85">{node.title || "(untitled)"}</span>
+        <span className="truncate text-sm text-[var(--text-strong)]">{node.title || "(untitled)"}</span>
       </button>
     )
   }
@@ -58,7 +58,7 @@ export function BookmarkRow({
         ) : (
           <Folder className="size-[18px] shrink-0 text-[#8e8e93] dark:text-white/50" />
         )}
-        <span className="truncate text-sm text-[#1c1c1e] dark:text-white/85">{node.title || node.url}</span>
+        <span className="truncate text-sm text-[var(--text-strong)]">{node.title || node.url}</span>
       </a>
 
       <div className="absolute inset-y-0 right-0 flex items-center gap-0.5 rounded-md bg-white/90 px-1 opacity-0 backdrop-blur-sm group-hover:opacity-100 dark:bg-black/50">
@@ -105,7 +105,7 @@ export function BookmarkRow({
           <Trash2 />
         </Button>
         {copied && (
-          <span className="absolute -top-5 right-0 text-[10px] text-[#8e8e93] dark:text-white/60">Copied!</span>
+          <span className="absolute -top-5 right-0 text-[10px] text-[var(--text-soft)]">Copied!</span>
         )}
       </div>
     </div>

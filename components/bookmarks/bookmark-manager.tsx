@@ -142,7 +142,7 @@ export function BookmarkManager({
             <ArrowLeft />
           </Button>
         )}
-        <h1 className="text-sm font-semibold whitespace-nowrap text-[#1c1c1e] dark:text-white">Bookmarks</h1>
+        <h1 className="text-sm font-semibold whitespace-nowrap text-[var(--text-strong)]">Bookmarks</h1>
       </header>
 
       <div className="flex flex-1 overflow-hidden">
@@ -156,8 +156,8 @@ export function BookmarkManager({
                   className={cn(
                     "flex items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors",
                     activeTab === tab.id
-                      ? "bg-black/[0.06] text-[#1c1c1e] dark:bg-white/10 dark:text-white"
-                      : "text-[#8e8e93] hover:bg-black/[0.04] hover:text-[#1c1c1e] dark:text-white/60 dark:hover:bg-white/5 dark:hover:text-white"
+                      ? "bg-black/[0.06] text-[var(--text-strong)] dark:bg-white/10"
+                      : "text-[var(--text-soft)] hover:bg-black/[0.04] hover:text-[var(--text-strong)] dark:hover:bg-white/5"
                   )}
                 >
                   <tab.icon className="size-4 shrink-0" />
@@ -168,10 +168,10 @@ export function BookmarkManager({
                   <div className="flex flex-col gap-0.5 pl-4">
                     <div
                       className={cn(
-                        "group flex items-center gap-1 rounded-md pr-1 text-sm text-[#3c3c43] hover:bg-black/[0.04] dark:text-white/80 dark:hover:bg-white/10",
+                        "group flex items-center gap-1 rounded-md pr-1 text-sm text-[var(--text-mid)] hover:bg-black/[0.04] dark:hover:bg-white/10",
                         root &&
                           currentFolderId === root.id &&
-                          "bg-black/[0.06] font-medium text-[#1c1c1e] dark:bg-white/15 dark:text-white"
+                          "bg-black/[0.06] font-medium text-[var(--text-strong)] dark:bg-white/15"
                       )}
                       style={{ paddingLeft: "4px" }}
                     >
@@ -225,7 +225,7 @@ export function BookmarkManager({
                     value={query}
                     onChange={(event) => setQuery(event.target.value)}
                     placeholder="Search this folder"
-                    className="border-[#e5e5ea] bg-white pl-7 text-[#1c1c1e] placeholder:text-[#8e8e93] dark:border-white/15 dark:bg-white/5 dark:text-white dark:placeholder:text-white/40"
+                    className="border-[#e5e5ea] bg-white pl-7 text-[var(--text-strong)] placeholder:text-[var(--text-soft)] dark:border-white/15 dark:bg-white/5"
                   />
                 </div>
               )}
@@ -305,7 +305,7 @@ export function BookmarkManager({
 
             {managerView === "grid" ? (
               <main className="flex flex-1 flex-col overflow-y-auto">
-                <div className="flex items-center gap-1 border-b border-black/[0.06] bg-white/60 px-4 py-2 text-xs text-[#8e8e93] backdrop-blur-md dark:border-white/10 dark:bg-black/10 dark:text-white/60">
+                <div className="flex items-center gap-1 border-b border-black/[0.06] bg-white/60 px-4 py-2 text-xs text-[var(--text-soft)] backdrop-blur-md dark:border-white/10 dark:bg-black/10">
                   <Home className="size-3.5" />
                   {path.map((node) => (
                     <React.Fragment key={node.id}>
@@ -313,7 +313,7 @@ export function BookmarkManager({
                       <button
                         type="button"
                         onClick={() => setCurrentFolderId(node.id)}
-                        className="truncate hover:text-[#1c1c1e] hover:underline dark:hover:text-white"
+                        className="truncate hover:text-[var(--text-strong)] hover:underline"
                       >
                         {node.title || "(untitled)"}
                       </button>
@@ -360,6 +360,7 @@ export function BookmarkManager({
               onGreetingNameChange={appearance.setGreetingName}
               onGreetingEnabledChange={appearance.setGreetingEnabled}
               onSearchBarEnabledChange={appearance.setSearchBarEnabled}
+              onBlackTextChange={appearance.setBlackText}
             />
           </main>
         )}

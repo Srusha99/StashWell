@@ -59,7 +59,7 @@ export function BookmarkGrid({
 }) {
   if (items.length === 0) {
     return (
-      <div className="flex flex-1 items-center justify-center text-sm text-[#8e8e93] dark:text-white/50">
+      <div className="flex flex-1 items-center justify-center text-sm text-[var(--text-soft)]">
         This folder is empty.
       </div>
     )
@@ -176,11 +176,11 @@ function FolderTile({
         coneSpread={22}
         {...glowProps}
       >
-        <div className="relative flex h-full flex-col gap-2 p-3 text-left text-[#1c1c1e] dark:text-white">
+        <div className="relative flex h-full flex-col gap-2 p-3 text-left text-[var(--text-strong)]">
           <FolderOpen className="size-8 text-[#8e8e93] dark:text-white/70" />
           <div className="flex flex-col">
             <span className="truncate text-sm font-medium">{node.title || "(untitled)"}</span>
-            <span className="text-xs text-[#8e8e93] dark:text-white/50">
+            <span className="text-xs text-[var(--text-soft)]">
               {count} item{count === 1 ? "" : "s"}
             </span>
           </div>
@@ -228,7 +228,7 @@ function BookmarkTile({
         coneSpread={22}
         {...glowProps}
       >
-        <div className="relative flex h-full flex-col gap-2 p-3 text-[#1c1c1e] dark:text-white">
+        <div className="relative flex h-full flex-col gap-2 p-3 text-[var(--text-strong)]">
           {icon ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={icon} alt="" className="size-8 rounded" />
@@ -237,7 +237,7 @@ function BookmarkTile({
           )}
           <div className="flex flex-col">
             <span className="truncate text-sm font-medium">{node.title || node.url}</span>
-            <span className="truncate text-xs text-[#8e8e93] dark:text-white/50">{node.url}</span>
+            <span className="truncate text-xs text-[var(--text-soft)]">{node.url}</span>
           </div>
 
           <button

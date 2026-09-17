@@ -49,8 +49,8 @@ function OptionButton({
       className={cn(
         "flex flex-1 flex-col items-center gap-1.5 rounded-lg border px-3 py-3 text-xs font-medium transition-colors",
         active
-          ? "border-black/10 bg-black/[0.05] text-[#1c1c1e] dark:border-white/20 dark:bg-white/10 dark:text-white"
-          : "border-[#e5e5ea] bg-white text-[#8e8e93] hover:bg-black/[0.03] hover:text-[#1c1c1e] dark:border-white/10 dark:bg-white/5 dark:text-white/60 dark:hover:bg-white/10 dark:hover:text-white"
+          ? "border-black/10 bg-black/[0.05] text-[var(--text-strong)] dark:border-white/20 dark:bg-white/10"
+          : "border-[#e5e5ea] bg-white text-[var(--text-soft)] hover:bg-black/[0.03] hover:text-[var(--text-strong)] dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/10"
       )}
     >
       <Icon className="size-4" />
@@ -63,8 +63,8 @@ function Section({ title, description, children }: { title: string; description?
   return (
     <div className="flex flex-col gap-2.5">
       <div>
-        <h3 className="text-sm font-medium text-[#1c1c1e] dark:text-white">{title}</h3>
-        {description && <p className="text-xs text-[#8e8e93] dark:text-white/50">{description}</p>}
+        <h3 className="text-sm font-medium text-[var(--text-strong)]">{title}</h3>
+        {description && <p className="text-xs text-[var(--text-soft)]">{description}</p>}
       </div>
       {children}
     </div>
@@ -83,6 +83,7 @@ export function AppearancePanel({
   onGreetingNameChange,
   onGreetingEnabledChange,
   onSearchBarEnabledChange,
+  onBlackTextChange,
 }: {
   settings: AppearanceSettings
   onColorModeChange: (mode: BackgroundColorMode) => void
@@ -95,6 +96,7 @@ export function AppearancePanel({
   onGreetingNameChange: (name: string) => void
   onGreetingEnabledChange: (enabled: boolean) => void
   onSearchBarEnabledChange: (enabled: boolean) => void
+  onBlackTextChange: (enabled: boolean) => void
 }) {
   const { theme, setTheme, resolvedTheme } = useTheme()
   const isLight = resolvedTheme === "light"
@@ -115,7 +117,7 @@ export function AppearancePanel({
     <div className="flex max-w-md flex-col gap-6">
       <Section title="Greeting" description="Personalize the welcome line shown on the dashboard.">
         <div className="flex flex-col gap-3 rounded-lg border border-[#e5e5ea] bg-white p-3 dark:border-white/10 dark:bg-white/5">
-          <label className="flex items-center justify-between text-sm text-[#3c3c43] dark:text-white/80">
+          <label className="flex items-center justify-between text-sm text-[var(--text-mid)]">
             Show greeting
             <Switch
               checked={settings.greetingEnabled}
@@ -123,7 +125,7 @@ export function AppearancePanel({
             />
           </label>
           <div className="flex flex-col gap-1.5">
-            <span className="text-xs text-[#8e8e93] dark:text-white/50">Your name</span>
+            <span className="text-xs text-[var(--text-soft)]">Your name</span>
             <Input
               value={settings.greetingName}
               onChange={(event) => onGreetingNameChange(event.target.value)}
@@ -137,12 +139,21 @@ export function AppearancePanel({
 
       <Section title="Search Bar" description="Show a Google search bar on the dashboard.">
         <div className="flex flex-col gap-3 rounded-lg border border-[#e5e5ea] bg-white p-3 dark:border-white/10 dark:bg-white/5">
-          <label className="flex items-center justify-between text-sm text-[#3c3c43] dark:text-white/80">
+          <label className="flex items-center justify-between text-sm text-[var(--text-mid)]">
             Show search bar
             <Switch
               checked={settings.searchBarEnabled}
               onCheckedChange={onSearchBarEnabledChange}
             />
+          </label>
+        </div>
+      </Section>
+
+      <Section title="Text colour" description="Switch between white and black text on the dashboard and here.">
+        <div className="flex flex-col gap-3 rounded-lg border border-[#e5e5ea] bg-white p-3 dark:border-white/10 dark:bg-white/5">
+          <label className="flex items-center justify-between text-sm text-[var(--text-mid)]">
+            Black text
+            <Switch checked={settings.blackText} onCheckedChange={onBlackTextChange} />
           </label>
         </div>
       </Section>
@@ -221,7 +232,7 @@ export function AppearancePanel({
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
-            className="flex aspect-square flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-[#e5e5ea] text-[#8e8e93] transition-colors hover:border-black/20 hover:text-[#1c1c1e] dark:border-white/20 dark:text-white/50 dark:hover:border-white/40 dark:hover:text-white/80"
+            className="flex aspect-square flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-[#e5e5ea] text-[var(--text-soft)] transition-colors hover:border-black/20 hover:text-[var(--text-strong)] dark:border-white/20 dark:hover:border-white/40"
           >
             <Plus className="size-4" />
             <span className="text-[0.65rem]">Add</span>
@@ -235,17 +246,17 @@ export function AppearancePanel({
             className={cn(
               "flex items-center justify-between text-sm",
               isLight || settings.colorMode === "custom"
-                ? "text-[#8e8e93]/60 dark:text-white/40"
-                : "text-[#3c3c43] dark:text-white/80"
+                ? "text-[var(--text-soft)] opacity-70"
+                : "text-[var(--text-mid)]"
             )}
           >
             <span>
               Animated background
               {!isLight && settings.colorMode === "custom" && (
-                <span className="ml-1.5 text-xs text-[#8e8e93]/70 dark:text-white/30">(not used with Custom)</span>
+                <span className="ml-1.5 text-xs text-[var(--text-soft)] opacity-70">(not used with Custom)</span>
               )}
               {isLight && (
-                <span className="ml-1.5 text-xs text-[#8e8e93]/70 dark:text-white/30">(switches off Light theme)</span>
+                <span className="ml-1.5 text-xs text-[var(--text-soft)] opacity-70">(switches off Light theme)</span>
               )}
             </span>
             <Switch
@@ -257,7 +268,7 @@ export function AppearancePanel({
               disabled={settings.colorMode === "custom"}
             />
           </label>
-          <label className="flex items-center justify-between text-sm text-[#3c3c43] dark:text-white/80">
+          <label className="flex items-center justify-between text-sm text-[var(--text-mid)]">
             Cursor glow
             <Switch
               checked={settings.cursorGlowEnabled}

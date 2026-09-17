@@ -71,8 +71,8 @@ function FolderTreeItem({
     <div>
       <div
         className={cn(
-          "group flex items-center gap-1 rounded-md pr-1 text-sm text-[#3c3c43] hover:bg-black/[0.04] dark:text-white/80 dark:hover:bg-white/10",
-          isActive && "bg-black/[0.06] font-medium text-[#1c1c1e] dark:bg-white/15 dark:text-white"
+          "group flex items-center gap-1 rounded-md pr-1 text-sm text-[var(--text-mid)] hover:bg-black/[0.04] dark:hover:bg-white/10",
+          isActive && "bg-black/[0.06] font-medium text-[var(--text-strong)] dark:bg-white/15"
         )}
         style={{ paddingLeft: `${depth * 16 + 4}px` }}
       >

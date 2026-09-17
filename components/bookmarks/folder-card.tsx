@@ -131,7 +131,7 @@ export function FolderCard({
 
       <div className="mb-3 flex items-center gap-2">
         <GripVertical className="size-4 shrink-0 cursor-grab text-[#8e8e93] active:cursor-grabbing dark:text-white/30" />
-        <h2 className="min-w-0 flex-1 truncate text-sm font-semibold text-[#1c1c1e] dark:text-white">{title}</h2>
+        <h2 className="min-w-0 flex-1 truncate text-sm font-semibold text-[var(--text-strong)]">{title}</h2>
         {allUrls.length > 0 && (
           <Button
             variant="ghost"
@@ -194,7 +194,7 @@ export function FolderCard({
       </div>
 
       {items.length === 0 ? (
-        <p className="text-xs text-[#8e8e93] dark:text-white/40">Empty</p>
+        <p className="text-xs text-[var(--text-soft)]">Empty</p>
       ) : viewMode === "grid" ? (
         <FolderIconGrid items={items} onDrillInto={actions.onDrillInto} />
       ) : (

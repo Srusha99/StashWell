@@ -12,6 +12,7 @@ export interface AppearanceSettings {
   greetingName: string
   greetingEnabled: boolean
   searchBarEnabled: boolean
+  blackText: boolean
 }
 
 const STORAGE_KEY = "bm:appearance"
@@ -24,6 +25,7 @@ const DEFAULT_SETTINGS: AppearanceSettings = {
   greetingName: "Srush",
   greetingEnabled: true,
   searchBarEnabled: true,
+  blackText: false,
 }
 
 function readStoredSettings(): AppearanceSettings {
@@ -54,6 +56,7 @@ export function useAppearanceSettings(): {
   setGreetingName: (name: string) => void
   setGreetingEnabled: (enabled: boolean) => void
   setSearchBarEnabled: (enabled: boolean) => void
+  setBlackText: (enabled: boolean) => void
 } {
   const [settings, setSettings] = React.useState<AppearanceSettings>(() => readStoredSettings())
 
@@ -74,5 +77,6 @@ export function useAppearanceSettings(): {
     setGreetingName: (name) => update({ greetingName: name }),
     setGreetingEnabled: (enabled) => update({ greetingEnabled: enabled }),
     setSearchBarEnabled: (enabled) => update({ searchBarEnabled: enabled }),
+    setBlackText: (enabled) => update({ blackText: enabled }),
   }
 }
