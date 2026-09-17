@@ -2,7 +2,7 @@
 
 import * as React from "react"
 
-export type BackgroundColorMode = "molten" | "ember" | "frost" | "colorbends" | "webthreads" | "lightrays" | "softaurora" | "custom"
+export type BackgroundColorMode = "molten" | "ember" | "frost" | "colorbends" | "webthreads" | "lightrays" | "softaurora" | "mist" | "custom"
 
 export interface AppearanceSettings {
   colorMode: BackgroundColorMode

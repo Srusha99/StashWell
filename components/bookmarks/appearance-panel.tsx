@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { useTheme } from "next-themes"
-import { Flashlight, Laptop, Moon, Plus, Sparkles, Spline, Sun, Trash2, Waves, Wind } from "lucide-react"
+import { Flashlight, Laptop, Moon, Plus, Sparkles, Spline, Sun, Trash2, TreePine, Waves, Wind } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import { Switch } from "@/components/ui/switch"
@@ -22,6 +22,7 @@ const BACKGROUND_OPTIONS: { value: BackgroundColorMode; label: string; icon: typ
   { value: "webthreads", label: "Web Threads", icon: Spline },
   { value: "lightrays", label: "Light Rays", icon: Flashlight },
   { value: "softaurora", label: "Soft Aurora", icon: Wind },
+  { value: "mist", label: "Misty Pines", icon: TreePine },
 ]
 
 interface CustomBackgroundItem {
@@ -162,7 +163,7 @@ export function AppearancePanel({
       </Section>
 
       <Section title="Background style" description="Use the animated background, or upload your own images and videos.">
-        <div className="flex gap-2">
+        <div className="grid grid-cols-3 gap-2">
           {BACKGROUND_OPTIONS.map((option) => (
             <OptionButton
               key={option.value}

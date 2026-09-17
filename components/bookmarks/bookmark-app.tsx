@@ -138,6 +138,15 @@ export function BookmarkApp() {
             ) : (
               <img src={activeCustomBackground.url} alt="" className="size-full object-cover" />
             ))
+          ) : settings.colorMode === "mist" ? (
+            <video
+              src="/backgrounds/mist-over-the-pines.mp4"
+              className="size-full object-cover"
+              autoPlay
+              loop
+              muted
+              playsInline
+            />
           ) : settings.colorMode === "colorbends" ? (
             <ColorBends
               rotation={90}
