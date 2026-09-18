@@ -5,17 +5,7 @@ import { Search } from "lucide-react"
 import { useTheme } from "next-themes"
 import TextType from "@/components/ui/TextType"
 import { BorderBeam } from "@/components/ui/border-beam-search"
-
-function useNow(intervalMs: number) {
-  const [now, setNow] = React.useState(() => new Date())
-
-  React.useEffect(() => {
-    const id = setInterval(() => setNow(new Date()), intervalMs)
-    return () => clearInterval(id)
-  }, [intervalMs])
-
-  return now
-}
+import { useNow } from "@/hooks/use-now"
 
 function getGreeting(hour: number, name: string) {
   const who = name.trim() || "there"

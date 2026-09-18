@@ -29,6 +29,10 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { BookmarkRow } from "@/components/bookmarks/bookmark-row"
+import {
+  CopyToWorkspaceSubmenu,
+  MoveToWorkspaceSubmenu,
+} from "@/components/workspaces/workspace-transfer-submenu"
 
 function collectUrls(nodes: BookmarkNode[]): string[] {
   const urls: string[] = []
@@ -173,6 +177,11 @@ export function FolderCard({
             <DropdownMenuItem onClick={deferred(() => actions.onOrganize(id))}>
               <FolderCog /> Organize bookmarks
             </DropdownMenuItem>
+            {/* Only real folders can be transferred; the loose-bookmarks card has
+                no node of its own. Both render nothing when there's nowhere to
+                send the folder. */}
+            {isRealFolder && <MoveToWorkspaceSubmenu folderId={id} />}
+            {isRealFolder && <CopyToWorkspaceSubmenu folderId={id} />}
             {isRealFolder && (
               <DropdownMenuItem onClick={deferred(() => actions.onRename(node))}>
                 <Pencil /> Rename

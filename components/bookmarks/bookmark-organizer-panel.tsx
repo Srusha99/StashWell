@@ -26,6 +26,7 @@ import {
   type BookmarkFormValues,
 } from "@/components/bookmarks/bookmark-form-dialog"
 import { ConfirmDeleteDialog } from "@/components/bookmarks/confirm-delete-dialog"
+import { useWorkspaces } from "@/components/workspaces/workspace-provider"
 
 function collectFolderIds(nodes: BookmarkNode[]): string[] {
   const ids: string[] = []
@@ -70,6 +71,7 @@ export function BookmarkOrganizerPanel({
   hiddenIds?: Set<string>
   onUnhide?: (id: string) => void
 }) {
+  const { activeWorkspace } = useWorkspaces()
   const [rootFolderId, setRootFolderId] = React.useState<string | null>(initialRootId ?? null)
   const [foldersOnly, setFoldersOnly] = React.useState(false)
   const [expandedIds, setExpandedIds] = React.useState<Set<string>>(new Set())
@@ -153,7 +155,7 @@ export function BookmarkOrganizerPanel({
               render={<Button variant="outline" className="w-full justify-start" />}
             >
               {scopedRoot?.id === root?.id
-                ? "Browser Root (all bookmarks)"
+                ? `${activeWorkspace.name} (whole workspace)`
                 : scopedRoot?.title || "(untitled)"}
             </DropdownMenuTrigger>
             <DropdownMenuContent className="max-h-64">
@@ -163,7 +165,7 @@ export function BookmarkOrganizerPanel({
               >
                 {root && (
                   <DropdownMenuRadioItem value={root.id}>
-                    Browser Root (all bookmarks)
+                    {activeWorkspace.name} (whole workspace)
                   </DropdownMenuRadioItem>
                 )}
                 {folderOptions.map(({ node, depth }) => (

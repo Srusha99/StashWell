@@ -3,19 +3,17 @@
 import * as React from "react"
 import { Settings } from "lucide-react"
 
-import {
-  BOOKMARKS_BAR_ID,
-  type BookmarkNode,
-  findNode,
-  isFolder,
-  useBookmarks,
-} from "@/hooks/use-bookmarks"
+import { type BookmarkNode, isFolder, useBookmarks } from "@/hooks/use-bookmarks"
 import { useCardColumns } from "@/hooks/use-card-columns"
-import { useColumnCount } from "@/hooks/use-column-count"
 import { useHiddenFolders } from "@/hooks/use-hidden-folders"
 import { Button } from "@/components/ui/button"
 import { DashboardHeader } from "@/components/bookmarks/dashboard-header"
 import { FolderCard } from "@/components/bookmarks/folder-card"
+import { NotesCard } from "@/components/dashboard/notes-card"
+import { RemindersCard } from "@/components/dashboard/reminders-card"
+import { WorkspaceSwitcher } from "@/components/workspaces/workspace-switcher"
+import { WorkspaceRepairNotice } from "@/components/workspaces/workspace-repair-notice"
+import { useWorkspaces } from "@/components/workspaces/workspace-provider"
 import {
   BookmarkFormDialog,
   type BookmarkFormMode,
@@ -37,22 +35,40 @@ interface CardData {
   items: BookmarkNode[]
 }
 
+/**
+ * Notes and reminders live in the same drag-and-drop columns as folder cards, so
+ * they need ids in the same namespace. Prefixed to keep them clear of Chrome's
+ * bookmark ids, which are plain numeric strings.
+ */
+const NOTES_CARD_ID = "stashwell:notes"
+const REMINDERS_CARD_ID = "stashwell:reminders"
+
+// Listed as separate members rather than `kind: "notes" | "reminders"` so
+// TypeScript can narrow to the folder variant after the two early returns.
+type DashboardItem =
+  | { kind: "notes"; id: string }
+  | { kind: "reminders"; id: string }
+  | { kind: "folder"; id: string; card: CardData }
+
 export function DashboardView({
+  columnCount,
   onOpenManager,
   onOpenSettings,
   greetingName,
   greetingEnabled,
   searchBarEnabled,
 }: {
+  columnCount: number
   onOpenManager: (folderId: string) => void
   onOpenSettings: () => void
   greetingName: string
   greetingEnabled: boolean
   searchBarEnabled: boolean
 }) {
-  const bookmarks = useBookmarks()
+  const { activeWorkspace, activeId, resolved, workspaceFolderIds } = useWorkspaces()
+  const bookmarks = useBookmarks(activeWorkspace.folderId)
   const { root } = bookmarks
-  const { hiddenIds, hideFolder } = useHiddenFolders()
+  const { hiddenIds, hideFolder } = useHiddenFolders(activeId)
 
   const [formDialog, setFormDialog] = React.useState<FormDialogState | null>(null)
   const [deleteTarget, setDeleteTarget] = React.useState<BookmarkNode | null>(null)
@@ -64,15 +80,24 @@ export function DashboardView({
     position: "before" | "after"
   } | null>(null)
 
-  const bar = root ? findNode([root], BOOKMARKS_BAR_ID) : null
+  // `root` is already this workspace's folder - useBookmarks resolves it
+  // exactly. It used to be the absolute tree root, so this looked up the
+  // Bookmarks Bar inside it; doing that now would return null for every
+  // workspace except the default one and blank the dashboard.
+  const bar = root
 
   const cardsById = React.useMemo(() => {
     const map = new Map<string, CardData>()
     if (!bar) return map
     const children = bar.children ?? []
     const looseItems = children.filter((node) => !isFolder(node))
-    const subfolders = children.filter(isFolder)
-    map.set(bar.id, { id: bar.id, title: "Bookmarks Bar", node: null, items: looseItems })
+    // Skip any folder that is itself a workspace root: if one gets dragged onto
+    // the Bookmarks Bar in Chrome's own manager it would otherwise show up as a
+    // card here as well as being its own workspace.
+    const subfolders = children.filter(
+      (node) => isFolder(node) && !workspaceFolderIds.has(node.id)
+    )
+    map.set(bar.id, { id: bar.id, title: "Unsorted", node: null, items: looseItems })
     for (const folder of subfolders) {
       map.set(folder.id, {
         id: folder.id,
@@ -82,15 +107,32 @@ export function DashboardView({
       })
     }
     return map
-  }, [bar])
+  }, [bar, workspaceFolderIds])
 
-  const defaultOrder = React.useMemo(() => Array.from(cardsById.keys()), [cardsById])
-  const columnCount = useColumnCount()
-  const [columns, moveCard] = useCardColumns(defaultOrder, columnCount)
+  // Notes and reminders come first so a fresh layout puts them in the leftmost
+  // columns; an existing saved layout keeps whatever position the user dragged
+  // them to (useCardColumns reconciles by id).
+  const itemsById = React.useMemo(() => {
+    const map = new Map<string, DashboardItem>()
+    map.set(NOTES_CARD_ID, { kind: "notes", id: NOTES_CARD_ID })
+    map.set(REMINDERS_CARD_ID, { kind: "reminders", id: REMINDERS_CARD_ID })
+    for (const card of cardsById.values()) {
+      map.set(card.id, { kind: "folder", id: card.id, card })
+    }
+    return map
+  }, [cardsById])
+
+  const defaultOrder = React.useMemo(() => Array.from(itemsById.keys()), [itemsById])
+  const [columns, moveCard] = useCardColumns(defaultOrder, columnCount, activeId)
   const visibleColumns = columns.map((colIds) =>
     colIds
-      .map((id) => cardsById.get(id))
-      .filter((card): card is CardData => !!card && !hiddenIds.has(card.id))
+      .map((id) => itemsById.get(id))
+      .filter(
+        (item): item is DashboardItem =>
+          // Only folder cards can be hidden; the notes and reminders cards have
+          // no "Hide" action, so they're always shown.
+          !!item && (item.kind !== "folder" || !hiddenIds.has(item.id))
+      )
   )
 
   function handleCardDrop(columnIndex: number, targetId: string | null) {
@@ -128,49 +170,77 @@ export function DashboardView({
 
   return (
     <div className="h-screen w-screen overflow-y-auto p-6">
+      {/* Top-left corner, mirroring the fixed settings button in the opposite
+          corner. z-40 keeps it under the z-50 menus and dialogs it opens. */}
+      <WorkspaceSwitcher className="fixed top-6 left-6 z-40" />
+
       <DashboardHeader greetingName={greetingName} greetingEnabled={greetingEnabled} searchBarEnabled={searchBarEnabled} />
+
+      {/* Shown instead of the folder columns when the workspace's Chrome folder
+          can't be resolved - never a fallback to another folder's contents. */}
+      {resolved.status !== "ok" && (
+        <div className="mb-5">
+          <WorkspaceRepairNotice />
+        </div>
+      )}
+
       <div className="flex gap-5">
-        {visibleColumns.map((cards, columnIndex) => (
+        {visibleColumns.map((items, columnIndex) => (
           <div key={columnIndex} className="flex min-w-0 flex-1 flex-col gap-5">
-            {cards.map((card) => (
-              <FolderCard
-                key={card.id}
-                id={card.id}
-                title={card.title}
-                node={card.node}
-                items={card.items}
-                onEditBookmark={(node) =>
-                  setFormDialog({ mode: "edit", node, parentId: node.parentId ?? "" })
-                }
-                onDeleteBookmark={setDeleteTarget}
-                onDrillInto={onOpenManager}
-                onNewBookmark={(parentId) =>
-                  setFormDialog({ mode: "create-bookmark", node: null, parentId })
-                }
-                onOrganize={setOrganizerFolderId}
-                onRename={(node) =>
-                  setFormDialog({ mode: "edit", node, parentId: node.parentId ?? "" })
-                }
-                onDelete={setDeleteTarget}
-                onHide={hideFolder}
-                isDragging={draggedCardId === card.id}
-                dropIndicator={dropTarget?.id === card.id ? dropTarget.position : null}
-                onCardDragStart={() => setDraggedCardId(card.id)}
-                onCardDragOver={(position) => {
-                  if (draggedCardId && draggedCardId !== card.id) {
-                    setDropTarget({ columnIndex, id: card.id, position })
+            {items.map((item) => {
+              // Every card in a column - notes, reminders, folders - shares the
+              // same drag wiring, which is what lets them be reordered together.
+              const dragProps = {
+                isDragging: draggedCardId === item.id,
+                dropIndicator: dropTarget?.id === item.id ? dropTarget.position : null,
+                onCardDragStart: () => setDraggedCardId(item.id),
+                onCardDragOver: (position: "before" | "after") => {
+                  if (draggedCardId && draggedCardId !== item.id) {
+                    setDropTarget({ columnIndex, id: item.id, position })
                   }
-                }}
-                onCardDragLeave={() =>
-                  setDropTarget((current) => (current?.id === card.id ? null : current))
-                }
-                onCardDrop={() => handleCardDrop(columnIndex, card.id)}
-                onCardDragEnd={() => {
+                },
+                onCardDragLeave: () =>
+                  setDropTarget((current) => (current?.id === item.id ? null : current)),
+                onCardDrop: () => handleCardDrop(columnIndex, item.id),
+                onCardDragEnd: () => {
                   setDraggedCardId(null)
                   setDropTarget(null)
-                }}
-              />
-            ))}
+                },
+              }
+
+              if (item.kind === "notes") {
+                return <NotesCard key={item.id} workspaceId={activeId} {...dragProps} />
+              }
+              if (item.kind === "reminders") {
+                return <RemindersCard key={item.id} workspaceId={activeId} {...dragProps} />
+              }
+
+              const card = item.card
+              return (
+                <FolderCard
+                  key={card.id}
+                  id={card.id}
+                  title={card.title}
+                  node={card.node}
+                  items={card.items}
+                  onEditBookmark={(node) =>
+                    setFormDialog({ mode: "edit", node, parentId: node.parentId ?? "" })
+                  }
+                  onDeleteBookmark={setDeleteTarget}
+                  onDrillInto={onOpenManager}
+                  onNewBookmark={(parentId) =>
+                    setFormDialog({ mode: "create-bookmark", node: null, parentId })
+                  }
+                  onOrganize={setOrganizerFolderId}
+                  onRename={(node) =>
+                    setFormDialog({ mode: "edit", node, parentId: node.parentId ?? "" })
+                  }
+                  onDelete={setDeleteTarget}
+                  onHide={hideFolder}
+                  {...dragProps}
+                />
+              )
+            })}
 
             {draggedCardId && (
               <div

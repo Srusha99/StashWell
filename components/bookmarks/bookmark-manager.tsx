@@ -26,6 +26,8 @@ import { ConfirmDeleteDialog } from "@/components/bookmarks/confirm-delete-dialo
 import { HiddenFoldersDialog } from "@/components/bookmarks/hidden-folders-dialog"
 import { BookmarkOrganizerPanel } from "@/components/bookmarks/bookmark-organizer-panel"
 import { AppearancePanel } from "@/components/bookmarks/appearance-panel"
+import { WorkspaceSwitcher } from "@/components/workspaces/workspace-switcher"
+import { useWorkspaces } from "@/components/workspaces/workspace-provider"
 
 interface FormDialogState {
   mode: BookmarkFormMode
@@ -60,7 +62,8 @@ export function BookmarkManager({
   onSelectCustomBackground: (id: string) => void
   onDeleteCustomBackground: (id: string) => void
 }) {
-  const bookmarks = useBookmarks()
+  const { activeWorkspace, activeId } = useWorkspaces()
+  const bookmarks = useBookmarks(activeWorkspace.folderId)
   const [query, setQuery] = React.useState("")
   const [formDialog, setFormDialog] = React.useState<FormDialogState | null>(null)
   const [deleteTarget, setDeleteTarget] = React.useState<BookmarkNode | null>(null)
@@ -69,7 +72,7 @@ export function BookmarkManager({
   const [rootExpanded, setRootExpanded] = React.useState(true)
   const [hiddenFoldersOpen, setHiddenFoldersOpen] = React.useState(false)
   const [appliedInitialFolderId, setAppliedInitialFolderId] = React.useState<string | null>(null)
-  const { hiddenIds, hideFolder, unhideFolder } = useHiddenFolders()
+  const { hiddenIds, hideFolder, unhideFolder } = useHiddenFolders(activeId)
 
   const { root, currentFolderId, currentFolder, setCurrentFolderId } = bookmarks
 
@@ -143,6 +146,9 @@ export function BookmarkManager({
           </Button>
         )}
         <h1 className="text-sm font-semibold whitespace-nowrap text-[#1c1c1e] dark:text-white">Bookmarks</h1>
+        {/* Switching from in here works too, and lands on that workspace's
+            dashboard - the shell drops managerFolderId on a change. */}
+        <WorkspaceSwitcher className="ml-auto" />
       </header>
 
       <div className="flex flex-1 overflow-hidden">
@@ -192,7 +198,12 @@ export function BookmarkManager({
                         className="flex min-w-0 flex-1 items-center gap-1.5 py-1 text-left"
                       >
                         <Library className="size-3.5 shrink-0 text-[#8e8e93] dark:text-white/50" />
-                        <span className="truncate">All Bookmarks</span>
+                        {/* The tree is scoped to the workspace now, so "All
+                            Bookmarks" would overstate what's below it. */}
+                        <span aria-hidden className="shrink-0 text-[13px] leading-none">
+                          {activeWorkspace.emoji}
+                        </span>
+                        <span className="truncate">{activeWorkspace.name}</span>
                       </button>
                     </div>
 
@@ -307,6 +318,15 @@ export function BookmarkManager({
               <main className="flex flex-1 flex-col overflow-y-auto">
                 <div className="flex items-center gap-1 border-b border-black/[0.06] bg-white/60 px-4 py-2 text-xs text-[#8e8e93] backdrop-blur-md dark:border-white/10 dark:bg-black/10 dark:text-white/60">
                   <Home className="size-3.5" />
+                  {/* getPath returns [] for the workspace root itself, so the
+                      top crumb has to be rendered explicitly or it vanishes. */}
+                  <button
+                    type="button"
+                    onClick={() => root && setCurrentFolderId(root.id)}
+                    className="truncate hover:text-[#1c1c1e] hover:underline dark:hover:text-white"
+                  >
+                    {activeWorkspace.name}
+                  </button>
                   {path.map((node) => (
                     <React.Fragment key={node.id}>
                       <ChevronRight className="size-3 shrink-0" />

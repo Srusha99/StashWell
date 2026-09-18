@@ -3,69 +3,42 @@
 import * as React from "react"
 
 import {
+  BOOKMARKS_BAR_ID,
   type BookmarkNode,
+  type FlatFolder,
   createBookmark,
   createFolder,
+  findNode,
+  flattenFolders,
+  getPath,
   getTree,
+  isFolder,
   moveNode,
   removeNode,
   subscribeToChanges,
   updateBookmark,
 } from "@/lib/bookmarks"
 
-export type { BookmarkNode }
+// Re-exported so existing import sites keep working. The implementations moved
+// to lib/bookmarks.ts so pure lib/ modules (workspace folder resolution) can
+// use them without importing this "use client" module.
+export type { BookmarkNode, FlatFolder }
+export { BOOKMARKS_BAR_ID, findNode, flattenFolders, getPath, isFolder }
 
-export const BOOKMARKS_BAR_ID = "1"
-
-export function findNode(nodes: BookmarkNode[], id: string): BookmarkNode | null {
-  for (const node of nodes) {
-    if (node.id === id) return node
-    if (node.children) {
-      const found = findNode(node.children, id)
-      if (found) return found
-    }
-  }
-  return null
-}
-
-export function isFolder(node: BookmarkNode): boolean {
-  return node.url === undefined
-}
-
-export interface FlatFolder {
-  node: BookmarkNode
-  depth: number
-}
-
-export function flattenFolders(nodes: BookmarkNode[], depth = 0): FlatFolder[] {
-  const result: FlatFolder[] = []
-  for (const node of nodes) {
-    if (!isFolder(node)) continue
-    result.push({ node, depth })
-    if (node.children) {
-      result.push(...flattenFolders(node.children, depth + 1))
-    }
-  }
-  return result
-}
-
-export function getPath(root: BookmarkNode, folderId: string): BookmarkNode[] {
-  const target = findNode([root], folderId)
-  if (!target) return []
-
-  const path: BookmarkNode[] = []
-  let current: BookmarkNode | null = target
-  while (current && current.id !== root.id) {
-    path.unshift(current)
-    current = current.parentId ? findNode([root], current.parentId) : null
-  }
-  return path
-}
-
-export function useBookmarks() {
+/**
+ * Reads the bookmark subtree a single workspace owns.
+ *
+ * `rootFolderId` is the Chrome folder backing the workspace, and it is required
+ * and non-nullable on purpose: `root` resolves to exactly that folder or to
+ * null. There is deliberately no `?? tree[0]` / `?? findNode(tree, "1")`
+ * fallback - that one line is how a workspace would silently start showing
+ * another workspace's bookmarks. A null `root` is a state the UI renders as a
+ * repair prompt, not something to paper over here.
+ */
+export function useBookmarks(rootFolderId: string) {
   const [tree, setTree] = React.useState<BookmarkNode[]>([])
   const [isLoading, setIsLoading] = React.useState(true)
-  const [currentFolderId, setCurrentFolderId] = React.useState(BOOKMARKS_BAR_ID)
+  const [currentFolderId, setCurrentFolderId] = React.useState(rootFolderId)
 
   const refresh = React.useCallback(async () => {
     const nextTree = await getTree()
@@ -92,14 +65,22 @@ export function useBookmarks() {
     }
   }, [])
 
-  const root = tree[0] ?? null
-  const currentFolder = root ? findNode([root], currentFolderId) : null
+  const root = findNode(tree, rootFolderId)
+
+  // currentFolderId can point at a node that no longer exists - deleted from
+  // Chrome's own bookmark manager while this page was open - or at a folder
+  // outside this workspace. Correct it here, during render, rather than in an
+  // effect that resets the state: the derived id costs no extra render, and the
+  // stored id going stale is harmless once nothing reads it directly.
+  const requestedFolder = root ? findNode([root], currentFolderId) : null
+  const currentFolder = requestedFolder ?? root
+  const effectiveFolderId = currentFolder?.id ?? currentFolderId
 
   return {
     tree,
     root,
     isLoading,
-    currentFolderId,
+    currentFolderId: effectiveFolderId,
     currentFolder,
     setCurrentFolderId,
     refresh,

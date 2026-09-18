@@ -2,6 +2,8 @@
 
 import * as React from "react"
 
+import { localDayKey } from "@/lib/dates"
+
 export type BackgroundColorMode = "molten" | "ember" | "frost" | "colorbends" | "webthreads" | "lightrays" | "softaurora" | "mist" | "custom"
 
 export interface AppearanceSettings {
@@ -19,16 +21,9 @@ export interface AppearanceSettings {
 
 const STORAGE_KEY = "bm:appearance"
 
-/**
- * Local calendar day as YYYY-MM-DD. Built from local getters rather than
- * toISOString(), which converts to UTC and would roll the day over at the
- * wrong moment for anyone not on UTC.
- */
-export function localDayKey(date: Date = new Date()): string {
-  const month = `${date.getMonth() + 1}`.padStart(2, "0")
-  const day = `${date.getDate()}`.padStart(2, "0")
-  return `${date.getFullYear()}-${month}-${day}`
-}
+// Re-exported so existing import sites keep working; the implementation moved
+// to lib/dates.ts so pure lib/ modules can use it too.
+export { localDayKey }
 
 const DEFAULT_SETTINGS: AppearanceSettings = {
   colorMode: "molten",

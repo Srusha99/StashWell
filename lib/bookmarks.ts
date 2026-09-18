@@ -1,6 +1,55 @@
 export type BookmarkNode = chrome.bookmarks.BookmarkTreeNode
 
-function hasBookmarksApi(): boolean {
+/** Chrome's permanent root folder ids. Neither can be renamed or removed. */
+export const BOOKMARKS_BAR_ID = "1"
+export const OTHER_BOOKMARKS_ID = "2"
+
+export function isFolder(node: BookmarkNode): boolean {
+  return node.url === undefined
+}
+
+export function findNode(nodes: BookmarkNode[], id: string): BookmarkNode | null {
+  for (const node of nodes) {
+    if (node.id === id) return node
+    if (node.children) {
+      const found = findNode(node.children, id)
+      if (found) return found
+    }
+  }
+  return null
+}
+
+export interface FlatFolder {
+  node: BookmarkNode
+  depth: number
+}
+
+export function flattenFolders(nodes: BookmarkNode[], depth = 0): FlatFolder[] {
+  const result: FlatFolder[] = []
+  for (const node of nodes) {
+    if (!isFolder(node)) continue
+    result.push({ node, depth })
+    if (node.children) {
+      result.push(...flattenFolders(node.children, depth + 1))
+    }
+  }
+  return result
+}
+
+export function getPath(root: BookmarkNode, folderId: string): BookmarkNode[] {
+  const target = findNode([root], folderId)
+  if (!target) return []
+
+  const path: BookmarkNode[] = []
+  let current: BookmarkNode | null = target
+  while (current && current.id !== root.id) {
+    path.unshift(current)
+    current = current.parentId ? findNode([root], current.parentId) : null
+  }
+  return path
+}
+
+export function hasBookmarksApi(): boolean {
   return typeof chrome !== "undefined" && !!chrome.bookmarks
 }
 

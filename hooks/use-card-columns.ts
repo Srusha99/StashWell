@@ -2,13 +2,15 @@
 
 import * as React from "react"
 
-const STORAGE_KEY = "bm:dashboard-columns"
+import { workspaceKey } from "@/lib/workspace-storage"
+
+const STORAGE_NAME = "dashboard-columns"
 
 type Columns = string[][]
 
-function readStored(): Columns | null {
+function readStored(workspaceId: string): Columns | null {
   try {
-    const raw = window.localStorage.getItem(STORAGE_KEY)
+    const raw = window.localStorage.getItem(workspaceKey(workspaceId, STORAGE_NAME))
     if (!raw) return null
     const parsed = JSON.parse(raw)
     if (!Array.isArray(parsed)) return null
@@ -21,9 +23,9 @@ function readStored(): Columns | null {
   }
 }
 
-function writeStored(columns: Columns) {
+function writeStored(workspaceId: string, columns: Columns) {
   try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(columns))
+    window.localStorage.setItem(workspaceKey(workspaceId, STORAGE_NAME), JSON.stringify(columns))
   } catch {
     // ignore write failures
   }
@@ -70,13 +72,29 @@ function reconcile(defaultIds: string[], previous: Columns | null, count: number
 
 export function useCardColumns(
   defaultIds: string[],
-  columnCount: number
+  columnCount: number,
+  workspaceId: string
 ): [
   Columns,
   (draggedId: string, targetColumnIndex: number, targetId: string | null, position: "before" | "after") => void,
 ] {
   const key = defaultIds.join(",")
-  const [stored] = React.useState<Columns | null>(readStored)
+  // Read once, for the workspace this mount belongs to. Note the wrapping arrow
+  // function: passing `readStored` directly would hand React the workspaceId
+  // slot the initializer's own argument, writing to bm:ws:undefined:*.
+  const [stored] = React.useState<Columns | null>(() => readStored(workspaceId))
+
+  // The hydration dance below assumes workspaceId is fixed for the lifetime of
+  // this mount - the dashboard subtree is keyed by workspace id so a switch
+  // remounts instead of re-rendering. If that key is ever removed, a moveCard
+  // mid-transition would write the old workspace's layout under the new
+  // workspace's key, so fail loudly in development rather than silently.
+  const [mountWorkspaceId] = React.useState(workspaceId)
+  if (process.env.NODE_ENV !== "production" && workspaceId !== mountWorkspaceId) {
+    console.error(
+      "useCardColumns: workspaceId changed without a remount - the dashboard subtree must be keyed by workspace id."
+    )
+  }
 
   const [columns, setColumns] = React.useState<Columns>(() =>
     reconcile(defaultIds, stored, columnCount)
@@ -133,7 +151,7 @@ export function useCardColumns(
       }
 
       targetCol.splice(insertAt, 0, draggedId)
-      writeStored(next)
+      writeStored(workspaceId, next)
       return next
     })
   }
