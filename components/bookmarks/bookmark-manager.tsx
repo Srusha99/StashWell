@@ -381,6 +381,8 @@ export function BookmarkManager({
               onGreetingEnabledChange={appearance.setGreetingEnabled}
               onSearchBarEnabledChange={appearance.setSearchBarEnabled}
               onDailyWallpaperEnabledChange={appearance.setDailyWallpaperEnabled}
+              onCardFeelChange={appearance.setCardFeel}
+              onCardFeelReset={appearance.resetCardFeel}
             />
           </main>
         )}

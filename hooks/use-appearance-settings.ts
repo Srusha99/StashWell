@@ -3,10 +3,11 @@
 import * as React from "react"
 
 import { localDayKey } from "@/lib/dates"
+import { type CardFeel, DEFAULT_CARD_FEEL, applyCardFeel, readCardFeel } from "@/lib/card-feel"
 
 export type BackgroundColorMode = "molten" | "ember" | "frost" | "colorbends" | "webthreads" | "lightrays" | "softaurora" | "mist" | "custom"
 
-export interface AppearanceSettings {
+export interface AppearanceSettings extends CardFeel {
   colorMode: BackgroundColorMode
   backgroundEnabled: boolean
   cursorGlowEnabled: boolean
@@ -26,6 +27,7 @@ const STORAGE_KEY = "bm:appearance"
 export { localDayKey }
 
 const DEFAULT_SETTINGS: AppearanceSettings = {
+  ...DEFAULT_CARD_FEEL,
   colorMode: "molten",
   backgroundEnabled: true,
   cursorGlowEnabled: true,
@@ -42,7 +44,10 @@ function readStoredSettings(): AppearanceSettings {
     const raw = window.localStorage.getItem(STORAGE_KEY)
     if (!raw) return DEFAULT_SETTINGS
     const parsed = JSON.parse(raw)
-    return { ...DEFAULT_SETTINGS, ...parsed }
+    const merged = { ...DEFAULT_SETTINGS, ...parsed }
+    // Clamp/fill the slider values, so a partial or hand-edited blob can't put
+    // NaN into a CSS variable and blank every card.
+    return { ...merged, ...readCardFeel(merged) }
   } catch {
     return DEFAULT_SETTINGS
   }
@@ -66,6 +71,8 @@ export function useAppearanceSettings(): {
   setGreetingEnabled: (enabled: boolean) => void
   setSearchBarEnabled: (enabled: boolean) => void
   setDailyWallpaperEnabled: (enabled: boolean) => void
+  setCardFeel: (patch: Partial<CardFeel>) => void
+  resetCardFeel: () => void
   applyDailyWallpaper: (pick: {
     colorMode: BackgroundColorMode
     customBackgroundId: string | null
@@ -96,9 +103,17 @@ export function useAppearanceSettings(): {
     [update]
   )
 
+  // Cards read their radius, blur, opacity and so on from CSS variables on
+  // <html>, so one write here restyles every card with no re-render.
+  React.useEffect(() => {
+    applyCardFeel(settings)
+  }, [settings])
+
   return {
     applyDailyWallpaper,
     settings,
+    setCardFeel: (patch) => update(patch),
+    resetCardFeel: () => update(DEFAULT_CARD_FEEL),
     // backgroundEnabled is the master switch for every background, uploads
     // included, so picking any wallpaper turns it back on.
     setColorMode: (mode) => update({ colorMode: mode, backgroundEnabled: true }),

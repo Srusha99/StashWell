@@ -2,6 +2,9 @@
 
 import * as React from "react"
 import { useTheme } from "next-themes"
+
+import { CARD_FEEL_KEYS, CARD_FEEL_LABELS, type CardFeel } from "@/lib/card-feel"
+import { Slider } from "@/components/ui/slider"
 import { Flashlight, Laptop, Moon, Plus, Sparkles, Spline, Sun, Trash2, TreePine, Waves, Wind } from "lucide-react"
 
 import { cn } from "@/lib/utils"
@@ -86,6 +89,8 @@ export function AppearancePanel({
   onGreetingEnabledChange,
   onSearchBarEnabledChange,
   onDailyWallpaperEnabledChange,
+  onCardFeelChange,
+  onCardFeelReset,
 }: {
   settings: AppearanceSettings
   onColorModeChange: (mode: BackgroundColorMode) => void
@@ -99,6 +104,8 @@ export function AppearancePanel({
   onGreetingEnabledChange: (enabled: boolean) => void
   onSearchBarEnabledChange: (enabled: boolean) => void
   onDailyWallpaperEnabledChange: (enabled: boolean) => void
+  onCardFeelChange: (patch: Partial<CardFeel>) => void
+  onCardFeelReset: () => void
 }) {
   const { theme, setTheme, resolvedTheme } = useTheme()
   const isLight = resolvedTheme === "light"
@@ -291,6 +298,44 @@ export function AppearancePanel({
               onCheckedChange={onCursorGlowEnabledChange}
             />
           </label>
+        </div>
+      </Section>
+
+      <Section
+        title="Fine-tune the feel"
+        description="How the dashboard cards sit over your background. Lower the blur and opacity to let more of it through."
+      >
+        <div className="flex flex-col gap-4 rounded-lg border border-[#e5e5ea] bg-white p-3.5 dark:border-white/10 dark:bg-white/5">
+          <div className="grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2">
+            {CARD_FEEL_KEYS.map((key) => (
+              <div key={key} className="flex flex-col gap-1.5">
+                <div className="flex items-baseline justify-between">
+                  <span className="text-sm text-[#3c3c43] dark:text-white/80">
+                    {CARD_FEEL_LABELS[key]}
+                  </span>
+                  <span className="text-xs tabular-nums text-[#8e8e93] dark:text-white/40">
+                    {Math.round(settings[key])}%
+                  </span>
+                </div>
+                <Slider
+                  label={CARD_FEEL_LABELS[key]}
+                  value={settings[key]}
+                  min={0}
+                  max={100}
+                  step={1}
+                  onValueChange={(value) => onCardFeelChange({ [key]: value as number })}
+                />
+              </div>
+            ))}
+          </div>
+
+          <button
+            type="button"
+            onClick={onCardFeelReset}
+            className="self-start text-xs text-[#8e8e93] underline-offset-2 transition-colors hover:text-[#1c1c1e] hover:underline dark:text-white/40 dark:hover:text-white"
+          >
+            Reset to defaults
+          </button>
         </div>
       </Section>
     </div>

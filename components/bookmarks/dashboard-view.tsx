@@ -187,9 +187,9 @@ export function DashboardView({
       {/* Capped and centred rather than stretched edge to edge: with flex-1
           columns on a wide screen each card ballooned past 360px, which is what
           made the dashboard feel heavy. ~228px per column at 4 columns. */}
-      <div className="mx-auto flex w-full max-w-[960px] gap-4">
+      <div className="mx-auto flex w-full max-w-[960px] gap-[var(--grid-gap)]">
         {visibleColumns.map((items, columnIndex) => (
-          <div key={columnIndex} className="flex min-w-0 flex-1 flex-col gap-4">
+          <div key={columnIndex} className="flex min-w-0 flex-1 flex-col gap-[var(--grid-gap)]">
             {items.map((item) => {
               // Every card in a column - notes, reminders, folders - shares the
               // same drag wiring, which is what lets them be reordered together.

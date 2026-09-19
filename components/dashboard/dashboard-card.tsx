@@ -27,7 +27,7 @@ export interface DashboardCardDragProps {
  * outline) without the dark: overrides that go with them.
  */
 export const CARD_SHELL =
-  "group relative flex min-w-0 flex-col rounded-2xl border border-[var(--card-border)] bg-white/55 p-3.5 shadow-[var(--shadow-soft)] backdrop-blur-xl transition-all duration-150 ease-out dark:border-white/[0.08] dark:bg-white/[0.06] dark:shadow-none"
+  "group relative flex min-w-0 flex-col rounded-[var(--card-radius)] border border-[var(--card-border)] bg-[var(--card-bg)] p-[var(--card-pad)] shadow-[var(--card-glow)] backdrop-blur-[var(--card-blur)] transition-all duration-150 ease-out dark:border-white/[0.08]"
 
 /** Shared header row: small uppercase label, muted count on the right. */
 export const CARD_TITLE =
