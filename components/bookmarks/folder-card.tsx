@@ -29,6 +29,11 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { BookmarkRow } from "@/components/bookmarks/bookmark-row"
+import { CARD_SHELL, CARD_TITLE } from "@/lib/card-styles"
+import {
+  CopyToWorkspaceSubmenu,
+  MoveToWorkspaceSubmenu,
+} from "@/components/workspaces/workspace-transfer-submenu"
 
 function collectUrls(nodes: BookmarkNode[]): string[] {
   const urls: string[] = []
