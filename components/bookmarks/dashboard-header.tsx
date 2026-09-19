@@ -41,14 +41,14 @@ export function DashboardHeader({
   }
 
   return (
-    <div className="mb-8 flex flex-col items-center gap-2 pt-6 text-center text-[#1c1c1e] dark:text-white">
-      <span className="text-6xl font-bold tracking-tight tabular-nums">{time}</span>
-      <div className="text-lg text-[#8e8e93] dark:text-white/60">{date}</div>
+    <div className="mb-7 flex flex-col items-center gap-1 pt-4 text-center text-[#1c1c1e] dark:text-white">
+      <span className="text-5xl font-semibold tracking-tight tabular-nums">{time}</span>
+      <div className="text-xs text-[#8e8e93] dark:text-white/50">{date}</div>
       {greetingEnabled && (
         <TextType
           as="div"
           text={greeting}
-          className="text-xl text-[#1c1c1e]/80 dark:text-white/80"
+          className="text-sm text-[#1c1c1e]/70 dark:text-white/70"
           typingSpeed={120}
           initialDelay={200}
           loop={false}
@@ -58,7 +58,7 @@ export function DashboardHeader({
         />
       )}
       {searchBarEnabled && (
-        <form onSubmit={handleSearchSubmit} className="mt-4 w-full max-w-[366px]">
+        <form onSubmit={handleSearchSubmit} className="mt-3 w-full max-w-[320px]">
           <BorderBeam size="line" colorVariant="colorful" theme={isLight ? "light" : "dark"} duration={3.1} borderRadius={20}>
             <div className="relative h-[42px] w-full overflow-hidden rounded-[64px]">
               <div

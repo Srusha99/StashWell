@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Settings } from "lucide-react"
+import { Plus, Settings } from "lucide-react"
 
 import { type BookmarkNode, isFolder, useBookmarks } from "@/hooks/use-bookmarks"
 import { useCardColumns } from "@/hooks/use-card-columns"
@@ -179,14 +179,17 @@ export function DashboardView({
       {/* Shown instead of the folder columns when the workspace's Chrome folder
           can't be resolved - never a fallback to another folder's contents. */}
       {resolved.status !== "ok" && (
-        <div className="mb-5">
+        <div className="mx-auto mb-4 w-full max-w-[960px]">
           <WorkspaceRepairNotice />
         </div>
       )}
 
-      <div className="flex gap-5">
+      {/* Capped and centred rather than stretched edge to edge: with flex-1
+          columns on a wide screen each card ballooned past 360px, which is what
+          made the dashboard feel heavy. ~228px per column at 4 columns. */}
+      <div className="mx-auto flex w-full max-w-[960px] gap-4">
         {visibleColumns.map((items, columnIndex) => (
-          <div key={columnIndex} className="flex min-w-0 flex-1 flex-col gap-5">
+          <div key={columnIndex} className="flex min-w-0 flex-1 flex-col gap-4">
             {items.map((item) => {
               // Every card in a column - notes, reminders, folders - shares the
               // same drag wiring, which is what lets them be reordered together.
@@ -267,6 +270,18 @@ export function DashboardView({
           </div>
         ))}
       </div>
+
+      {root && (
+        <button
+          type="button"
+          onClick={() =>
+            setFormDialog({ mode: "create-folder", node: null, parentId: root.id })
+          }
+          className="mx-auto mt-5 flex items-center gap-1 text-[11px] text-[#8e8e93] transition-colors hover:text-[#1c1c1e] dark:text-white/40 dark:hover:text-white"
+        >
+          <Plus className="size-3" /> New section
+        </button>
+      )}
 
       <BookmarkFormDialog
         mode={formDialog?.mode ?? null}

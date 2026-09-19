@@ -8,6 +8,16 @@ import { useCustomIcon } from "@/hooks/use-custom-icon"
 import { faviconUrl } from "@/lib/favicon"
 import { Button } from "@/components/ui/button"
 
+/** Bare host for the row's subtitle, e.g. "mail.google.com". */
+function hostOf(url: string | undefined): string | null {
+  if (!url) return null
+  try {
+    return new URL(url).hostname.replace(/^www\./, "")
+  } catch {
+    return null
+  }
+}
+
 export function BookmarkRow({
   node,
   onEdit,
@@ -27,15 +37,19 @@ export function BookmarkRow({
       <button
         type="button"
         onClick={() => onDrillInto(node.id)}
-        className="flex w-full items-center gap-2.5 py-1.5 text-left"
+        className="flex w-full items-center gap-2 py-1 text-left"
       >
-        <Folder className="size-[18px] shrink-0 text-[#8e8e93] dark:text-white/50" />
-        <span className="truncate text-sm text-[#1c1c1e] dark:text-white/85">{node.title || "(untitled)"}</span>
+        <Folder className="size-4 shrink-0 text-[#8e8e93] dark:text-white/50" />
+        <span className="truncate text-xs text-[#1c1c1e] dark:text-white/85">
+          {node.title || "(untitled)"}
+        </span>
       </button>
     )
   }
 
   const icon = customIcon ?? (node.url ? faviconUrl(node.url) : undefined)
+  // Shown under the title, as in the design. Bare host, without the www. noise.
+  const host = hostOf(node.url)
 
   async function handleCopy(event: React.MouseEvent) {
     event.preventDefault()
@@ -50,18 +64,25 @@ export function BookmarkRow({
   }
 
   return (
-    <div className="group relative flex items-center gap-2.5 py-1.5">
-      <a href={node.url} className="flex min-w-0 flex-1 items-center gap-2.5">
+    <div className="group/row relative flex items-center gap-2 py-1">
+      <a href={node.url} className="flex min-w-0 flex-1 items-center gap-2">
         {icon ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={icon} alt="" className="size-[18px] shrink-0 rounded-sm" />
+          <img src={icon} alt="" className="size-4 shrink-0 rounded-[3px]" />
         ) : (
-          <Folder className="size-[18px] shrink-0 text-[#8e8e93] dark:text-white/50" />
+          <Folder className="size-4 shrink-0 text-[#8e8e93] dark:text-white/50" />
         )}
-        <span className="truncate text-sm text-[#1c1c1e] dark:text-white/85">{node.title || node.url}</span>
+        <span className="flex min-w-0 flex-col leading-tight">
+          <span className="truncate text-xs text-[#1c1c1e] dark:text-white/85">
+            {node.title || host || node.url}
+          </span>
+          {host && (
+            <span className="truncate text-[10px] text-[#8e8e93] dark:text-white/35">{host}</span>
+          )}
+        </span>
       </a>
 
-      <div className="absolute inset-y-0 right-0 flex items-center gap-0.5 rounded-md bg-white/90 px-1 opacity-0 backdrop-blur-sm group-hover:opacity-100 dark:bg-black/50">
+      <div className="absolute inset-y-0 right-0 flex items-center gap-0.5 rounded-md bg-white/85 px-1 opacity-0 backdrop-blur-sm group-hover/row:opacity-100 dark:bg-black/50">
         <Button
           variant="ghost"
           size="icon-xs"

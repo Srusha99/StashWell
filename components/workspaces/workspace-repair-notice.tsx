@@ -4,7 +4,9 @@ import * as React from "react"
 import { FolderX, Info, MoveRight, RefreshCw } from "lucide-react"
 
 import { CONTAINER_TITLE } from "@/lib/workspaces"
+import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
+import { CARD_SHELL } from "@/components/dashboard/dashboard-card"
 import { useWorkspaces } from "@/components/workspaces/workspace-provider"
 
 /**
@@ -73,7 +75,7 @@ function Card({
   action?: React.ReactNode
 }) {
   return (
-    <div className="flex items-start gap-3 rounded-2xl border border-[var(--card-border)] bg-white p-4 shadow-[var(--shadow-soft)] dark:border-transparent dark:bg-white/[0.04] dark:shadow-none">
+    <div className={cn(CARD_SHELL, "flex-row items-start gap-3")}>
       <div className="mt-0.5 shrink-0 text-[#8e8e93] dark:text-white/50">{icon}</div>
       <div className="flex min-w-0 flex-col gap-1">
         <h2 className="text-sm font-semibold text-[#1c1c1e] dark:text-white">{title}</h2>

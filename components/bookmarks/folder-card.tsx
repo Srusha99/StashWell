@@ -7,7 +7,6 @@ import {
   Folder,
   FolderCog,
   Grid2x2,
-  GripVertical,
   List,
   MoreVertical,
   Pencil,
@@ -29,6 +28,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { BookmarkRow } from "@/components/bookmarks/bookmark-row"
+import { CARD_SHELL, CARD_TITLE } from "@/components/dashboard/dashboard-card"
 import {
   CopyToWorkspaceSubmenu,
   MoveToWorkspaceSubmenu,
@@ -121,10 +121,7 @@ export function FolderCard({
         onCardDrop()
       }}
       onDragEnd={onCardDragEnd}
-      className={cn(
-        "relative rounded-2xl border border-[var(--card-border)] bg-white p-4 shadow-[var(--shadow-soft)] transition-all duration-150 ease-out dark:border-transparent dark:bg-white/[0.04] dark:shadow-none",
-        isDragging && "opacity-40"
-      )}
+      className={cn(CARD_SHELL, isDragging && "opacity-40")}
     >
       {dropIndicator === "before" && (
         <div className="absolute inset-x-2 top-0 h-0.5 rounded-full bg-primary" />
@@ -133,18 +130,18 @@ export function FolderCard({
         <div className="absolute inset-x-2 bottom-0 h-0.5 rounded-full bg-primary" />
       )}
 
-      <div className="mb-3 flex items-center gap-2">
-        <GripVertical className="size-4 shrink-0 cursor-grab text-[#8e8e93] active:cursor-grabbing dark:text-white/30" />
-        <h2 className="min-w-0 flex-1 truncate text-sm font-semibold text-[#1c1c1e] dark:text-white">{title}</h2>
+      <div className="mb-2 flex items-center gap-1.5">
+        <h2 className={CARD_TITLE}>{title}</h2>
         {allUrls.length > 0 && (
           <Button
             variant="ghost"
             size="icon-xs"
             title="Open all bookmarks"
-            className="shrink-0 text-[#8e8e93] hover:bg-black/[0.04] hover:text-[#1c1c1e] dark:text-white/40 dark:hover:bg-white/10 dark:hover:text-white/70"
+            aria-label="Open all bookmarks"
+            className="size-5 shrink-0 text-[#8e8e93] hover:bg-black/[0.04] hover:text-[#1c1c1e] dark:text-white/40 dark:hover:bg-white/10 dark:hover:text-white/70"
             onClick={handleOpenAll}
           >
-            <SquareArrowOutUpRight />
+            <SquareArrowOutUpRight className="size-3" />
           </Button>
         )}
         <DropdownMenu>
@@ -153,11 +150,12 @@ export function FolderCard({
               <Button
                 variant="ghost"
                 size="icon-xs"
-                className="shrink-0 text-[#8e8e93] hover:bg-black/[0.04] hover:text-[#1c1c1e] dark:text-white/40 dark:hover:bg-white/10 dark:hover:text-white/70"
+                aria-label="Folder actions"
+                className="size-5 shrink-0 text-[#8e8e93] hover:bg-black/[0.04] hover:text-[#1c1c1e] dark:text-white/40 dark:hover:bg-white/10 dark:hover:text-white/70"
               />
             }
           >
-            <MoreVertical />
+            <MoreVertical className="size-3" />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuItem onClick={() => setViewMode(viewMode === "grid" ? "list" : "grid")}>
@@ -231,7 +229,7 @@ function FolderIconGrid({
   onDrillInto: (folderId: string) => void
 }) {
   return (
-    <div className="grid grid-cols-4 gap-3">
+    <div className="grid grid-cols-5 gap-2">
       {items.map((item) =>
         isFolder(item) ? (
           <button
@@ -241,7 +239,7 @@ function FolderIconGrid({
             title={item.title}
             className="flex aspect-square items-center justify-center opacity-90 hover:opacity-100"
           >
-            <Folder className="size-12 text-[#8e8e93] dark:text-white/50" />
+            <Folder className="size-8 text-[#8e8e93] dark:text-white/50" />
           </button>
         ) : (
           <GridIconItem key={item.id} item={item} />
@@ -263,9 +261,9 @@ function GridIconItem({ item }: { item: BookmarkNode }) {
     >
       {icon ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={icon} alt="" className="size-12 rounded-xl object-contain" />
+        <img src={icon} alt="" className="size-8 rounded-lg object-contain" />
       ) : (
-        <Grid2x2 className="size-12 text-[#8e8e93] dark:text-white/50" />
+        <Grid2x2 className="size-8 text-[#8e8e93] dark:text-white/50" />
       )}
     </a>
   )
