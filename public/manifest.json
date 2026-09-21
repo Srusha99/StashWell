@@ -9,7 +9,7 @@
   "background": {
     "service_worker": "background.js"
   },
-  "permissions": ["bookmarks", "alarms", "notifications", "storage", "tabs", "contextMenus"],
+  "permissions": ["bookmarks", "alarms", "notifications", "storage", "tabs", "contextMenus", "favicon"],
   "action": {
     "default_popup": "index.html?view=popup",
     "default_icon": {
