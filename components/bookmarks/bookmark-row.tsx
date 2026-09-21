@@ -5,7 +5,7 @@ import { Copy, ExternalLink, Folder, Pencil, Trash2 } from "lucide-react"
 
 import { type BookmarkNode, isFolder } from "@/hooks/use-bookmarks"
 import { useCustomIcon } from "@/hooks/use-custom-icon"
-import { faviconUrl } from "@/lib/favicon"
+import { FaviconImg } from "@/components/bookmarks/favicon-image"
 import { Button } from "@/components/ui/button"
 
 /** Bare host for the row's subtitle, e.g. "mail.google.com". */
@@ -47,7 +47,7 @@ export function BookmarkRow({
     )
   }
 
-  const icon = customIcon ?? (node.url ? faviconUrl(node.url) : undefined)
+  const fallbackIcon = <Folder className="size-4 shrink-0 text-[#8e8e93] dark:text-white/50" />
   // Shown under the title, as in the design. Bare host, without the www. noise.
   const host = hostOf(node.url)
 
@@ -66,11 +66,17 @@ export function BookmarkRow({
   return (
     <div className="group/row relative flex items-center gap-2 py-1">
       <a href={node.url} className="flex min-w-0 flex-1 items-center gap-2">
-        {icon ? (
+        {customIcon ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={icon} alt="" className="size-4 shrink-0 rounded-[3px]" />
+          <img src={customIcon} alt="" className="size-4 shrink-0 rounded-[3px]" />
+        ) : node.url ? (
+          <FaviconImg
+            url={node.url}
+            className="size-4 shrink-0 rounded-[3px]"
+            fallback={fallbackIcon}
+          />
         ) : (
-          <Folder className="size-4 shrink-0 text-[#8e8e93] dark:text-white/50" />
+          fallbackIcon
         )}
         <span className="flex min-w-0 flex-col leading-tight">
           <span className="truncate text-xs text-[#1c1c1e] dark:text-white/85">

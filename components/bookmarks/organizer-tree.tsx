@@ -5,7 +5,7 @@ import { ChevronRight, Folder, GripVertical, Pencil, Plus, Trash2 } from "lucide
 
 import { type BookmarkNode, findNode, isFolder } from "@/hooks/use-bookmarks"
 import { cn } from "@/lib/utils"
-import { faviconUrl } from "@/lib/favicon"
+import { FaviconImg } from "@/components/bookmarks/favicon-image"
 import { Button } from "@/components/ui/button"
 
 function containsNode(node: BookmarkNode, id: string): boolean {
@@ -97,7 +97,6 @@ function OrganizerTreeItem({
   const children = foldersOnly ? (node.children ?? []).filter(isFolder) : node.children ?? []
   const hasChildren = children.length > 0
   const expanded = expandedIds.has(node.id)
-  const icon = !folder && node.url ? faviconUrl(node.url) : undefined
   const isDragging = draggedId === node.id
   const isDropTarget = dropTarget?.id === node.id
 
@@ -195,9 +194,12 @@ function OrganizerTreeItem({
         <span className="flex min-w-0 flex-1 items-center gap-1.5 py-1 text-left">
           {folder ? (
             <Folder className="size-3.5 shrink-0 text-[#8e8e93] dark:text-white/50" />
-          ) : icon ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={icon} alt="" className="size-3.5 shrink-0 rounded-sm" />
+          ) : node.url ? (
+            <FaviconImg
+              url={node.url}
+              className="size-3.5 shrink-0 rounded-sm"
+              fallback={<Folder className="size-3.5 shrink-0 text-[#8e8e93] dark:text-white/50" />}
+            />
           ) : (
             <Folder className="size-3.5 shrink-0 text-[#8e8e93] dark:text-white/50" />
           )}

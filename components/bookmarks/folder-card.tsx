@@ -17,8 +17,8 @@ import {
 import { type BookmarkNode, isFolder } from "@/hooks/use-bookmarks"
 import { useCustomIcon } from "@/hooks/use-custom-icon"
 import { useFolderViewMode } from "@/hooks/use-folder-view-mode"
-import { faviconUrl } from "@/lib/favicon"
 import { cn, deferred } from "@/lib/utils"
+import { FaviconImg } from "@/components/bookmarks/favicon-image"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -251,7 +251,7 @@ function FolderIconGrid({
 
 function GridIconItem({ item }: { item: BookmarkNode }) {
   const [customIcon] = useCustomIcon(item.url ?? null)
-  const icon = customIcon ?? (item.url ? faviconUrl(item.url, 128) : undefined)
+  const fallbackIcon = <Grid2x2 className="size-8 text-[#8e8e93] dark:text-white/50" />
 
   return (
     <a
@@ -259,11 +259,18 @@ function GridIconItem({ item }: { item: BookmarkNode }) {
       title={item.title || item.url}
       className="flex aspect-square items-center justify-center opacity-90 hover:opacity-100"
     >
-      {icon ? (
+      {customIcon ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={icon} alt="" className="size-8 rounded-lg object-contain" />
+        <img src={customIcon} alt="" className="size-8 rounded-lg object-contain" />
+      ) : item.url ? (
+        <FaviconImg
+          url={item.url}
+          size={128}
+          className="size-8 rounded-lg object-contain"
+          fallback={fallbackIcon}
+        />
       ) : (
-        <Grid2x2 className="size-8 text-[#8e8e93] dark:text-white/50" />
+        fallbackIcon
       )}
     </a>
   )

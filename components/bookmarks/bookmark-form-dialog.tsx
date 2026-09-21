@@ -6,7 +6,7 @@ import { Globe, RotateCcw, Upload } from "lucide-react"
 import { type BookmarkNode, isFolder } from "@/hooks/use-bookmarks"
 import { useCustomIcon } from "@/hooks/use-custom-icon"
 import { readIconFile } from "@/lib/custom-icons"
-import { faviconUrl } from "@/lib/favicon"
+import { FaviconImg } from "@/components/bookmarks/favicon-image"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -146,12 +146,15 @@ function BookmarkFormFields({
             <span className="text-xs font-medium text-muted-foreground">Icon</span>
             <div className="flex items-center gap-3">
               <div className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-black/[0.03] ring-1 ring-black/[0.06] dark:bg-white/5 dark:ring-white/10">
-                {customIcon || (url && faviconUrl(url, 64)) ? (
+                {customIcon ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={customIcon || faviconUrl(url, 64)}
-                    alt=""
+                  <img src={customIcon} alt="" className="size-full object-contain" />
+                ) : url ? (
+                  <FaviconImg
+                    url={url}
+                    size={64}
                     className="size-full object-contain"
+                    fallback={<Globe className="size-5 text-[#8e8e93] dark:text-white/40" />}
                   />
                 ) : (
                   <Globe className="size-5 text-[#8e8e93] dark:text-white/40" />

@@ -19,7 +19,7 @@ import {
 } from "@/hooks/use-bookmarks"
 import { useCustomIcon } from "@/hooks/use-custom-icon"
 import { cn, deferred } from "@/lib/utils"
-import { faviconUrl } from "@/lib/favicon"
+import { FaviconImg } from "@/components/bookmarks/favicon-image"
 import { Button } from "@/components/ui/button"
 import BorderGlow from "@/components/ui/BorderGlow"
 import {
@@ -253,7 +253,7 @@ function BookmarkTile({
   onMove: (parentId: string) => void
 }) {
   const [customIcon] = useCustomIcon(node.url ?? null)
-  const icon = customIcon ?? (node.url ? faviconUrl(node.url) : undefined)
+  const fallbackIcon = <Folder className="size-4.5 text-[#8e8e93] dark:text-white/70" />
   const glowProps = useTileGlowProps()
 
   return (
@@ -266,11 +266,13 @@ function BookmarkTile({
         {...glowProps}
       >
         <div className="relative flex h-full flex-col gap-1 p-2 text-[#1c1c1e] dark:text-white">
-          {icon ? (
+          {customIcon ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={icon} alt="" className="size-4.5 rounded" />
+            <img src={customIcon} alt="" className="size-4.5 rounded" />
+          ) : node.url ? (
+            <FaviconImg url={node.url} className="size-4.5 rounded" fallback={fallbackIcon} />
           ) : (
-            <Folder className="size-4.5 text-[#8e8e93] dark:text-white/70" />
+            fallbackIcon
           )}
           <div className="flex min-w-0 flex-col">
             <span className="truncate text-[12px] font-medium">
