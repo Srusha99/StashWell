@@ -5,16 +5,22 @@ import { useTheme } from "next-themes"
 
 import MoltenMetal from "@/components/MoltenMetal"
 import ColorBends from "@/components/ColorBends"
-import WebThreads from "@/components/WebThreads"
 import LightRays from "@/components/LightRays"
 import SoftAurora from "@/components/SoftAurora"
 import GlowCursor from "@/components/GlowCursor"
 import { useAppearanceSettings } from "@/hooks/use-appearance-settings"
 import { useColumnCount } from "@/hooks/use-column-count"
 import { useDailyWallpaper } from "@/hooks/use-daily-wallpaper"
+import { useHiddenFolders } from "@/hooks/use-hidden-folders"
 import { DashboardView } from "@/components/bookmarks/dashboard-view"
-import { BookmarkManager } from "@/components/bookmarks/bookmark-manager"
-import { WorkspaceProvider, useWorkspaces } from "@/components/workspaces/workspace-provider"
+import {
+  SettingsDialog,
+  type SettingsSection,
+} from "@/components/settings/settings-dialog"
+import {
+  WorkspaceProvider,
+  useWorkspaces,
+} from "@/components/workspaces/workspace-provider"
 import {
   deleteCustomBackground,
   listCustomBackgrounds,
@@ -30,8 +36,6 @@ interface CustomBackgroundItem {
 }
 
 export function BookmarkApp() {
-  const [managerFolderId, setManagerFolderId] = React.useState<string | null>(null)
-  const [managerTab, setManagerTab] = React.useState<"manager" | "appearance">("manager")
   // Hoisted above the workspace key boundary on purpose: useColumnCount starts
   // at 1 to match the static-export markup and only reaches the real count in an
   // effect, so remounting it on every workspace switch would flash a
@@ -41,10 +45,14 @@ export function BookmarkApp() {
   const isLight = resolvedTheme === "light"
   const appearance = useAppearanceSettings()
   const { settings, setColorMode, setCustomBackgroundId } = appearance
-  const [customBackgrounds, setCustomBackgrounds] = React.useState<CustomBackgroundItem[]>([])
-  const [customBackgroundsLoaded, setCustomBackgroundsLoaded] = React.useState(false)
+  const [customBackgrounds, setCustomBackgrounds] = React.useState<
+    CustomBackgroundItem[]
+  >([])
+  const [customBackgroundsLoaded, setCustomBackgroundsLoaded] =
+    React.useState(false)
   const activeCustomBackground =
-    customBackgrounds.find((item) => item.id === settings.customBackgroundId) ?? null
+    customBackgrounds.find((item) => item.id === settings.customBackgroundId) ??
+    null
 
   React.useEffect(() => {
     let items: CustomBackgroundItem[] = []
@@ -110,18 +118,7 @@ export function BookmarkApp() {
 
   const content = (
     <AppContent
-      managerFolderId={managerFolderId}
-      managerTab={managerTab}
       columnCount={columnCount}
-      onOpenManager={(folderId) => {
-        setManagerTab("manager")
-        setManagerFolderId(folderId)
-      }}
-      onOpenSettings={(folderId) => {
-        setManagerTab("manager")
-        setManagerFolderId(folderId)
-      }}
-      onBack={() => setManagerFolderId(null)}
       appearance={appearance}
       customBackgrounds={customBackgrounds}
       onUploadCustomBackground={handleCustomBackgroundUpload}
@@ -147,7 +144,11 @@ export function BookmarkApp() {
                 playsInline
               />
             ) : (
-              <img src={activeCustomBackground.url} alt="" className="size-full object-cover" />
+              <img
+                src={activeCustomBackground.url}
+                alt=""
+                className="size-full object-cover"
+              />
             ))
           ) : settings.colorMode === "mist" ? (
             <video
@@ -174,30 +175,6 @@ export function BookmarkApp() {
               iterations={1}
               intensity={2}
               bandWidth={6}
-            />
-          ) : settings.colorMode === "webthreads" ? (
-            <WebThreads
-              color1="#5227FF"
-              color2="#FF9FFC"
-              color3="#FFFFFF"
-              speed={0.05}
-              threadCount={6}
-              frequency={5.0}
-              spread={0.17}
-              taper={1.0}
-              position={0.5}
-              fanMode="center"
-              glow={0.02}
-              falloff={0.6}
-              thickness={0.7}
-              brightness={0.6}
-              opacity={1.0}
-              mirror={true}
-              shimmer={false}
-              grain={true}
-              grainIntensity={0.01}
-              mouseInteraction={true}
-              mouseStrength={0.3}
             />
           ) : settings.colorMode === "lightrays" ? (
             <LightRays
@@ -256,10 +233,8 @@ export function BookmarkApp() {
       </div>
 
       {/* The provider wraps the content rather than the background layer, so a
-          workspace switch never restarts the WebGL wallpaper. managerFolderId
-          lives out here, outside the keyed subtree, so it has to be dropped on a
-          switch - a folder id from one workspace means nothing in another. */}
-      <WorkspaceProvider onWorkspaceChange={() => setManagerFolderId(null)}>
+          workspace switch never restarts the WebGL wallpaper. */}
+      <WorkspaceProvider>
         {settings.cursorGlowEnabled ? (
           <GlowCursor color="#67E8F9" secondaryColor="#A78BFA">
             {content}
@@ -280,58 +255,81 @@ export function BookmarkApp() {
  * useCardColumns in particular depends on this - see its dev-mode guard.
  */
 function AppContent({
-  managerFolderId,
-  managerTab,
   columnCount,
-  onOpenManager,
-  onOpenSettings,
-  onBack,
   appearance,
   customBackgrounds,
   onUploadCustomBackground,
   onSelectCustomBackground,
   onDeleteCustomBackground,
 }: {
-  managerFolderId: string | null
-  managerTab: "manager" | "appearance"
   columnCount: number
-  onOpenManager: (folderId: string) => void
-  onOpenSettings: (folderId: string) => void
-  onBack: () => void
   appearance: ReturnType<typeof useAppearanceSettings>
   customBackgrounds: CustomBackgroundItem[]
   onUploadCustomBackground: (file: File) => void
   onSelectCustomBackground: (id: string) => void
   onDeleteCustomBackground: (id: string) => void
 }) {
-  const { activeId, activeWorkspace } = useWorkspaces()
+  const { activeId } = useWorkspaces()
   const { settings } = appearance
+  const [settingsOpen, setSettingsOpen] = React.useState(false)
+  const [settingsSection, setSettingsSection] =
+    React.useState<SettingsSection>("general")
+  // Which folder the organiser opens at. Null means the workspace root.
+  const [bookmarksFolderId, setBookmarksFolderId] = React.useState<
+    string | null
+  >(null)
+  // Owned here, not in each view: Settings can unhide a folder while the
+  // dashboard is behind it, and two useHiddenFolders instances would not see
+  // each other's writes until one of them remounted.
+  const { hiddenIds, hideFolder, unhideFolder } = useHiddenFolders(activeId)
+
+  // This state sits outside the workspace-keyed subtree below, so the folder id
+  // has to be dropped on a switch - an id from one workspace means nothing in
+  // another, and the organiser would open on a folder that isn't there.
+  const [appliedWorkspaceId, setAppliedWorkspaceId] = React.useState(activeId)
+  if (appliedWorkspaceId !== activeId) {
+    setAppliedWorkspaceId(activeId)
+    setBookmarksFolderId(null)
+  }
+
+  // The organiser lives in the Bookmarks section now, so opening a folder from
+  // the dashboard means opening Settings there.
+  function openBookmarks(folderId: string) {
+    setBookmarksFolderId(folderId)
+    setSettingsSection("bookmarks")
+    setSettingsOpen(true)
+  }
 
   return (
     <React.Fragment key={activeId}>
-      {managerFolderId !== null ? (
-        <BookmarkManager
-          initialFolderId={managerFolderId}
-          initialTab={managerTab}
-          onBack={onBack}
-          appearance={appearance}
-          customBackgrounds={customBackgrounds}
-          onUploadCustomBackground={onUploadCustomBackground}
-          onSelectCustomBackground={onSelectCustomBackground}
-          onDeleteCustomBackground={onDeleteCustomBackground}
-        />
-      ) : (
-        <DashboardView
-          columnCount={columnCount}
-          onOpenManager={onOpenManager}
-          // The manager opens at the workspace's own root, not the Bookmarks
-          // Bar - id "1" sits outside every non-default workspace's subtree.
-          onOpenSettings={() => onOpenSettings(activeWorkspace.folderId)}
-          greetingName={settings.greetingName}
-          greetingEnabled={settings.greetingEnabled}
-          searchBarEnabled={settings.searchBarEnabled}
-        />
-      )}
+      <DashboardView
+        columnCount={columnCount}
+        onOpenManager={openBookmarks}
+        onOpenSettings={() => setSettingsOpen(true)}
+        hiddenIds={hiddenIds}
+        onHideFolder={hideFolder}
+        greetingName={settings.greetingName}
+        greetingEnabled={settings.greetingEnabled}
+        searchBarEnabled={settings.searchBarEnabled}
+        notesEnabled={settings.notesEnabled}
+        remindersEnabled={settings.remindersEnabled}
+      />
+
+      <SettingsDialog
+        open={settingsOpen}
+        onOpenChange={setSettingsOpen}
+        section={settingsSection}
+        onSectionChange={setSettingsSection}
+        appearance={appearance}
+        customBackgrounds={customBackgrounds}
+        onUploadCustomBackground={onUploadCustomBackground}
+        onSelectCustomBackground={onSelectCustomBackground}
+        onDeleteCustomBackground={onDeleteCustomBackground}
+        bookmarksFolderId={bookmarksFolderId}
+        hiddenIds={hiddenIds}
+        onHideFolder={hideFolder}
+        onUnhideFolder={unhideFolder}
+      />
     </React.Fragment>
   )
 }

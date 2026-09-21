@@ -16,7 +16,6 @@ import {
 export const ROTATING_BUILT_INS: BackgroundColorMode[] = [
   "molten",
   "colorbends",
-  "webthreads",
   "lightrays",
   "softaurora",
   "mist",

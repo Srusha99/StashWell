@@ -2,9 +2,21 @@
 
 import * as React from "react"
 import { useTheme } from "next-themes"
-import { Folder, FolderOpen, MoreVertical, Pencil, Trash2, FolderInput } from "lucide-react"
+import {
+  EyeOff,
+  Folder,
+  FolderOpen,
+  MoreVertical,
+  Pencil,
+  Trash2,
+  FolderInput,
+} from "lucide-react"
 
-import { type BookmarkNode, type FlatFolder, isFolder } from "@/hooks/use-bookmarks"
+import {
+  type BookmarkNode,
+  type FlatFolder,
+  isFolder,
+} from "@/hooks/use-bookmarks"
 import { useCustomIcon } from "@/hooks/use-custom-icon"
 import { cn, deferred } from "@/lib/utils"
 import { faviconUrl } from "@/lib/favicon"
@@ -43,6 +55,7 @@ export function BookmarkGrid({
   onEditFolder,
   onNewSubfolder,
   onDeleteFolder,
+  onHideFolder,
   onEditBookmark,
   onDeleteBookmark,
   onMove,
@@ -53,6 +66,7 @@ export function BookmarkGrid({
   onEditFolder: (node: BookmarkNode) => void
   onNewSubfolder: (parentId: string) => void
   onDeleteFolder: (node: BookmarkNode) => void
+  onHideFolder: (id: string) => void
   onEditBookmark: (node: BookmarkNode) => void
   onDeleteBookmark: (node: BookmarkNode) => void
   onMove: (nodeId: string, parentId: string) => void
@@ -65,8 +79,11 @@ export function BookmarkGrid({
     )
   }
 
+  // Sized off the container, not the viewport: the grid lives in the Settings
+  // dialog's Bookmarks pane, which is narrower than the window, so `lg:` and
+  // friends would pack five tiles into ~700px.
   return (
-    <div className="grid grid-cols-2 gap-4 p-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+    <div className="grid grid-cols-[repeat(auto-fill,minmax(104px,1fr))] gap-2 p-2.5">
       {items.map((node) =>
         isFolder(node) ? (
           <FolderTile
@@ -77,6 +94,7 @@ export function BookmarkGrid({
             onRename={() => onEditFolder(node)}
             onNewSubfolder={() => onNewSubfolder(node.id)}
             onDelete={() => onDeleteFolder(node)}
+            onHide={() => onHideFolder(node.id)}
             onMove={(parentId) => onMove(node.id, parentId)}
           />
         ) : (
@@ -114,7 +132,10 @@ function MoveToSubmenu({
       <DropdownMenuSubContent>
         {options.map(({ node, depth }) => (
           <DropdownMenuItem key={node.id} onClick={() => onMove(node.id)}>
-            <span style={{ paddingLeft: `${depth * 12}px` }} className="truncate">
+            <span
+              style={{ paddingLeft: `${depth * 12}px` }}
+              className="truncate"
+            >
               {node.title || "(untitled)"}
             </span>
           </DropdownMenuItem>
@@ -132,7 +153,7 @@ function TileActionsMenu({ children }: { children: React.ReactNode }) {
           <Button
             variant="ghost"
             size="icon-xs"
-            className="absolute top-1.5 right-1.5 text-[#8e8e93] opacity-0 hover:bg-black/[0.04] hover:text-[#1c1c1e] group-hover:opacity-100 data-[popup-open]:opacity-100 dark:text-white/70 dark:hover:bg-white/10 dark:hover:text-white"
+            className="absolute top-1 right-1 text-[#8e8e93] opacity-0 group-hover:opacity-100 hover:bg-black/[0.04] hover:text-[#1c1c1e] data-[popup-open]:opacity-100 dark:text-white/70 dark:hover:bg-white/10 dark:hover:text-white"
             onClick={(event: React.MouseEvent) => {
               event.preventDefault()
               event.stopPropagation()
@@ -154,6 +175,7 @@ function FolderTile({
   onRename,
   onNewSubfolder,
   onDelete,
+  onHide,
   onMove,
 }: {
   node: BookmarkNode
@@ -162,6 +184,7 @@ function FolderTile({
   onRename: () => void
   onNewSubfolder: () => void
   onDelete: () => void
+  onHide: () => void
   onMove: (parentId: string) => void
 }) {
   const count = node.children?.length ?? 0
@@ -171,28 +194,42 @@ function FolderTile({
     <div className="group relative h-full cursor-pointer" onClick={onOpen}>
       <BorderGlow
         className="h-full"
-        borderRadius={16}
-        glowRadius={36}
+        borderRadius={12}
+        glowRadius={28}
         coneSpread={22}
         {...glowProps}
       >
-        <div className="relative flex h-full flex-col gap-2 p-3 text-left text-[#1c1c1e] dark:text-white">
-          <FolderOpen className="size-8 text-[#8e8e93] dark:text-white/70" />
-          <div className="flex flex-col">
-            <span className="truncate text-sm font-medium">{node.title || "(untitled)"}</span>
-            <span className="text-xs text-[#8e8e93] dark:text-white/50">
+        <div className="relative flex h-full flex-col gap-1 p-2 text-left text-[#1c1c1e] dark:text-white">
+          <FolderOpen className="size-4.5 text-[#8e8e93] dark:text-white/70" />
+          <div className="flex min-w-0 flex-col">
+            <span className="truncate text-[12px] font-medium">
+              {node.title || "(untitled)"}
+            </span>
+            <span className="text-[10px] text-[#8e8e93] dark:text-white/50">
               {count} item{count === 1 ? "" : "s"}
             </span>
           </div>
 
           <TileActionsMenu>
-            <DropdownMenuItem onClick={deferred(onNewSubfolder)}>New subfolder</DropdownMenuItem>
+            <DropdownMenuItem onClick={deferred(onNewSubfolder)}>
+              New subfolder
+            </DropdownMenuItem>
             <DropdownMenuItem onClick={deferred(onRename)}>
               <Pencil /> Rename
             </DropdownMenuItem>
-            <MoveToSubmenu folders={folders} excludeId={node.id} onMove={onMove} />
+            <MoveToSubmenu
+              folders={folders}
+              excludeId={node.id}
+              onMove={onMove}
+            />
+            <DropdownMenuItem onClick={deferred(onHide)}>
+              <EyeOff /> Hide from dashboard
+            </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem variant="destructive" onClick={deferred(onDelete)}>
+            <DropdownMenuItem
+              variant="destructive"
+              onClick={deferred(onDelete)}
+            >
               <Trash2 /> Delete
             </DropdownMenuItem>
           </TileActionsMenu>
@@ -223,21 +260,25 @@ function BookmarkTile({
     <a href={node.url} className="group relative block h-full">
       <BorderGlow
         className="h-full"
-        borderRadius={16}
-        glowRadius={36}
+        borderRadius={12}
+        glowRadius={28}
         coneSpread={22}
         {...glowProps}
       >
-        <div className="relative flex h-full flex-col gap-2 p-3 text-[#1c1c1e] dark:text-white">
+        <div className="relative flex h-full flex-col gap-1 p-2 text-[#1c1c1e] dark:text-white">
           {icon ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={icon} alt="" className="size-8 rounded" />
+            <img src={icon} alt="" className="size-4.5 rounded" />
           ) : (
-            <Folder className="size-8 text-[#8e8e93] dark:text-white/70" />
+            <Folder className="size-4.5 text-[#8e8e93] dark:text-white/70" />
           )}
-          <div className="flex flex-col">
-            <span className="truncate text-sm font-medium">{node.title || node.url}</span>
-            <span className="truncate text-xs text-[#8e8e93] dark:text-white/50">{node.url}</span>
+          <div className="flex min-w-0 flex-col">
+            <span className="truncate text-[12px] font-medium">
+              {node.title || node.url}
+            </span>
+            <span className="truncate text-[10px] text-[#8e8e93] dark:text-white/50">
+              {node.url}
+            </span>
           </div>
 
           <button
@@ -248,20 +289,27 @@ function BookmarkTile({
               onEdit()
             }}
             className={cn(
-              "absolute top-1.5 right-9 flex size-6 items-center justify-center rounded-md text-[#8e8e93] opacity-0 hover:bg-black/[0.04] hover:text-[#1c1c1e] group-hover:opacity-100 dark:text-white/70 dark:hover:bg-white/10 dark:hover:text-white"
+              "absolute top-1 right-7 flex size-5 items-center justify-center rounded-md text-[#8e8e93] opacity-0 group-hover:opacity-100 hover:bg-black/[0.04] hover:text-[#1c1c1e] dark:text-white/70 dark:hover:bg-white/10 dark:hover:text-white"
             )}
             aria-label="Edit bookmark"
           >
-            <Pencil className="size-3.5" />
+            <Pencil className="size-3" />
           </button>
 
           <TileActionsMenu>
             <DropdownMenuItem onClick={deferred(onEdit)}>
               <Pencil /> Edit
             </DropdownMenuItem>
-            <MoveToSubmenu folders={folders} excludeId={node.id} onMove={onMove} />
+            <MoveToSubmenu
+              folders={folders}
+              excludeId={node.id}
+              onMove={onMove}
+            />
             <DropdownMenuSeparator />
-            <DropdownMenuItem variant="destructive" onClick={deferred(onDelete)}>
+            <DropdownMenuItem
+              variant="destructive"
+              onClick={deferred(onDelete)}
+            >
               <Trash2 /> Delete
             </DropdownMenuItem>
           </TileActionsMenu>

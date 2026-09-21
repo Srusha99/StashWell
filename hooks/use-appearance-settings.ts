@@ -3,9 +3,22 @@
 import * as React from "react"
 
 import { localDayKey } from "@/lib/dates"
-import { type CardFeel, DEFAULT_CARD_FEEL, applyCardFeel, readCardFeel } from "@/lib/card-feel"
+import {
+  type CardFeel,
+  DEFAULT_CARD_FEEL,
+  applyCardFeel,
+  readCardFeel,
+} from "@/lib/card-feel"
 
-export type BackgroundColorMode = "molten" | "ember" | "frost" | "colorbends" | "webthreads" | "lightrays" | "softaurora" | "mist" | "custom"
+export type BackgroundColorMode =
+  | "molten"
+  | "ember"
+  | "frost"
+  | "colorbends"
+  | "lightrays"
+  | "softaurora"
+  | "mist"
+  | "custom"
 
 export interface AppearanceSettings extends CardFeel {
   colorMode: BackgroundColorMode
@@ -15,6 +28,8 @@ export interface AppearanceSettings extends CardFeel {
   greetingName: string
   greetingEnabled: boolean
   searchBarEnabled: boolean
+  notesEnabled: boolean
+  remindersEnabled: boolean
   dailyWallpaperEnabled: boolean
   /** Local calendar day (YYYY-MM-DD) the wallpaper last rotated on. */
   lastWallpaperRotation: string | null
@@ -35,6 +50,8 @@ const DEFAULT_SETTINGS: AppearanceSettings = {
   greetingName: "Srush",
   greetingEnabled: true,
   searchBarEnabled: true,
+  notesEnabled: true,
+  remindersEnabled: true,
   dailyWallpaperEnabled: false,
   lastWallpaperRotation: null,
 }
@@ -70,16 +87,21 @@ export function useAppearanceSettings(): {
   setGreetingName: (name: string) => void
   setGreetingEnabled: (enabled: boolean) => void
   setSearchBarEnabled: (enabled: boolean) => void
+  setNotesEnabled: (enabled: boolean) => void
+  setRemindersEnabled: (enabled: boolean) => void
   setDailyWallpaperEnabled: (enabled: boolean) => void
   setCardFeel: (patch: Partial<CardFeel>) => void
   resetCardFeel: () => void
+  resetAppearance: () => void
   applyDailyWallpaper: (pick: {
     colorMode: BackgroundColorMode
     customBackgroundId: string | null
     date: string
   }) => void
 } {
-  const [settings, setSettings] = React.useState<AppearanceSettings>(() => readStoredSettings())
+  const [settings, setSettings] = React.useState<AppearanceSettings>(() =>
+    readStoredSettings()
+  )
 
   const update = React.useCallback((patch: Partial<AppearanceSettings>) => {
     setSettings((current) => {
@@ -91,7 +113,11 @@ export function useAppearanceSettings(): {
 
   // Stable identity: the rotation hook calls this from an effect.
   const applyDailyWallpaper = React.useCallback(
-    (pick: { colorMode: BackgroundColorMode; customBackgroundId: string | null; date: string }) => {
+    (pick: {
+      colorMode: BackgroundColorMode
+      customBackgroundId: string | null
+      date: string
+    }) => {
       // Deliberately leaves backgroundEnabled alone: if the user picked a plain
       // theme, midnight must not switch a wallpaper back on behind their back.
       update({
@@ -114,15 +140,31 @@ export function useAppearanceSettings(): {
     settings,
     setCardFeel: (patch) => update(patch),
     resetCardFeel: () => update(DEFAULT_CARD_FEEL),
+    // Only the Appearance section's own settings: greetingName, greetingEnabled
+    // and searchBarEnabled live under General, and resetting the wallpaper must
+    // not wipe the name the user typed there.
+    resetAppearance: () =>
+      update({
+        ...DEFAULT_CARD_FEEL,
+        colorMode: DEFAULT_SETTINGS.colorMode,
+        backgroundEnabled: DEFAULT_SETTINGS.backgroundEnabled,
+        cursorGlowEnabled: DEFAULT_SETTINGS.cursorGlowEnabled,
+        customBackgroundId: DEFAULT_SETTINGS.customBackgroundId,
+        dailyWallpaperEnabled: DEFAULT_SETTINGS.dailyWallpaperEnabled,
+        lastWallpaperRotation: DEFAULT_SETTINGS.lastWallpaperRotation,
+      }),
     // backgroundEnabled is the master switch for every background, uploads
     // included, so picking any wallpaper turns it back on.
-    setColorMode: (mode) => update({ colorMode: mode, backgroundEnabled: true }),
+    setColorMode: (mode) =>
+      update({ colorMode: mode, backgroundEnabled: true }),
     setBackgroundEnabled: (enabled) => update({ backgroundEnabled: enabled }),
     setCursorGlowEnabled: (enabled) => update({ cursorGlowEnabled: enabled }),
     setCustomBackgroundId: (id) => update({ customBackgroundId: id }),
     setGreetingName: (name) => update({ greetingName: name }),
     setGreetingEnabled: (enabled) => update({ greetingEnabled: enabled }),
     setSearchBarEnabled: (enabled) => update({ searchBarEnabled: enabled }),
+    setNotesEnabled: (enabled) => update({ notesEnabled: enabled }),
+    setRemindersEnabled: (enabled) => update({ remindersEnabled: enabled }),
     setDailyWallpaperEnabled: (enabled) =>
       // Stamping today on enable means the first rotation happens at the next
       // midnight, not the instant the switch is flipped.

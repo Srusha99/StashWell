@@ -3,9 +3,14 @@
 import * as React from "react"
 import { Plus, Settings } from "lucide-react"
 
-import { type BookmarkNode, isFolder, useBookmarks } from "@/hooks/use-bookmarks"
+import { cn } from "@/lib/utils"
+
+import {
+  type BookmarkNode,
+  isFolder,
+  useBookmarks,
+} from "@/hooks/use-bookmarks"
 import { useCardColumns } from "@/hooks/use-card-columns"
-import { useHiddenFolders } from "@/hooks/use-hidden-folders"
 import { Button } from "@/components/ui/button"
 import { DashboardHeader } from "@/components/bookmarks/dashboard-header"
 import { FolderCard } from "@/components/bookmarks/folder-card"
@@ -43,6 +48,10 @@ interface CardData {
 const NOTES_CARD_ID = "stashwell:notes"
 const REMINDERS_CARD_ID = "stashwell:reminders"
 
+/** The floating round buttons in the bottom-right corner. */
+const CORNER_BUTTON_CLASS =
+  "rounded-full border border-black/10 bg-white text-[#1c1c1e] shadow-[var(--shadow-soft)] backdrop-blur-md hover:bg-[#fafafa] dark:border-white/15 dark:bg-black/40 dark:text-white dark:shadow-lg dark:hover:bg-black/60"
+
 // Listed as separate members rather than `kind: "notes" | "reminders"` so
 // TypeScript can narrow to the folder variant after the two early returns.
 type DashboardItem =
@@ -54,25 +63,39 @@ export function DashboardView({
   columnCount,
   onOpenManager,
   onOpenSettings,
+  hiddenIds,
+  onHideFolder,
   greetingName,
   greetingEnabled,
   searchBarEnabled,
+  notesEnabled,
+  remindersEnabled,
 }: {
   columnCount: number
   onOpenManager: (folderId: string) => void
   onOpenSettings: () => void
+  hiddenIds: Set<string>
+  onHideFolder: (id: string) => void
   greetingName: string
   greetingEnabled: boolean
   searchBarEnabled: boolean
+  notesEnabled: boolean
+  remindersEnabled: boolean
 }) {
-  const { activeWorkspace, activeId, resolved, workspaceFolderIds } = useWorkspaces()
+  const { activeWorkspace, activeId, resolved, workspaceFolderIds } =
+    useWorkspaces()
   const bookmarks = useBookmarks(activeWorkspace.folderId)
   const { root } = bookmarks
-  const { hiddenIds, hideFolder } = useHiddenFolders(activeId)
 
-  const [formDialog, setFormDialog] = React.useState<FormDialogState | null>(null)
-  const [deleteTarget, setDeleteTarget] = React.useState<BookmarkNode | null>(null)
-  const [organizerFolderId, setOrganizerFolderId] = React.useState<string | null>(null)
+  const [formDialog, setFormDialog] = React.useState<FormDialogState | null>(
+    null
+  )
+  const [deleteTarget, setDeleteTarget] = React.useState<BookmarkNode | null>(
+    null
+  )
+  const [organizerFolderId, setOrganizerFolderId] = React.useState<
+    string | null
+  >(null)
   const [draggedCardId, setDraggedCardId] = React.useState<string | null>(null)
   const [dropTarget, setDropTarget] = React.useState<{
     columnIndex: number
@@ -97,7 +120,12 @@ export function DashboardView({
     const subfolders = children.filter(
       (node) => isFolder(node) && !workspaceFolderIds.has(node.id)
     )
-    map.set(bar.id, { id: bar.id, title: "Unsorted", node: null, items: looseItems })
+    map.set(bar.id, {
+      id: bar.id,
+      title: "Unsorted",
+      node: null,
+      items: looseItems,
+    })
     for (const folder of subfolders) {
       map.set(folder.id, {
         id: folder.id,
@@ -122,17 +150,28 @@ export function DashboardView({
     return map
   }, [cardsById])
 
-  const defaultOrder = React.useMemo(() => Array.from(itemsById.keys()), [itemsById])
-  const [columns, moveCard] = useCardColumns(defaultOrder, columnCount, activeId)
+  const defaultOrder = React.useMemo(
+    () => Array.from(itemsById.keys()),
+    [itemsById]
+  )
+  const [columns, moveCard] = useCardColumns(
+    defaultOrder,
+    columnCount,
+    activeId
+  )
+  // Notes and reminders keep their ids in `defaultOrder`/`columns` even while
+  // toggled off, the same way a hidden folder does - filtered only here, at
+  // display time, so re-enabling one puts it back exactly where it was
+  // dragged rather than at the end of the shortest column.
   const visibleColumns = columns.map((colIds) =>
     colIds
       .map((id) => itemsById.get(id))
-      .filter(
-        (item): item is DashboardItem =>
-          // Only folder cards can be hidden; the notes and reminders cards have
-          // no "Hide" action, so they're always shown.
-          !!item && (item.kind !== "folder" || !hiddenIds.has(item.id))
-      )
+      .filter((item): item is DashboardItem => {
+        if (!item) return false
+        if (item.kind === "folder") return !hiddenIds.has(item.id)
+        if (item.kind === "notes") return notesEnabled
+        return remindersEnabled
+      })
   )
 
   function handleCardDrop(columnIndex: number, targetId: string | null) {
@@ -152,7 +191,10 @@ export function DashboardView({
         url: values.url ?? "",
       })
     } else if (formDialog.mode === "create-folder") {
-      await bookmarks.createFolder({ parentId: formDialog.parentId, title: values.title })
+      await bookmarks.createFolder({
+        parentId: formDialog.parentId,
+        title: values.title,
+      })
     } else if (formDialog.mode === "edit" && formDialog.node) {
       await bookmarks.updateBookmark(formDialog.node.id, {
         title: values.title,
@@ -174,7 +216,11 @@ export function DashboardView({
           corner. z-40 keeps it under the z-50 menus and dialogs it opens. */}
       <WorkspaceSwitcher className="fixed top-6 left-6 z-40" />
 
-      <DashboardHeader greetingName={greetingName} greetingEnabled={greetingEnabled} searchBarEnabled={searchBarEnabled} />
+      <DashboardHeader
+        greetingName={greetingName}
+        greetingEnabled={greetingEnabled}
+        searchBarEnabled={searchBarEnabled}
+      />
 
       {/* Shown instead of the folder columns when the workspace's Chrome folder
           can't be resolved - never a fallback to another folder's contents. */}
@@ -189,13 +235,17 @@ export function DashboardView({
           made the dashboard feel heavy. ~228px per column at 4 columns. */}
       <div className="mx-auto flex w-full max-w-[960px] gap-[var(--grid-gap)]">
         {visibleColumns.map((items, columnIndex) => (
-          <div key={columnIndex} className="flex min-w-0 flex-1 flex-col gap-[var(--grid-gap)]">
+          <div
+            key={columnIndex}
+            className="flex min-w-0 flex-1 flex-col gap-[var(--grid-gap)]"
+          >
             {items.map((item) => {
               // Every card in a column - notes, reminders, folders - shares the
               // same drag wiring, which is what lets them be reordered together.
               const dragProps = {
                 isDragging: draggedCardId === item.id,
-                dropIndicator: dropTarget?.id === item.id ? dropTarget.position : null,
+                dropIndicator:
+                  dropTarget?.id === item.id ? dropTarget.position : null,
                 onCardDragStart: () => setDraggedCardId(item.id),
                 onCardDragOver: (position: "before" | "after") => {
                   if (draggedCardId && draggedCardId !== item.id) {
@@ -203,7 +253,9 @@ export function DashboardView({
                   }
                 },
                 onCardDragLeave: () =>
-                  setDropTarget((current) => (current?.id === item.id ? null : current)),
+                  setDropTarget((current) =>
+                    current?.id === item.id ? null : current
+                  ),
                 onCardDrop: () => handleCardDrop(columnIndex, item.id),
                 onCardDragEnd: () => {
                   setDraggedCardId(null)
@@ -212,10 +264,22 @@ export function DashboardView({
               }
 
               if (item.kind === "notes") {
-                return <NotesCard key={item.id} workspaceId={activeId} {...dragProps} />
+                return (
+                  <NotesCard
+                    key={item.id}
+                    workspaceId={activeId}
+                    {...dragProps}
+                  />
+                )
               }
               if (item.kind === "reminders") {
-                return <RemindersCard key={item.id} workspaceId={activeId} {...dragProps} />
+                return (
+                  <RemindersCard
+                    key={item.id}
+                    workspaceId={activeId}
+                    {...dragProps}
+                  />
+                )
               }
 
               const card = item.card
@@ -227,19 +291,31 @@ export function DashboardView({
                   node={card.node}
                   items={card.items}
                   onEditBookmark={(node) =>
-                    setFormDialog({ mode: "edit", node, parentId: node.parentId ?? "" })
+                    setFormDialog({
+                      mode: "edit",
+                      node,
+                      parentId: node.parentId ?? "",
+                    })
                   }
                   onDeleteBookmark={setDeleteTarget}
                   onDrillInto={onOpenManager}
                   onNewBookmark={(parentId) =>
-                    setFormDialog({ mode: "create-bookmark", node: null, parentId })
+                    setFormDialog({
+                      mode: "create-bookmark",
+                      node: null,
+                      parentId,
+                    })
                   }
                   onOrganize={setOrganizerFolderId}
                   onRename={(node) =>
-                    setFormDialog({ mode: "edit", node, parentId: node.parentId ?? "" })
+                    setFormDialog({
+                      mode: "edit",
+                      node,
+                      parentId: node.parentId ?? "",
+                    })
                   }
                   onDelete={setDeleteTarget}
-                  onHide={hideFolder}
+                  onHide={onHideFolder}
                   {...dragProps}
                 />
               )
@@ -254,7 +330,9 @@ export function DashboardView({
                 }}
                 onDragLeave={() =>
                   setDropTarget((current) =>
-                    current?.columnIndex === columnIndex && current.id === null ? null : current
+                    current?.columnIndex === columnIndex && current.id === null
+                      ? null
+                      : current
                   )
                 }
                 onDrop={(event) => {
@@ -262,9 +340,10 @@ export function DashboardView({
                   handleCardDrop(columnIndex, null)
                 }}
               >
-                {dropTarget?.columnIndex === columnIndex && dropTarget.id === null && (
-                  <div className="absolute inset-x-2 top-0 h-0.5 rounded-full bg-primary" />
-                )}
+                {dropTarget?.columnIndex === columnIndex &&
+                  dropTarget.id === null && (
+                    <div className="absolute inset-x-2 top-0 h-0.5 rounded-full bg-primary" />
+                  )}
               </div>
             )}
           </div>
@@ -275,7 +354,11 @@ export function DashboardView({
         <button
           type="button"
           onClick={() =>
-            setFormDialog({ mode: "create-folder", node: null, parentId: root.id })
+            setFormDialog({
+              mode: "create-folder",
+              node: null,
+              parentId: root.id,
+            })
           }
           className="mx-auto mt-5 flex items-center gap-1 text-[11px] text-[#8e8e93] transition-colors hover:text-[#1c1c1e] dark:text-white/40 dark:hover:text-white"
         >
@@ -304,13 +387,15 @@ export function DashboardView({
         bookmarks={bookmarks}
       />
 
+      {/* The only fixed button down here: the organiser is the Bookmarks section
+          of Settings now, so one gear reaches everything. */}
       <Button
         variant="secondary"
         size="icon-lg"
-        className="fixed right-6 bottom-6 rounded-full border border-black/10 bg-white text-[#1c1c1e] shadow-[var(--shadow-soft)] backdrop-blur-md hover:bg-[#fafafa] dark:border-white/15 dark:bg-black/40 dark:text-white dark:shadow-lg dark:hover:bg-black/60"
+        className={cn("fixed right-6 bottom-6", CORNER_BUTTON_CLASS)}
         onClick={onOpenSettings}
-        aria-label="Open manager settings"
-        title="Manager settings"
+        aria-label="Open settings"
+        title="Settings"
       >
         <Settings />
       </Button>
