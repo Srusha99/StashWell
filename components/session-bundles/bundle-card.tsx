@@ -4,7 +4,6 @@ import * as React from "react"
 import {
   ChevronDownIcon,
   ChevronRightIcon,
-  ExternalLinkIcon,
   GlobeIcon,
   PlayIcon,
   Trash2Icon,
@@ -12,7 +11,7 @@ import {
 } from "lucide-react"
 
 import {
-  copyFormattedLinks,
+  copyTabUrls,
   type SessionBundle,
   type SessionTab,
 } from "@/lib/session-bundles"
@@ -113,9 +112,9 @@ export function BundleCard({
     setTimeout(() => setShareStatus(null), 1500)
   }
 
-  async function handleShareFormattedLinks(tabs: SessionTab[]) {
-    const ok = await copyFormattedLinks(tabs)
-    if (ok) flashShareStatus(`Copied ${tabs.length} link${tabs.length === 1 ? "" : "s"}`)
+  async function handleShareTabUrls(tabs: SessionTab[]) {
+    const ok = await copyTabUrls(tabs)
+    if (ok) flashShareStatus(`Copied ${tabs.length} URL${tabs.length === 1 ? "" : "s"}`)
   }
 
   async function handleDeleteConfirmed() {
@@ -229,7 +228,7 @@ export function BundleCard({
       )}
 
       {expanded && (
-        <div className="mt-1.5 space-y-1 border-t border-black/10 pt-1.5 pl-7">
+        <div className="mt-1.5 space-y-2 border-t border-black/10 pt-1.5">
           {bundle.tabs.length === 0 && (
             <p className="text-[11px] text-neutral-500">No tabs left in this bundle.</p>
           )}
@@ -256,7 +255,7 @@ export function BundleCard({
               <button
                 type="button"
                 disabled={selectedTabs.length === 0}
-                onClick={() => handleShareFormattedLinks(selectedTabs)}
+                onClick={() => handleShareTabUrls(selectedTabs)}
                 className="shrink-0 rounded-full bg-blue-500 px-2.5 py-1 text-[10px] font-medium text-white shadow-sm transition hover:bg-blue-600 disabled:pointer-events-none disabled:opacity-40"
               >
                 {`Share Selected (${selectedTabs.length})`}
@@ -267,26 +266,24 @@ export function BundleCard({
           {shareStatus && <p className="pb-1 text-[10px] text-neutral-500">{shareStatus}</p>}
 
           {bundle.tabs.map((tab) => (
-            <div key={tab.id} className="flex items-center gap-1.5">
+            <div key={tab.id} className="flex items-center gap-2">
               <input
                 type="checkbox"
                 checked={selectedTabIds.has(tab.id)}
                 onChange={() => toggleTabSelection(tab.id)}
                 aria-label={`Select ${tab.title}`}
-                className="size-3 shrink-0 rounded-sm border border-black/20 accent-blue-500"
+                className="size-3.5 shrink-0 rounded-sm border border-black/20 accent-blue-500"
               />
               <Favicon url={tab.favIconUrl} />
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-[11px] font-medium">{tab.title}</p>
-                <p className="truncate text-[10px] text-neutral-400">{tab.url}</p>
-              </div>
-              <IconButton
-                className="size-5"
+              <button
+                type="button"
                 onClick={() => chrome.tabs.create({ url: tab.url })}
-                aria-label="Open this tab"
+                title={tab.url}
+                aria-label={`Open ${tab.title || tab.url}`}
+                className="min-w-0 flex-1 truncate text-left text-[11px] font-medium hover:underline"
               >
-                <ExternalLinkIcon className="size-2.5" />
-              </IconButton>
+                {tab.title || tab.url}
+              </button>
               <IconButton
                 className="size-5"
                 onClick={() => onDeleteTab(bundle.id, tab.id)}

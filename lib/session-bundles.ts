@@ -294,15 +294,22 @@ function escapeHtml(value: string): string {
     .replace(/'/g, "&#39;")
 }
 
-export function tabsToMarkdownLinks(tabs: SessionTab[]): string {
-  return tabs.map((tab) => `- [${tab.title}](${tab.url})`).join("\n")
+const MAX_LINK_TITLE_LENGTH = 40
+
+/** Trims a tab title down to a short label, e.g. for a link list. */
+function shortenTitle(title: string): string {
+  const trimmed = title.trim()
+  if (trimmed.length <= MAX_LINK_TITLE_LENGTH) return trimmed
+  return `${trimmed.slice(0, MAX_LINK_TITLE_LENGTH - 1).trimEnd()}…`
 }
 
-/** Real `<a>` tags, one per line - the "hyperlinked text" half of a formatted-links copy. */
-export function tabsToHtmlLinks(tabs: SessionTab[]): string {
-  return tabs
-    .map((tab) => `<a href="${escapeHtml(tab.url)}">${escapeHtml(tab.title || tab.url)}</a>`)
-    .join("<br>")
+export function tabsToMarkdownLinks(tabs: SessionTab[]): string {
+  return tabs.map((tab) => `- [${shortenTitle(tab.title)}](${tab.url})`).join("\n")
+}
+
+/** Bare URL per tab, one per line, no title - what "Share Selected" copies. */
+export function tabsToPlainUrls(tabs: SessionTab[]): string {
+  return tabs.map((tab) => tab.url).join("\n")
 }
 
 export function bundleToMarkdown(bundle: SessionBundle): string {
@@ -335,32 +342,9 @@ export async function copyToClipboard(text: string): Promise<boolean> {
   }
 }
 
-/**
- * Copies both a Markdown list (text/plain) and real `<a>` tags (text/html) in
- * one write, so pasting into a rich-text target (email, Docs, Slack) yields
- * clickable hyperlinks while pasting into a plain-text/Markdown target yields
- * the Markdown source. Falls back to a plain-text Markdown copy when the
- * multi-type Clipboard API isn't available (e.g. an older browser context).
- */
-export async function copyFormattedLinks(tabs: SessionTab[]): Promise<boolean> {
-  const markdown = tabsToMarkdownLinks(tabs)
-
-  if (typeof ClipboardItem !== "undefined" && navigator.clipboard?.write) {
-    try {
-      await navigator.clipboard.write([
-        new ClipboardItem({
-          "text/html": new Blob([tabsToHtmlLinks(tabs)], { type: "text/html" }),
-          "text/plain": new Blob([markdown], { type: "text/plain" }),
-        }),
-      ])
-      return true
-    } catch {
-      // Some browsers restrict multi-type clipboard writes outside a direct
-      // user gesture; fall back to the plain-text copy below.
-    }
-  }
-
-  return copyToClipboard(markdown)
+/** Copies each selected tab's bare URL, one per line, to the clipboard. */
+export async function copyTabUrls(tabs: SessionTab[]): Promise<boolean> {
+  return copyToClipboard(tabsToPlainUrls(tabs))
 }
 
 function toBase64Url(input: string): string {
