@@ -1,5 +1,7 @@
 "use client"
+import { supabase } from '@/lib/supabaseClient'
 
+console.log('Supabase client:', supabase)
 import * as React from "react"
 
 import { BookmarkApp } from "@/components/bookmarks/bookmark-app"
