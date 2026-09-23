@@ -1,0 +1,330 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Welcome to StashWell</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+      :root {
+        --bg: #0d0d0f;
+        --card: #17171a;
+        --border: #2a2a2e;
+        --text: #f5f5f7;
+        --muted: #9a9aa2;
+        --accent: #5227ff;
+        --accent-soft: rgba(82, 39, 255, 0.15);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 64px 24px 40px;
+      }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        align-self: flex-start;
+        margin-left: calc((100% - 900px) / 2);
+        font-weight: 600;
+        font-size: 15px;
+      }
+
+      .brand img {
+        width: 28px;
+        height: 28px;
+        border-radius: 7px;
+      }
+
+      .hero {
+        max-width: 700px;
+        text-align: center;
+        margin-top: 56px;
+      }
+
+      .hero img {
+        width: 64px;
+        height: 64px;
+        border-radius: 14px;
+        margin-bottom: 28px;
+      }
+
+      h1 {
+        font-size: 34px;
+        line-height: 1.25;
+        font-weight: 700;
+        margin: 0 0 12px;
+      }
+
+      h1 span {
+        color: var(--accent);
+      }
+
+      .subtitle {
+        color: var(--muted);
+        font-size: 15px;
+        margin: 0 0 48px;
+      }
+
+      .steps {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 32px;
+        max-width: 900px;
+        width: 100%;
+      }
+
+      @media (max-width: 720px) {
+        .steps {
+          grid-template-columns: 1fr;
+        }
+        .brand {
+          margin-left: 0;
+        }
+      }
+
+      .step h2 {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        font-size: 17px;
+        margin: 0 0 8px;
+      }
+
+      .step-number {
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        background: var(--accent);
+        color: #fff;
+        font-size: 13px;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+      }
+
+      .step p {
+        color: var(--muted);
+        font-size: 14px;
+        line-height: 1.5;
+        margin: 0 0 20px;
+      }
+
+      .mock {
+        background: #0a0a0c;
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        overflow: hidden;
+      }
+
+      .mock-bar {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 12px;
+        border-bottom: 1px solid var(--border);
+      }
+
+      .dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+      }
+
+      .dot.red {
+        background: #ff5f57;
+      }
+      .dot.yellow {
+        background: #febc2e;
+      }
+      .dot.green {
+        background: #28c840;
+      }
+
+      .mock-tab {
+        margin-left: 8px;
+        background: #1c1c20;
+        border-radius: 6px;
+        padding: 4px 10px;
+        font-size: 11px;
+        color: var(--muted);
+      }
+
+      .mock-body {
+        position: relative;
+        padding: 24px;
+        min-height: 190px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .ext-popup {
+        position: absolute;
+        top: 10px;
+        right: 24px;
+        left: 24px;
+        background: #1c1c20;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 12px;
+        text-align: left;
+      }
+
+      .ext-popup-head {
+        display: flex;
+        justify-content: space-between;
+        color: var(--muted);
+        font-size: 12px;
+        margin-bottom: 4px;
+      }
+
+      .ext-popup-sub {
+        color: #6a6a72;
+        font-size: 11px;
+        margin-bottom: 10px;
+      }
+
+      .ext-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 13px;
+        font-weight: 500;
+      }
+
+      .ext-row img {
+        width: 18px;
+        height: 18px;
+        border-radius: 4px;
+      }
+
+      .pin {
+        margin-left: auto;
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        background: var(--accent);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #fff;
+        font-size: 12px;
+      }
+
+      .newtab-mock {
+        text-align: center;
+        color: var(--muted);
+      }
+
+      .newtab-mock img {
+        width: 36px;
+        height: 36px;
+        border-radius: 8px;
+        margin-bottom: 10px;
+      }
+
+      .newtab-mock strong {
+        display: block;
+        color: var(--text);
+        font-size: 14px;
+        margin-bottom: 4px;
+      }
+
+      .newtab-mock small {
+        font-size: 11px;
+      }
+
+      .plus {
+        position: absolute;
+        top: 12px;
+        right: 12px;
+        width: 22px;
+        height: 22px;
+        border-radius: 50%;
+        background: var(--accent);
+        color: #fff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 14px;
+      }
+
+      .footer {
+        margin-top: 56px;
+        color: #55555c;
+        font-size: 12px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="brand">
+      <img src="icons/icon48.png" alt="" />
+      StashWell
+    </div>
+
+    <div class="hero">
+      <img src="icons/icon128.png" alt="" />
+      <h1>Welcome! Complete these <span>2 quick steps</span> to finish setup.</h1>
+      <p class="subtitle">Chrome can't do these for you automatically. Takes about 10 seconds.</p>
+    </div>
+
+    <div class="steps">
+      <div class="step">
+        <h2><span class="step-number">1</span>Pin StashWell to your toolbar</h2>
+        <p>Click the puzzle icon in your browser toolbar, then click the pin icon next to StashWell.</p>
+        <div class="mock">
+          <div class="mock-bar">
+            <span class="dot red"></span><span class="dot yellow"></span><span class="dot green"></span>
+            <span class="mock-tab">stashwell</span>
+          </div>
+          <div class="mock-body">
+            <div class="ext-popup">
+              <div class="ext-popup-head"><span>Extensions</span><span>&times;</span></div>
+              <div class="ext-popup-sub">No access needed</div>
+              <div class="ext-row">
+                <img src="icons/icon16.png" alt="" />
+                StashWell
+                <span class="pin">&#128204;</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="step">
+        <h2><span class="step-number">2</span>Open a new tab</h2>
+        <p>Press Ctrl+T (or Cmd+T on Mac) to see your StashWell dashboard and start stashing bookmarks.</p>
+        <div class="mock">
+          <div class="mock-bar">
+            <span class="dot red"></span><span class="dot yellow"></span><span class="dot green"></span>
+            <span class="mock-tab">chrome://newtab</span>
+          </div>
+          <div class="mock-body">
+            <span class="plus">+</span>
+            <div class="newtab-mock">
+              <img src="icons/icon48.png" alt="" />
+              <strong>Open a new tab &rarr;</strong>
+              <small>Ctrl+T / &#8984;T</small>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer">You can close this tab once you're done.</div>
+  </body>
+</html>

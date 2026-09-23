@@ -109,8 +109,15 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   return true
 })
 
-chrome.runtime.onInstalled.addListener(() => {
+chrome.runtime.onInstalled.addListener((details) => {
   console.log("[StashWell] service worker installed; reminder notifications ready.")
+
+  // Only on a fresh install, not on every extension update/reload - those
+  // fire onInstalled too, and re-showing the pin/new-tab walkthrough on each
+  // update would be noise rather than help.
+  if (details.reason === "install") {
+    chrome.tabs.create({ url: chrome.runtime.getURL("onboarding.html") })
+  }
 
   // removeAll() first: onInstalled can also fire for an unpacked-extension
   // reload, and create() with a reused id would otherwise fail silently

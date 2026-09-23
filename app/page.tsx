@@ -6,6 +6,7 @@ import * as React from "react"
 
 import { BookmarkApp } from "@/components/bookmarks/bookmark-app"
 import { SessionBundlesPopup } from "@/components/session-bundles/session-bundles-popup"
+import { AuthForm } from "@/components/AuthForm"
 
 /**
  * The toolbar popup (manifest.json action.default_popup) points at this same
@@ -30,6 +31,13 @@ export default function Page() {
   }, [])
 
   if (view === "popup") return <SessionBundlesPopup />
-  if (view === "dashboard") return <BookmarkApp />
+  if (view === "dashboard") {
+    return (
+      <>
+        <AuthForm />
+        <BookmarkApp />
+      </>
+    )
+  }
   return null
 }
