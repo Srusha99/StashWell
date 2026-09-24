@@ -1,9 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Plus, Settings } from "lucide-react"
-
-import { cn } from "@/lib/utils"
+import { Plus } from "lucide-react"
 
 import {
   type BookmarkNode,
@@ -11,12 +9,12 @@ import {
   useBookmarks,
 } from "@/hooks/use-bookmarks"
 import { useCardColumns } from "@/hooks/use-card-columns"
-import { Button } from "@/components/ui/button"
 import { DashboardHeader } from "@/components/bookmarks/dashboard-header"
 import { FolderCard } from "@/components/bookmarks/folder-card"
 import { NotesCard } from "@/components/dashboard/notes-card"
 import { RemindersCard } from "@/components/dashboard/reminders-card"
 import { WorkspaceSwitcher } from "@/components/workspaces/workspace-switcher"
+import { UserMenu } from "@/components/auth/user-menu"
 import { WorkspaceRepairNotice } from "@/components/workspaces/workspace-repair-notice"
 import { useWorkspaces } from "@/components/workspaces/workspace-provider"
 import {
@@ -47,10 +45,6 @@ interface CardData {
  */
 const NOTES_CARD_ID = "stashwell:notes"
 const REMINDERS_CARD_ID = "stashwell:reminders"
-
-/** The floating round buttons in the bottom-right corner. */
-const CORNER_BUTTON_CLASS =
-  "rounded-full border border-black/10 bg-white text-[#1c1c1e] shadow-[var(--shadow-soft)] backdrop-blur-md hover:bg-[#fafafa] dark:border-white/15 dark:bg-black/40 dark:text-white dark:shadow-lg dark:hover:bg-black/60"
 
 // Listed as separate members rather than `kind: "notes" | "reminders"` so
 // TypeScript can narrow to the folder variant after the two early returns.
@@ -215,6 +209,7 @@ export function DashboardView({
       {/* Top-left corner, mirroring the fixed settings button in the opposite
           corner. z-40 keeps it under the z-50 menus and dialogs it opens. */}
       <WorkspaceSwitcher className="fixed top-6 left-6 z-40" />
+      <UserMenu onOpenSettings={onOpenSettings} className="fixed top-6 right-6 z-40" />
 
       <DashboardHeader
         greetingName={greetingName}
@@ -387,18 +382,6 @@ export function DashboardView({
         bookmarks={bookmarks}
       />
 
-      {/* The only fixed button down here: the organiser is the Bookmarks section
-          of Settings now, so one gear reaches everything. */}
-      <Button
-        variant="secondary"
-        size="icon-lg"
-        className={cn("fixed right-6 bottom-6", CORNER_BUTTON_CLASS)}
-        onClick={onOpenSettings}
-        aria-label="Open settings"
-        title="Settings"
-      >
-        <Settings />
-      </Button>
     </div>
   )
 }

@@ -7,6 +7,8 @@
  * menu and can't import this module - see that file's header comment).
  */
 
+import { pushToCloud } from "@/lib/syncEngine"
+
 export interface SessionTab {
   id: string
   title: string
@@ -122,7 +124,10 @@ async function writeSessionBundleMap(map: SessionBundleMap): Promise<void> {
     warnUnavailable()
     return
   }
+  // Local-first: chrome.storage.local write completes (and is awaited by the
+  // caller) before the Supabase upsert is even fired, let alone resolved.
   await chrome.storage.local.set({ [STORAGE_KEY]: map })
+  pushToCloud({ sessions: map })
 }
 
 /** All saved bundles, newest first. */

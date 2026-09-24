@@ -1,1 +1,0 @@
-self.__next_f.push([1,"f:I[3352,[\"./next/static/chunks/08lymh_y_ynmx.js\",\"./next/static/chunks/0rdfsghv7f1l0.js\"],\"IconMark\"]\n7:null\nc:[[\"$\",\"link\",\"0\",{\"rel\":\"icon\",\"href\":\"/favicon.ico?favicon.0x3dzn~oxb6tn.ico\",\"sizes\":\"256x256\",\"type\":\"image/x-icon\"}],[\"$\",\"$Lf\",\"1\",{}]]\n"])

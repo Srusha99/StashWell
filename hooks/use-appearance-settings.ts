@@ -9,6 +9,14 @@ import {
   applyCardFeel,
   readCardFeel,
 } from "@/lib/card-feel"
+/**
+ * Purely local - wallpaper/appearance settings never sync to Supabase, so
+ * this key lives here instead of lib/syncEngine.ts. Kept identical to the
+ * window.localStorage key this used before moving to chrome.storage.local,
+ * so an existing local value migrates in place instead of appearing to
+ * reset.
+ */
+const SETTINGS_STORAGE_KEY = "bm:appearance"
 
 export type BackgroundColorMode =
   | "molten"
@@ -35,8 +43,6 @@ export interface AppearanceSettings extends CardFeel {
   lastWallpaperRotation: string | null
 }
 
-const STORAGE_KEY = "bm:appearance"
-
 // Re-exported so existing import sites keep working; the implementation moved
 // to lib/dates.ts so pure lib/ modules can use it too.
 export { localDayKey }
@@ -56,15 +62,46 @@ const DEFAULT_SETTINGS: AppearanceSettings = {
   lastWallpaperRotation: null,
 }
 
-function readStoredSettings(): AppearanceSettings {
+function hasChromeStorage(): boolean {
+  return typeof chrome !== "undefined" && !!chrome.storage?.local
+}
+
+function mergeSettings(raw: unknown): AppearanceSettings {
+  const merged = { ...DEFAULT_SETTINGS, ...(raw as object) }
+  // Clamp/fill the slider values, so a partial or hand-edited blob can't put
+  // NaN into a CSS variable and blank every card.
+  return { ...merged, ...readCardFeel(merged) }
+}
+
+/**
+ * Reads the stored settings from chrome.storage.local - the extension-wide
+ * store that (unlike window.localStorage) is shared between the popup and
+ * dashboard contexts. Purely local: these settings never sync to Supabase,
+ * so this is the only place they're written or read. Falls back to
+ * window.localStorage outside the extension (e.g. `next dev` in a plain
+ * browser tab), and one-time migrates an existing localStorage value into
+ * chrome.storage.local the first time it finds one.
+ */
+async function readStoredSettings(): Promise<AppearanceSettings> {
   try {
-    const raw = window.localStorage.getItem(STORAGE_KEY)
+    if (hasChromeStorage()) {
+      const stored = await chrome.storage.local.get(SETTINGS_STORAGE_KEY)
+      const raw = stored[SETTINGS_STORAGE_KEY]
+      if (raw != null) return mergeSettings(raw)
+
+      const legacy = window.localStorage.getItem(SETTINGS_STORAGE_KEY)
+      if (legacy) {
+        const migrated = mergeSettings(JSON.parse(legacy))
+        await chrome.storage.local.set({ [SETTINGS_STORAGE_KEY]: migrated })
+        window.localStorage.removeItem(SETTINGS_STORAGE_KEY)
+        return migrated
+      }
+      return DEFAULT_SETTINGS
+    }
+
+    const raw = window.localStorage.getItem(SETTINGS_STORAGE_KEY)
     if (!raw) return DEFAULT_SETTINGS
-    const parsed = JSON.parse(raw)
-    const merged = { ...DEFAULT_SETTINGS, ...parsed }
-    // Clamp/fill the slider values, so a partial or hand-edited blob can't put
-    // NaN into a CSS variable and blank every card.
-    return { ...merged, ...readCardFeel(merged) }
+    return mergeSettings(JSON.parse(raw))
   } catch {
     return DEFAULT_SETTINGS
   }
@@ -72,7 +109,11 @@ function readStoredSettings(): AppearanceSettings {
 
 function writeStoredSettings(settings: AppearanceSettings) {
   try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(settings))
+    if (hasChromeStorage()) {
+      void chrome.storage.local.set({ [SETTINGS_STORAGE_KEY]: settings })
+    } else {
+      window.localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(settings))
+    }
   } catch {
     // ignore write failures (e.g. storage disabled)
   }
@@ -99,9 +140,39 @@ export function useAppearanceSettings(): {
     date: string
   }) => void
 } {
-  const [settings, setSettings] = React.useState<AppearanceSettings>(() =>
-    readStoredSettings()
+  // Starts at defaults and loads for real in the effect below - reading
+  // chrome.storage.local is async, unlike the window.localStorage this used
+  // to read synchronously here, so there's a first-paint flash of defaults
+  // (same tradeoff as the custom-background list elsewhere in this app).
+  const [settings, setSettings] = React.useState<AppearanceSettings>(
+    DEFAULT_SETTINGS
   )
+
+  React.useEffect(() => {
+    let active = true
+    readStoredSettings().then((loaded) => {
+      if (active) setSettings(loaded)
+    })
+    return () => {
+      active = false
+    }
+  }, [])
+
+  // Picks up settings written elsewhere, e.g. the popup context.
+  React.useEffect(() => {
+    if (!hasChromeStorage()) return
+    function handleChange(
+      changes: { [key: string]: chrome.storage.StorageChange },
+      areaName: chrome.storage.AreaName
+    ) {
+      if (areaName !== "local") return
+      const change = changes[SETTINGS_STORAGE_KEY]
+      if (!change) return
+      setSettings(mergeSettings(change.newValue))
+    }
+    chrome.storage.onChanged.addListener(handleChange)
+    return () => chrome.storage.onChanged.removeListener(handleChange)
+  }, [])
 
   const update = React.useCallback((patch: Partial<AppearanceSettings>) => {
     setSettings((current) => {

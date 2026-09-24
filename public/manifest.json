@@ -9,7 +9,8 @@
   "background": {
     "service_worker": "background.js"
   },
-  "permissions": ["bookmarks", "alarms", "notifications", "storage", "tabs", "contextMenus", "favicon"],
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAyOieOeoJwcNtCWZCJxkRUYQJlUpOopkp0+84r0gtB67GHKG73peXQz6F5Di0kePx2wsD9Au0o38ElZ+pCurFzGJ2HugWrV4A7gIJfb+xTEiVdBR9G9eR3G27rBJN1EB3XxOGBFT4BR3YGnP5TmncaIu03dRokqIGH98JBxE9blIatJ7zokygxN0UyVjhjYAf5q/sAJe0vEC9G5nmliOWHJJOQJ62tu4a8d4xfnxDDMDXfgevEM6HCcpx5e5MNA0auh5Ynk5/psxfq3SIC6joAuUC+pokbvCHi5Q+TEYNoZgkdQuBD2XuJ0Ddl3Oqj7s3/LOs0v8F7zQ1FgEdUziqwQIDAQAB",
+  "permissions": ["bookmarks", "alarms", "notifications", "storage", "tabs", "contextMenus", "favicon", "identity"],
   "action": {
     "default_popup": "index.html?view=popup",
     "default_icon": {

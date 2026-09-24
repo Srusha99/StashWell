@@ -1,12 +1,10 @@
 "use client"
-import { supabase } from '@/lib/supabaseClient'
-
-console.log('Supabase client:', supabase)
 import * as React from "react"
 
 import { BookmarkApp } from "@/components/bookmarks/bookmark-app"
 import { SessionBundlesPopup } from "@/components/session-bundles/session-bundles-popup"
-import { AuthForm } from "@/components/AuthForm"
+import { AuthProvider, useAuth } from "@/lib/auth-context"
+import { AuthForm } from "@/components/auth/auth-form"
 
 /**
  * The toolbar popup (manifest.json action.default_popup) points at this same
@@ -33,11 +31,18 @@ export default function Page() {
   if (view === "popup") return <SessionBundlesPopup />
   if (view === "dashboard") {
     return (
-      <>
-        <AuthForm />
-        <BookmarkApp />
-      </>
+      <AuthProvider>
+        <DashboardGate />
+      </AuthProvider>
     )
   }
   return null
+}
+
+function DashboardGate() {
+  const { user, loading } = useAuth()
+
+  if (loading) return null
+  if (!user) return <AuthForm />
+  return <BookmarkApp />
 }

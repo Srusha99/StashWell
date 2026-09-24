@@ -26,7 +26,7 @@ export const DEFAULT_CARD_FEEL: CardFeel = {
   cardOpacity: 55,
   blurIntensity: 60,
   cardRadius: 55,
-  gridSpacing: 45,
+  gridSpacing: 25,
   density: 45,
   glow: 35,
 }

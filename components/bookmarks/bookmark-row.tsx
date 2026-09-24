@@ -48,7 +48,6 @@ export function BookmarkRow({
   }
 
   const fallbackIcon = <Folder className="size-4 shrink-0 text-[#8e8e93] dark:text-white/50" />
-  // Shown under the title, as in the design. Bare host, without the www. noise.
   const host = hostOf(node.url)
 
   async function handleCopy(event: React.MouseEvent) {
@@ -78,13 +77,8 @@ export function BookmarkRow({
         ) : (
           fallbackIcon
         )}
-        <span className="flex min-w-0 flex-col leading-tight">
-          <span className="truncate text-xs text-[#1c1c1e] dark:text-white/85">
-            {node.title || host || node.url}
-          </span>
-          {host && (
-            <span className="truncate text-[10px] text-[#8e8e93] dark:text-white/35">{host}</span>
-          )}
+        <span className="min-w-0 flex-1 truncate text-xs text-[#1c1c1e] dark:text-white/85">
+          {node.title || host || node.url}
         </span>
       </a>
 
