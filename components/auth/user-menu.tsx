@@ -4,6 +4,7 @@ import * as React from "react"
 import { CreditCard, HelpCircle, LogOut, Settings, Zap } from "lucide-react"
 
 import { useAuth } from "@/lib/auth-context"
+import { useIsPro } from "@/hooks/use-is-pro"
 import { supabase } from "@/lib/supabaseClient"
 import { cn, deferred } from "@/lib/utils"
 import {
@@ -64,6 +65,7 @@ export function UserMenu({
   className?: string
 }) {
   const { user } = useAuth()
+  const isPro = useIsPro()
   if (!user) return null
 
   const metadata = user.user_metadata as
@@ -72,7 +74,6 @@ export function UserMenu({
         name?: string
         avatar_url?: string
         picture?: string
-        isPro?: boolean
       }
     | undefined
   const rawName = metadata?.full_name || metadata?.name || null
@@ -80,11 +81,6 @@ export function UserMenu({
   const displayName = rawName || email || "Account"
   const avatarUrl = metadata?.avatar_url || metadata?.picture || null
   const initials = initialsOf(displayName)
-  // No billing system exists yet - this reads a metadata field nothing
-  // currently sets, so it's false (and the upgrade CTA shows) for every
-  // real user today. Flipping it true (e.g. once Stripe webhooks land) is
-  // what switches a user over to the Subscription/PRO row below.
-  const isPro = metadata?.isPro ?? false
 
   return (
     <DropdownMenu>

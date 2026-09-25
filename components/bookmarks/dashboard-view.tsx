@@ -15,6 +15,8 @@ import { NotesCard } from "@/components/dashboard/notes-card"
 import { RemindersCard } from "@/components/dashboard/reminders-card"
 import { WorkspaceSwitcher } from "@/components/workspaces/workspace-switcher"
 import { UserMenu } from "@/components/auth/user-menu"
+import { ViewSwitcher, type ViewMode } from "@/components/dashboard/view-switcher"
+import KanbanBoard from "@/components/spectrumui/kanbanboard"
 import { WorkspaceRepairNotice } from "@/components/workspaces/workspace-repair-notice"
 import { useWorkspaces } from "@/components/workspaces/workspace-provider"
 import {
@@ -96,6 +98,25 @@ export function DashboardView({
     id: string | null
     position: "before" | "after"
   } | null>(null)
+  const [currentView, setCurrentView] = React.useState<ViewMode>("grid")
+  const kanbanButtonRef = React.useRef<HTMLButtonElement>(null)
+  const [kanbanAnchor, setKanbanAnchor] = React.useState<{ top: number; right: number } | null>(
+    null
+  )
+
+  // The popover's position is captured once, at the moment it opens, from the
+  // toggle button's own screen position - it emerges from that specific
+  // icon rather than from a fixed screen corner (which drifted onto the
+  // avatar menu next to it once that button got its own icon-only layout).
+  function handleViewChange(view: ViewMode) {
+    if (view === "kanban") {
+      const rect = kanbanButtonRef.current?.getBoundingClientRect()
+      if (rect) {
+        setKanbanAnchor({ top: rect.bottom + 8, right: window.innerWidth - rect.right })
+      }
+    }
+    setCurrentView(view)
+  }
 
   // `root` is already this workspace's folder - useBookmarks resolves it
   // exactly. It used to be the absolute tree root, so this looked up the
@@ -204,12 +225,89 @@ export function DashboardView({
     await bookmarks.refresh()
   }
 
+  // Every card in a column - notes, reminders, folders - shares the same drag
+  // wiring, which is what lets them be reordered together in Grid view. List
+  // view calls this with no dragProps: Notes/Reminders go non-draggable (their
+  // own drag props are optional), while FolderCard's are required, so it gets
+  // inert no-op fallbacks instead - the card stays visually draggable but
+  // dropping it does nothing.
+  function renderCard(
+    item: DashboardItem,
+    dragProps?: {
+      isDragging: boolean
+      dropIndicator: "before" | "after" | null
+      onCardDragStart: () => void
+      onCardDragOver: (position: "before" | "after") => void
+      onCardDragLeave: () => void
+      onCardDrop: () => void
+      onCardDragEnd: () => void
+    }
+  ) {
+    if (item.kind === "notes") {
+      return <NotesCard key={item.id} workspaceId={activeId} {...dragProps} />
+    }
+    if (item.kind === "reminders") {
+      return <RemindersCard key={item.id} workspaceId={activeId} {...dragProps} />
+    }
+
+    const card = item.card
+    return (
+      <FolderCard
+        key={card.id}
+        id={card.id}
+        title={card.title}
+        node={card.node}
+        items={card.items}
+        onEditBookmark={(node) =>
+          setFormDialog({
+            mode: "edit",
+            node,
+            parentId: node.parentId ?? "",
+          })
+        }
+        onDeleteBookmark={setDeleteTarget}
+        onDrillInto={onOpenManager}
+        onNewBookmark={(parentId) =>
+          setFormDialog({
+            mode: "create-bookmark",
+            node: null,
+            parentId,
+          })
+        }
+        onOrganize={setOrganizerFolderId}
+        onRename={(node) =>
+          setFormDialog({
+            mode: "edit",
+            node,
+            parentId: node.parentId ?? "",
+          })
+        }
+        onDelete={setDeleteTarget}
+        onHide={onHideFolder}
+        isDragging={dragProps?.isDragging ?? false}
+        dropIndicator={dragProps?.dropIndicator ?? null}
+        onCardDragStart={dragProps?.onCardDragStart ?? (() => {})}
+        onCardDragOver={dragProps?.onCardDragOver ?? (() => {})}
+        onCardDragLeave={dragProps?.onCardDragLeave ?? (() => {})}
+        onCardDrop={dragProps?.onCardDrop ?? (() => {})}
+        onCardDragEnd={dragProps?.onCardDragEnd ?? (() => {})}
+      />
+    )
+  }
+
   return (
     <div className="h-screen w-screen overflow-y-auto p-6">
       {/* Top-left corner, mirroring the fixed settings button in the opposite
           corner. z-40 keeps it under the z-50 menus and dialogs it opens. */}
       <WorkspaceSwitcher className="fixed top-6 left-6 z-40" />
-      <UserMenu onOpenSettings={onOpenSettings} className="fixed top-6 right-6 z-40" />
+      <div className="fixed top-6 right-6 z-40 flex items-center gap-2">
+        <ViewSwitcher
+          currentView={currentView}
+          onViewChange={handleViewChange}
+          buttonRef={kanbanButtonRef}
+        />
+        <UserMenu onOpenSettings={onOpenSettings} />
+      </div>
 
       <DashboardHeader
         greetingName={greetingName}
@@ -229,120 +327,61 @@ export function DashboardView({
           columns on a wide screen each card ballooned past 360px, which is what
           made the dashboard feel heavy. ~228px per column at 4 columns. */}
       <div className="mx-auto flex w-full max-w-[960px] gap-[var(--grid-gap)]">
-        {visibleColumns.map((items, columnIndex) => (
-          <div
-            key={columnIndex}
-            className="flex min-w-0 flex-1 flex-col gap-[var(--grid-gap)]"
-          >
-            {items.map((item) => {
-              // Every card in a column - notes, reminders, folders - shares the
-              // same drag wiring, which is what lets them be reordered together.
-              const dragProps = {
-                isDragging: draggedCardId === item.id,
-                dropIndicator:
-                  dropTarget?.id === item.id ? dropTarget.position : null,
-                onCardDragStart: () => setDraggedCardId(item.id),
-                onCardDragOver: (position: "before" | "after") => {
-                  if (draggedCardId && draggedCardId !== item.id) {
-                    setDropTarget({ columnIndex, id: item.id, position })
-                  }
-                },
-                onCardDragLeave: () =>
-                  setDropTarget((current) =>
-                    current?.id === item.id ? null : current
-                  ),
-                onCardDrop: () => handleCardDrop(columnIndex, item.id),
-                onCardDragEnd: () => {
-                  setDraggedCardId(null)
-                  setDropTarget(null)
-                },
-              }
+          {visibleColumns.map((items, columnIndex) => (
+            <div
+              key={columnIndex}
+              className="flex min-w-0 flex-1 flex-col gap-[var(--grid-gap)]"
+            >
+              {items.map((item) =>
+                renderCard(item, {
+                  isDragging: draggedCardId === item.id,
+                  dropIndicator:
+                    dropTarget?.id === item.id ? dropTarget.position : null,
+                  onCardDragStart: () => setDraggedCardId(item.id),
+                  onCardDragOver: (position) => {
+                    if (draggedCardId && draggedCardId !== item.id) {
+                      setDropTarget({ columnIndex, id: item.id, position })
+                    }
+                  },
+                  onCardDragLeave: () =>
+                    setDropTarget((current) =>
+                      current?.id === item.id ? null : current
+                    ),
+                  onCardDrop: () => handleCardDrop(columnIndex, item.id),
+                  onCardDragEnd: () => {
+                    setDraggedCardId(null)
+                    setDropTarget(null)
+                  },
+                })
+              )}
 
-              if (item.kind === "notes") {
-                return (
-                  <NotesCard
-                    key={item.id}
-                    workspaceId={activeId}
-                    {...dragProps}
-                  />
-                )
-              }
-              if (item.kind === "reminders") {
-                return (
-                  <RemindersCard
-                    key={item.id}
-                    workspaceId={activeId}
-                    {...dragProps}
-                  />
-                )
-              }
-
-              const card = item.card
-              return (
-                <FolderCard
-                  key={card.id}
-                  id={card.id}
-                  title={card.title}
-                  node={card.node}
-                  items={card.items}
-                  onEditBookmark={(node) =>
-                    setFormDialog({
-                      mode: "edit",
-                      node,
-                      parentId: node.parentId ?? "",
-                    })
+              {draggedCardId && (
+                <div
+                  className="relative min-h-6 flex-1"
+                  onDragOver={(event) => {
+                    event.preventDefault()
+                    setDropTarget({ columnIndex, id: null, position: "after" })
+                  }}
+                  onDragLeave={() =>
+                    setDropTarget((current) =>
+                      current?.columnIndex === columnIndex && current.id === null
+                        ? null
+                        : current
+                    )
                   }
-                  onDeleteBookmark={setDeleteTarget}
-                  onDrillInto={onOpenManager}
-                  onNewBookmark={(parentId) =>
-                    setFormDialog({
-                      mode: "create-bookmark",
-                      node: null,
-                      parentId,
-                    })
-                  }
-                  onOrganize={setOrganizerFolderId}
-                  onRename={(node) =>
-                    setFormDialog({
-                      mode: "edit",
-                      node,
-                      parentId: node.parentId ?? "",
-                    })
-                  }
-                  onDelete={setDeleteTarget}
-                  onHide={onHideFolder}
-                  {...dragProps}
-                />
-              )
-            })}
-
-            {draggedCardId && (
-              <div
-                className="relative min-h-6 flex-1"
-                onDragOver={(event) => {
-                  event.preventDefault()
-                  setDropTarget({ columnIndex, id: null, position: "after" })
-                }}
-                onDragLeave={() =>
-                  setDropTarget((current) =>
-                    current?.columnIndex === columnIndex && current.id === null
-                      ? null
-                      : current
-                  )
-                }
-                onDrop={(event) => {
-                  event.preventDefault()
-                  handleCardDrop(columnIndex, null)
-                }}
-              >
-                {dropTarget?.columnIndex === columnIndex &&
-                  dropTarget.id === null && (
-                    <div className="absolute inset-x-2 top-0 h-0.5 rounded-full bg-primary" />
-                  )}
-              </div>
-            )}
-          </div>
-        ))}
+                  onDrop={(event) => {
+                    event.preventDefault()
+                    handleCardDrop(columnIndex, null)
+                  }}
+                >
+                  {dropTarget?.columnIndex === columnIndex &&
+                    dropTarget.id === null && (
+                      <div className="absolute inset-x-2 top-0 h-0.5 rounded-full bg-primary" />
+                    )}
+                </div>
+              )}
+            </div>
+          ))}
       </div>
 
       {root && (
@@ -382,6 +421,26 @@ export function DashboardView({
         bookmarks={bookmarks}
       />
 
+      {currentView === "kanban" && (
+        <>
+          {/* Click-outside-to-close backdrop, transparent so the dashboard
+              stays visible behind the popover rather than being dimmed. */}
+          <div
+            className="fixed inset-0 z-40"
+            onClick={() => setCurrentView("grid")}
+          />
+          <div
+            style={{
+              top: kanbanAnchor?.top ?? 64,
+              right: kanbanAnchor?.right ?? 24,
+            }}
+            className="fixed z-50 max-h-[70vh] w-[min(640px,calc(100vw-3rem))] origin-top-right overflow-y-auto rounded-2xl border border-[var(--card-border)] bg-white p-4 shadow-2xl ring-1 ring-black/5 animate-in fade-in-0 zoom-in-95 slide-in-from-top-2 duration-150 dark:border-white/15 dark:bg-neutral-900 dark:ring-white/10"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <KanbanBoard />
+          </div>
+        </>
+      )}
     </div>
   )
 }
