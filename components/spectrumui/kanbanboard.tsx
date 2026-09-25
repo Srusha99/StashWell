@@ -60,12 +60,16 @@ const SIZES: Record<
 };
 
 const AUTOSIZE_CLASS =
-  'w-full resize-none rounded-lg border border-neutral-200/50 bg-white/80 px-2.5 py-1.5 text-xs font-medium text-neutral-900 outline-none dark:border-neutral-700/50 dark:bg-neutral-800/80 dark:text-neutral-100';
+  'w-full resize-none overflow-hidden rounded-lg border border-neutral-200/50 bg-white/80 px-2.5 py-1.5 text-xs font-medium text-neutral-900 outline-none dark:border-neutral-700/50 dark:bg-neutral-800/80 dark:text-neutral-100';
 
 /**
  * Grows with its content as the user types, instead of scrolling a fixed
  * single-line box - a plain <input> stays one line while typing and only the
  * saved card wraps/grows, which reads as a size jump the moment you commit.
+ * overflow-hidden above matters even though resize() keeps height in sync
+ * with scrollHeight: right on mount (before fonts/layout fully settle) that
+ * measurement can be off by a pixel or two, which is enough for the browser
+ * to draw the textarea's own internal scrollbar for an instant.
  */
 function AutosizeTextarea({
   value,
@@ -113,7 +117,18 @@ function AutosizeTextarea({
   );
 }
 
-export default function KanbanBoard({ variant = 'comfortable' }: { variant?: KanbanBoardVariant }) {
+export default function KanbanBoard({
+  variant = 'comfortable',
+  columnMinHeight,
+}: {
+  variant?: KanbanBoardVariant;
+  /** Optional floor on each column's height, e.g. "220px" - unset (the
+   * default) leaves columns exactly as tall as their content, which is what
+   * the dashboard popover and floating window want. components/kanban/kanban-panel.tsx
+   * is the one consumer that sets this, so its docked panel doesn't look
+   * cramped when the board has few or no cards. */
+  columnMinHeight?: string;
+}) {
   const size = SIZES[variant];
   const [cards, setCards] = useState<KanbanCard[] | null>(null);
   const [addingToStatus, setAddingToStatus] = useState<KanbanStatus | null>(null);
@@ -188,6 +203,7 @@ export default function KanbanBoard({ variant = 'comfortable' }: { variant?: Kan
           <div
             key={status}
             className={size.column}
+            style={columnMinHeight ? { minHeight: columnMinHeight } : undefined}
             onDragOver={handleDragOver}
             onDrop={(e) => handleDrop(e, status)}
           >
