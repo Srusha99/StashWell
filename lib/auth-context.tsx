@@ -5,6 +5,7 @@ import type { User } from "@supabase/supabase-js"
 
 import { supabase } from "@/lib/supabaseClient"
 import { pullFromCloud } from "@/lib/syncEngine"
+import { pullDashboardLayouts } from "@/lib/dashboard-layout-sync"
 
 interface AuthContextValue {
   user: User | null
@@ -26,7 +27,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null)
       setLoading(false)
-      if (session?.user) void pullFromCloud(session.user.id)
+      if (session?.user) {
+        void pullFromCloud(session.user.id)
+        void pullDashboardLayouts(session.user.id)
+      }
     })
 
     const { data: subscription } = supabase.auth.onAuthStateChange(
@@ -35,6 +39,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setLoading(false)
         if (event === "SIGNED_IN" && session?.user) {
           void pullFromCloud(session.user.id)
+          void pullDashboardLayouts(session.user.id)
         }
       }
     )

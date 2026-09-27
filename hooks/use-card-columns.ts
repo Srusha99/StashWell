@@ -2,34 +2,14 @@
 
 import * as React from "react"
 
-import { workspaceKey } from "@/lib/workspace-storage"
+import {
+  readDashboardLayout,
+  writeDashboardLayout,
+  subscribeDashboardLayout,
+  type Columns,
+} from "@/lib/dashboard-layout-storage"
 
-const STORAGE_NAME = "dashboard-columns"
-
-type Columns = string[][]
-
-function readStored(workspaceId: string): Columns | null {
-  try {
-    const raw = window.localStorage.getItem(workspaceKey(workspaceId, STORAGE_NAME))
-    if (!raw) return null
-    const parsed = JSON.parse(raw)
-    if (!Array.isArray(parsed)) return null
-    const valid = parsed.every(
-      (col) => Array.isArray(col) && col.every((id) => typeof id === "string")
-    )
-    return valid ? (parsed as Columns) : null
-  } catch {
-    return null
-  }
-}
-
-function writeStored(workspaceId: string, columns: Columns) {
-  try {
-    window.localStorage.setItem(workspaceKey(workspaceId, STORAGE_NAME), JSON.stringify(columns))
-  } catch {
-    // ignore write failures
-  }
-}
+export type { Columns }
 
 function distributeRoundRobin(ids: string[], count: number): Columns {
   const columns: Columns = Array.from({ length: count }, () => [])
@@ -79,10 +59,6 @@ export function useCardColumns(
   (draggedId: string, targetColumnIndex: number, targetId: string | null, position: "before" | "after") => void,
 ] {
   const key = defaultIds.join(",")
-  // Read once, for the workspace this mount belongs to. Note the wrapping arrow
-  // function: passing `readStored` directly would hand React the workspaceId
-  // slot the initializer's own argument, writing to bm:ws:undefined:*.
-  const [stored] = React.useState<Columns | null>(() => readStored(workspaceId))
 
   // The hydration dance below assumes workspaceId is fixed for the lifetime of
   // this mount - the dashboard subtree is keyed by workspace id so a switch
@@ -96,26 +72,67 @@ export function useCardColumns(
     )
   }
 
+  // chrome.storage.local (unlike the window.localStorage this used before)
+  // can only be read asynchronously, so there's no synchronous initial value
+  // the way `readStored` used to provide one. `stored` starts null and is
+  // filled in by the effect below; `hasLoadedStorage` distinguishes "loaded,
+  // no saved layout" (stored stays null, load is done) from "still loading".
+  const [stored, setStored] = React.useState<Columns | null>(null)
+  const [hasLoadedStorage, setHasLoadedStorage] = React.useState(false)
+
   const [columns, setColumns] = React.useState<Columns>(() =>
-    reconcile(defaultIds, stored, columnCount)
+    reconcile(defaultIds, null, columnCount)
   )
   const [lastKey, setLastKey] = React.useState(key)
   const [lastCount, setLastCount] = React.useState(columnCount)
-  // defaultIds is empty until bookmarks finish loading asynchronously, so the
-  // first real reconciliation must still use the persisted columns rather
-  // than the (empty) current state, or a saved layout is lost on reload.
+  // defaultIds is empty until bookmarks finish loading asynchronously, and
+  // stored is null until chrome.storage.local finishes loading, so the first
+  // real reconciliation must wait for both and still use the persisted
+  // columns rather than the (already-reconciled-from-nothing) current state,
+  // or a saved layout is lost on reload.
   const [hasHydrated, setHasHydrated] = React.useState(false)
 
-  if (key !== lastKey || columnCount !== lastCount) {
+  // Read by the subscribeDashboardLayout effect below, which only runs once
+  // per workspace mount and so can't close over defaultIds/columnCount
+  // directly - kept current via an effect (never mutated during render) so
+  // an onChanged event arriving between renders still reconciles against
+  // the latest live values.
+  const defaultIdsRef = React.useRef(defaultIds)
+  const columnCountRef = React.useRef(columnCount)
+  React.useEffect(() => {
+    defaultIdsRef.current = defaultIds
+    columnCountRef.current = columnCount
+  }, [defaultIds, columnCount])
+
+  React.useEffect(() => {
+    let active = true
+    readDashboardLayout(workspaceId).then((loaded) => {
+      if (!active) return
+      setStored(loaded)
+      setHasLoadedStorage(true)
+    })
+    return () => {
+      active = false
+    }
+  }, [workspaceId])
+
+  // Picks up layout changes written elsewhere: another extension context
+  // (popup vs. dashboard/newtab), or a Supabase pull landing after sign-in.
+  // Reconciles immediately against the latest live ids/column count rather
+  // than only updating `stored`, so a change that arrives after this hook
+  // has already hydrated (and stopped consulting `stored`) still applies.
+  React.useEffect(() => {
+    return subscribeDashboardLayout(workspaceId, (loaded) => {
+      setStored(loaded)
+      setColumns(reconcile(defaultIdsRef.current, loaded, columnCountRef.current))
+    })
+  }, [workspaceId])
+
+  if (key !== lastKey || columnCount !== lastCount || (hasLoadedStorage && !hasHydrated)) {
     setLastKey(key)
     setLastCount(columnCount)
     setColumns((current) => reconcile(defaultIds, hasHydrated ? current : stored, columnCount))
-    // Only treat the persisted layout as consumed once bookmarks have
-    // actually loaded - a columnCount-only change while defaultIds is still
-    // empty (viewport resize firing before the async bookmark fetch resolves)
-    // must not mark hydration as done, or the real reconciliation later
-    // discards `stored` in favor of the empty `current`.
-    if (!hasHydrated && defaultIds.length > 0) setHasHydrated(true)
+    if (!hasHydrated && defaultIds.length > 0 && hasLoadedStorage) setHasHydrated(true)
   }
 
   function moveCard(
@@ -151,7 +168,7 @@ export function useCardColumns(
       }
 
       targetCol.splice(insertAt, 0, draggedId)
-      writeStored(workspaceId, next)
+      void writeDashboardLayout(workspaceId, next)
       return next
     })
   }

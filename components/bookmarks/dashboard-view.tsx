@@ -9,6 +9,7 @@ import {
   useBookmarks,
 } from "@/hooks/use-bookmarks"
 import { useCardColumns } from "@/hooks/use-card-columns"
+import { useDashboardLayoutSync } from "@/hooks/use-dashboard-layout-sync"
 import { DashboardHeader } from "@/components/bookmarks/dashboard-header"
 import { FolderCard } from "@/components/bookmarks/folder-card"
 import { NotesCard } from "@/components/dashboard/notes-card"
@@ -174,6 +175,20 @@ export function DashboardView({
     columnCount,
     activeId
   )
+  // Mirrors `columns` to Supabase (debounced) whenever it changes - a drag
+  // move, or a card added/removed by reconciliation - and whenever a title
+  // looked up below changes, e.g. a folder renamed via chrome.bookmarks.
+  const titleOf = React.useCallback(
+    (id: string) => {
+      const item = itemsById.get(id)
+      if (!item) return id
+      if (item.kind === "notes") return "Notes"
+      if (item.kind === "reminders") return "Reminders"
+      return item.card.title
+    },
+    [itemsById]
+  )
+  useDashboardLayoutSync(activeId, columns, titleOf)
   // Notes and reminders keep their ids in `defaultOrder`/`columns` even while
   // toggled off, the same way a hidden folder does - filtered only here, at
   // display time, so re-enabling one puts it back exactly where it was
