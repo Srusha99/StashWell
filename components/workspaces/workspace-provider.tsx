@@ -220,7 +220,7 @@ export function WorkspaceProvider({
           await removeNode(target.folderId, true)
         }
 
-        // Notes, reminders, hidden folders and card layout always go.
+        // Hidden folders and card layout always go.
         clearWorkspaceData(id)
 
         const workspaces = state.workspaces.filter((workspace) => workspace.id !== id)

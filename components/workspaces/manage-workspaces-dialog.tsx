@@ -31,7 +31,7 @@ export function ManageWorkspacesDialog({
         <DialogHeader>
           <DialogTitle>Workspaces</DialogTitle>
           <DialogDescription>
-            Each workspace keeps its own bookmarks, notes, and reminders.
+            Each workspace keeps its own bookmarks.
           </DialogDescription>
         </DialogHeader>
 

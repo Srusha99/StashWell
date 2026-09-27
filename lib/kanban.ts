@@ -20,9 +20,8 @@ export interface KanbanCard {
    * the card face - only the title renders there, so a long description
    * doesn't clutter the compact card list. */
   description?: string
-  /** datetime-local string ("2026-09-20T14:30"), same representation
-   * lib/reminders.ts uses for `dueAt` - lets the card form reuse
-   * components/dashboard/date-time-picker.tsx and lib/reminders.ts's
+  /** datetime-local string ("2026-09-20T14:30") - lets the card form reuse
+   * components/dashboard/date-time-picker.tsx and lib/dates.ts's
    * formatWhen() as-is. */
   dueAt?: string
 }

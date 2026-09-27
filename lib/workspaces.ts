@@ -1,6 +1,6 @@
 /**
  * Workspaces: named, emoji-tagged contexts that each own a slice of the user's
- * bookmarks plus their own notes and reminders.
+ * bookmarks plus their own hidden folders and dashboard layout.
  *
  * Bookmarks are real Chrome bookmarks, so isolation is backed by real folders:
  *  - Workspace "default" maps to the Bookmarks Bar, so nothing the user already

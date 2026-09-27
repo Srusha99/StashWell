@@ -38,8 +38,8 @@ const WEEKDAYS = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"]
  * Calendar + clock picker used instead of Chrome's native datetime-local popup.
  *
  * Emits a `datetime-local` value ("2026-09-20T14:30") so it drops straight into
- * the reminder draft with no reformatting, and stays the single representation
- * used everywhere else (see the dueAt comment in lib/reminders.ts).
+ * a kanban card's dueAt with no reformatting, and stays the single
+ * representation used everywhere else (see lib/dates.ts's parseLocalDateTime).
  *
  * Wrapped in the project's Dialog rather than a hand-rolled fixed overlay, so
  * Escape, the backdrop click and focus trapping come for free.

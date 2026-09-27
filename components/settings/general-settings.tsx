@@ -10,16 +10,12 @@ export function GeneralSettings({
   onGreetingEnabledChange,
   onGreetingNameChange,
   onSearchBarEnabledChange,
-  onNotesEnabledChange,
-  onRemindersEnabledChange,
   onUse24HourClockChange,
 }: {
   settings: AppearanceSettings
   onGreetingEnabledChange: (enabled: boolean) => void
   onGreetingNameChange: (name: string) => void
   onSearchBarEnabledChange: (enabled: boolean) => void
-  onNotesEnabledChange: (enabled: boolean) => void
-  onRemindersEnabledChange: (enabled: boolean) => void
   onUse24HourClockChange: (enabled: boolean) => void
 }) {
   return (
@@ -70,7 +66,7 @@ export function GeneralSettings({
           />
         </Group>
 
-        <Group title="Clock" description="Applies to the dashboard clock, reminders, and to-do due times.">
+        <Group title="Clock" description="Applies to the dashboard clock and to-do due times.">
           <Row
             label="Use 24-hour clock"
             hint="18:00 instead of 6:00 PM."
@@ -78,30 +74,6 @@ export function GeneralSettings({
               <Switch
                 checked={settings.use24HourClock}
                 onCheckedChange={onUse24HourClockChange}
-              />
-            }
-          />
-        </Group>
-
-        <Group
-          title="Dashboard cards"
-          description="Notes and reminders sit alongside your folder cards."
-        >
-          <Row
-            label="Show notes"
-            control={
-              <Switch
-                checked={settings.notesEnabled}
-                onCheckedChange={onNotesEnabledChange}
-              />
-            }
-          />
-          <Row
-            label="Show reminders"
-            control={
-              <Switch
-                checked={settings.remindersEnabled}
-                onCheckedChange={onRemindersEnabledChange}
               />
             }
           />

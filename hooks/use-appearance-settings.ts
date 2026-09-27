@@ -36,11 +36,9 @@ export interface AppearanceSettings extends CardFeel {
   greetingName: string
   greetingEnabled: boolean
   searchBarEnabled: boolean
-  notesEnabled: boolean
-  remindersEnabled: boolean
-  /** Every displayed/picked time in the app - dashboard clock, reminder and
-   * kanban due-times, the shared date/time picker - reads this instead of
-   * each choosing its own 12h/24h format independently. */
+  /** Every displayed/picked time in the app - dashboard clock, kanban due
+   * times, the shared date/time picker - reads this instead of each
+   * choosing its own 12h/24h format independently. */
   use24HourClock: boolean
   dailyWallpaperEnabled: boolean
   /** Local calendar day (YYYY-MM-DD) the wallpaper last rotated on. */
@@ -60,8 +58,6 @@ const DEFAULT_SETTINGS: AppearanceSettings = {
   greetingName: "Srush",
   greetingEnabled: true,
   searchBarEnabled: true,
-  notesEnabled: true,
-  remindersEnabled: true,
   use24HourClock: false,
   dailyWallpaperEnabled: false,
   lastWallpaperRotation: null,
@@ -133,8 +129,6 @@ export function useAppearanceSettings(): {
   setGreetingName: (name: string) => void
   setGreetingEnabled: (enabled: boolean) => void
   setSearchBarEnabled: (enabled: boolean) => void
-  setNotesEnabled: (enabled: boolean) => void
-  setRemindersEnabled: (enabled: boolean) => void
   setUse24HourClock: (enabled: boolean) => void
   setDailyWallpaperEnabled: (enabled: boolean) => void
   setCardFeel: (patch: Partial<CardFeel>) => void
@@ -240,8 +234,6 @@ export function useAppearanceSettings(): {
     setGreetingName: (name) => update({ greetingName: name }),
     setGreetingEnabled: (enabled) => update({ greetingEnabled: enabled }),
     setSearchBarEnabled: (enabled) => update({ searchBarEnabled: enabled }),
-    setNotesEnabled: (enabled) => update({ notesEnabled: enabled }),
-    setRemindersEnabled: (enabled) => update({ remindersEnabled: enabled }),
     setUse24HourClock: (enabled) => update({ use24HourClock: enabled }),
     setDailyWallpaperEnabled: (enabled) =>
       // Stamping today on enable means the first rotation happens at the next

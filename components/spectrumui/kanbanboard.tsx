@@ -13,8 +13,7 @@ import {
   subscribeToKanbanCards,
   writeKanbanCards,
 } from '@/lib/kanban';
-import { parseLocalDateTime } from '@/lib/dates';
-import { formatWhen } from '@/lib/reminders';
+import { formatWhen, parseLocalDateTime } from '@/lib/dates';
 import { DateTimePicker } from '@/components/dashboard/date-time-picker';
 import { useAppearanceSettings } from '@/hooks/use-appearance-settings';
 
@@ -192,10 +191,10 @@ function CardForm({
         commitOnBlur={false}
       />
 
-      {/* Opens the same calendar + wheel-style clock picker the reminders
-          composer uses (components/dashboard/date-time-picker.tsx), so
-          setting a card's time looks and behaves identically everywhere in
-          the app rather than falling back to Chrome's native popup here. */}
+      {/* Opens the shared calendar + wheel-style clock picker
+          (components/dashboard/date-time-picker.tsx), so setting a card's
+          time looks and behaves identically everywhere in the app rather
+          than falling back to Chrome's native popup here. */}
       <div className="flex h-8 items-center gap-1.5 rounded-md border border-neutral-200/60 bg-white/80 px-2 dark:border-neutral-700/60 dark:bg-neutral-800/80">
         <CalendarDays className="size-3.5 shrink-0 text-neutral-400 dark:text-neutral-500" />
         <button

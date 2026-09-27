@@ -124,8 +124,6 @@ export function SettingsDialog({
                     onGreetingEnabledChange={appearance.setGreetingEnabled}
                     onGreetingNameChange={appearance.setGreetingName}
                     onSearchBarEnabledChange={appearance.setSearchBarEnabled}
-                    onNotesEnabledChange={appearance.setNotesEnabled}
-                    onRemindersEnabledChange={appearance.setRemindersEnabled}
                     onUse24HourClockChange={appearance.setUse24HourClock}
                   />
                 )}
@@ -152,7 +150,7 @@ export function SettingsDialog({
                   <div>
                     <PaneHeader
                       title="Workspaces"
-                      description="Each workspace keeps its own bookmarks, notes, and reminders."
+                      description="Each workspace keeps its own bookmarks."
                     />
                     <Group>
                       <WorkspacesSettings listClassName="max-h-none" />

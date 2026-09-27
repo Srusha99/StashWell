@@ -12,8 +12,6 @@ import { useCardColumns } from "@/hooks/use-card-columns"
 import { useDashboardLayoutSync } from "@/hooks/use-dashboard-layout-sync"
 import { DashboardHeader } from "@/components/bookmarks/dashboard-header"
 import { FolderCard } from "@/components/bookmarks/folder-card"
-import { NotesCard } from "@/components/dashboard/notes-card"
-import { RemindersCard } from "@/components/dashboard/reminders-card"
 import { WorkspaceSwitcher } from "@/components/workspaces/workspace-switcher"
 import { UserMenu } from "@/components/auth/user-menu"
 import { ViewSwitcher, type ViewMode } from "@/components/dashboard/view-switcher"
@@ -41,21 +39,6 @@ interface CardData {
   items: BookmarkNode[]
 }
 
-/**
- * Notes and reminders live in the same drag-and-drop columns as folder cards, so
- * they need ids in the same namespace. Prefixed to keep them clear of Chrome's
- * bookmark ids, which are plain numeric strings.
- */
-const NOTES_CARD_ID = "stashwell:notes"
-const REMINDERS_CARD_ID = "stashwell:reminders"
-
-// Listed as separate members rather than `kind: "notes" | "reminders"` so
-// TypeScript can narrow to the folder variant after the two early returns.
-type DashboardItem =
-  | { kind: "notes"; id: string }
-  | { kind: "reminders"; id: string }
-  | { kind: "folder"; id: string; card: CardData }
-
 export function DashboardView({
   columnCount,
   onOpenManager,
@@ -65,8 +48,6 @@ export function DashboardView({
   greetingName,
   greetingEnabled,
   searchBarEnabled,
-  notesEnabled,
-  remindersEnabled,
   use24HourClock,
 }: {
   columnCount: number
@@ -77,8 +58,6 @@ export function DashboardView({
   greetingName: string
   greetingEnabled: boolean
   searchBarEnabled: boolean
-  notesEnabled: boolean
-  remindersEnabled: boolean
   use24HourClock: boolean
 }) {
   const { activeWorkspace, activeId, resolved, workspaceFolderIds } =
@@ -155,22 +134,9 @@ export function DashboardView({
     return map
   }, [bar, workspaceFolderIds])
 
-  // Notes and reminders come first so a fresh layout puts them in the leftmost
-  // columns; an existing saved layout keeps whatever position the user dragged
-  // them to (useCardColumns reconciles by id).
-  const itemsById = React.useMemo(() => {
-    const map = new Map<string, DashboardItem>()
-    map.set(NOTES_CARD_ID, { kind: "notes", id: NOTES_CARD_ID })
-    map.set(REMINDERS_CARD_ID, { kind: "reminders", id: REMINDERS_CARD_ID })
-    for (const card of cardsById.values()) {
-      map.set(card.id, { kind: "folder", id: card.id, card })
-    }
-    return map
-  }, [cardsById])
-
   const defaultOrder = React.useMemo(
-    () => Array.from(itemsById.keys()),
-    [itemsById]
+    () => Array.from(cardsById.keys()),
+    [cardsById]
   )
   const [columns, moveCard] = useCardColumns(
     defaultOrder,
@@ -181,29 +147,17 @@ export function DashboardView({
   // move, or a card added/removed by reconciliation - and whenever a title
   // looked up below changes, e.g. a folder renamed via chrome.bookmarks.
   const titleOf = React.useCallback(
-    (id: string) => {
-      const item = itemsById.get(id)
-      if (!item) return id
-      if (item.kind === "notes") return "Notes"
-      if (item.kind === "reminders") return "Reminders"
-      return item.card.title
-    },
-    [itemsById]
+    (id: string) => cardsById.get(id)?.title ?? id,
+    [cardsById]
   )
   useDashboardLayoutSync(activeId, columns, titleOf)
-  // Notes and reminders keep their ids in `defaultOrder`/`columns` even while
-  // toggled off, the same way a hidden folder does - filtered only here, at
-  // display time, so re-enabling one puts it back exactly where it was
-  // dragged rather than at the end of the shortest column.
+  // A stored layout from before notes/reminders were removed may still list
+  // their ids alongside folder ids - cardsById.get returns undefined for
+  // those now, so they're dropped here rather than rendered as blanks.
   const visibleColumns = columns.map((colIds) =>
     colIds
-      .map((id) => itemsById.get(id))
-      .filter((item): item is DashboardItem => {
-        if (!item) return false
-        if (item.kind === "folder") return !hiddenIds.has(item.id)
-        if (item.kind === "notes") return notesEnabled
-        return remindersEnabled
-      })
+      .map((id) => cardsById.get(id))
+      .filter((card): card is CardData => !!card && !hiddenIds.has(card.id))
   )
 
   function handleCardDrop(columnIndex: number, targetId: string | null) {
@@ -242,14 +196,12 @@ export function DashboardView({
     await bookmarks.refresh()
   }
 
-  // Every card in a column - notes, reminders, folders - shares the same drag
-  // wiring, which is what lets them be reordered together in Grid view. List
-  // view calls this with no dragProps: Notes/Reminders go non-draggable (their
-  // own drag props are optional), while FolderCard's are required, so it gets
-  // inert no-op fallbacks instead - the card stays visually draggable but
-  // dropping it does nothing.
+  // Every folder card shares the same drag wiring, which is what lets them be
+  // reordered together in Grid view. List view calls this with no dragProps,
+  // so it gets inert no-op fallbacks instead - the card stays visually
+  // draggable but dropping it does nothing.
   function renderCard(
-    item: DashboardItem,
+    card: CardData,
     dragProps?: {
       isDragging: boolean
       dropIndicator: "before" | "after" | null
@@ -260,21 +212,6 @@ export function DashboardView({
       onCardDragEnd: () => void
     }
   ) {
-    if (item.kind === "notes") {
-      return <NotesCard key={item.id} workspaceId={activeId} {...dragProps} />
-    }
-    if (item.kind === "reminders") {
-      return (
-        <RemindersCard
-          key={item.id}
-          workspaceId={activeId}
-          use24HourClock={use24HourClock}
-          {...dragProps}
-        />
-      )
-    }
-
-    const card = item.card
     return (
       <FolderCard
         key={card.id}

@@ -249,9 +249,9 @@ export function BookmarkApp() {
 
 /**
  * Lives inside WorkspaceProvider so it can read the active workspace, and keys
- * the whole view on it: every per-workspace hook (bookmarks, notes, reminders,
- * hidden folders, card layout) then re-initializes from its lazy useState
- * initializer on a switch, instead of each having to react to an id change.
+ * the whole view on it: every per-workspace hook (bookmarks, hidden folders,
+ * card layout) then re-initializes from its lazy useState initializer on a
+ * switch, instead of each having to react to an id change.
  * useCardColumns in particular depends on this - see its dev-mode guard.
  */
 function AppContent({
@@ -311,8 +311,6 @@ function AppContent({
         greetingName={settings.greetingName}
         greetingEnabled={settings.greetingEnabled}
         searchBarEnabled={settings.searchBarEnabled}
-        notesEnabled={settings.notesEnabled}
-        remindersEnabled={settings.remindersEnabled}
         use24HourClock={settings.use24HourClock}
       />
 

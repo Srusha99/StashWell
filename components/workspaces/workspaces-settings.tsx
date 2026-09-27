@@ -335,7 +335,7 @@ function DeleteWorkspaceDialog({
         <DialogHeader>
           <DialogTitle>Delete &ldquo;{workspace.name}&rdquo;?</DialogTitle>
           <DialogDescription>
-            Its notes and reminders will be permanently deleted.
+            Its hidden folders and dashboard layout will be permanently deleted.
           </DialogDescription>
         </DialogHeader>
 

@@ -29,7 +29,7 @@ export function WorkspaceRepairNotice() {
       <Card
         icon={<Info className="size-5" />}
         title="Bookmarks aren't available here"
-        body="StashWell reads your real Chrome bookmarks, which only works when it's running as the extension's New Tab page. Notes and reminders work normally."
+        body="StashWell reads your real Chrome bookmarks, which only works when it's running as the extension's New Tab page."
       />
     )
   }

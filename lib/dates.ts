@@ -3,7 +3,7 @@
  * toISOString(), which converts to UTC and would roll the day over at the
  * wrong moment for anyone not on UTC.
  *
- * Lives here rather than in a hook module so pure `lib/` code (reminder
+ * Lives here rather than in a hook module so pure `lib/` code (kanban due-date
  * bucketing) can use it without importing a "use client" file.
  */
 export function localDayKey(date: Date = new Date()): string {
@@ -116,4 +116,31 @@ export function daysInMonth(year: number, month: number): number {
 /** Weekday index (0 = Sunday) that the month's first day falls on. */
 export function firstWeekdayOfMonth(year: number, month: number): number {
   return new Date(year, month, 1).getDay()
+}
+
+const TIME_24H: Intl.DateTimeFormatOptions = { hour: "2-digit", minute: "2-digit", hour12: false }
+const TIME_12H: Intl.DateTimeFormatOptions = { hour: "numeric", minute: "2-digit", hour12: true }
+
+/** "18:10" or "6:10 PM" - see hooks/use-appearance-settings.ts's use24HourClock. */
+function timeOf(date: Date, use24Hour: boolean): string {
+  return use24Hour
+    ? date.toLocaleTimeString("en-GB", TIME_24H)
+    : date.toLocaleTimeString("en-US", TIME_12H)
+}
+
+/** "Today · 18:10", "Tomorrow · 1:30 AM", "Jun 3 · 12:10 AM". */
+export function formatWhen(date: Date, now: Date = new Date(), use24Hour = false): string {
+  const key = localDayKey(date)
+  const time = timeOf(date, use24Hour)
+
+  if (key === localDayKey(now)) return `Today · ${time}`
+  if (key === localDayKey(addDays(now, 1))) return `Tomorrow · ${time}`
+  if (key === localDayKey(addDays(now, -1))) return `Yesterday · ${time}`
+
+  const day = date.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    ...(date.getFullYear() === now.getFullYear() ? {} : { year: "numeric" }),
+  })
+  return `${day} · ${time}`
 }
