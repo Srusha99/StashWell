@@ -197,6 +197,23 @@
     }
 }
 
+/* Icon float in the What's New dialog - see components/auth/whats-new-dialog.tsx */
+@layer utilities {
+  @keyframes whats-new-float {
+    0%,
+    100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-4px);
+    }
+  }
+
+  .animate-whats-new-float {
+    animation: whats-new-float 4s ease-in-out infinite;
+  }
+}
+
 /*
  * This page overrides Chrome's New Tab page, so it should fill the full
  * browser viewport rather than behave like a small popup.

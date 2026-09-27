@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { CreditCard, HelpCircle, LogOut, Settings, Zap } from "lucide-react"
+import { CreditCard, HelpCircle, LogOut, Settings, Sparkles, Zap } from "lucide-react"
 
 import { useAuth } from "@/lib/auth-context"
 import { useIsPro } from "@/hooks/use-is-pro"
@@ -59,9 +59,13 @@ function Avatar({
 
 export function UserMenu({
   onOpenSettings,
+  hasUnread,
+  onOpenWhatsNew,
   className,
 }: {
   onOpenSettings: () => void
+  hasUnread: boolean
+  onOpenWhatsNew: () => void
   className?: string
 }) {
   const { user } = useAuth()
@@ -85,19 +89,22 @@ export function UserMenu({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
-        render={
+          render={
           <button
             type="button"
             aria-label="Account menu"
             title={displayName}
             className={cn(
-              "rounded-full border border-[var(--card-border)] shadow-[var(--shadow-soft)] backdrop-blur-md dark:border-white/15 dark:shadow-none",
+              "relative rounded-full border border-[var(--card-border)] shadow-[var(--shadow-soft)] backdrop-blur-md dark:border-white/15 dark:shadow-none",
               className
             )}
           />
         }
       >
         <Avatar avatarUrl={avatarUrl} initials={initials} className="size-9" />
+        {hasUnread && (
+          <span className="absolute top-0 right-0 size-2.5 rounded-full bg-primary ring-2 ring-background" />
+        )}
       </DropdownMenuTrigger>
 
       <DropdownMenuContent align="end" sideOffset={8} className="w-64">
@@ -132,6 +139,10 @@ export function UserMenu({
           </button>
         )}
 
+        <DropdownMenuItem onClick={deferred(onOpenWhatsNew)}>
+          <Sparkles /> What&apos;s New
+          {hasUnread && <span className="ml-auto size-2 rounded-full bg-primary" />}
+        </DropdownMenuItem>
         <DropdownMenuItem onClick={deferred(onOpenSettings)}>
           <Settings /> Settings
         </DropdownMenuItem>

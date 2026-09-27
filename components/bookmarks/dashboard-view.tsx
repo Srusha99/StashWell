@@ -14,6 +14,7 @@ import { DashboardHeader } from "@/components/bookmarks/dashboard-header"
 import { FolderCard } from "@/components/bookmarks/folder-card"
 import { WorkspaceSwitcher } from "@/components/workspaces/workspace-switcher"
 import { UserMenu } from "@/components/auth/user-menu"
+import { WhatsNewToast } from "@/components/dashboard/whats-new-toast"
 import { ViewSwitcher, type ViewMode } from "@/components/dashboard/view-switcher"
 import KanbanBoard from "@/components/spectrumui/kanbanboard"
 import { WorkspaceRepairNotice } from "@/components/workspaces/workspace-repair-notice"
@@ -43,6 +44,10 @@ export function DashboardView({
   columnCount,
   onOpenManager,
   onOpenSettings,
+  hasUnread,
+  onOpenWhatsNew,
+  showWhatsNewToast,
+  onDismissWhatsNewToast,
   hiddenIds,
   onHideFolder,
   greetingName,
@@ -53,6 +58,10 @@ export function DashboardView({
   columnCount: number
   onOpenManager: (folderId: string) => void
   onOpenSettings: () => void
+  hasUnread: boolean
+  onOpenWhatsNew: () => void
+  showWhatsNewToast: boolean
+  onDismissWhatsNewToast: () => void
   hiddenIds: Set<string>
   onHideFolder: (id: string) => void
   greetingName: string
@@ -267,8 +276,19 @@ export function DashboardView({
           onViewChange={handleViewChange}
           buttonRef={kanbanButtonRef}
         />
-        <UserMenu onOpenSettings={onOpenSettings} />
+        <UserMenu
+          onOpenSettings={onOpenSettings}
+          hasUnread={hasUnread}
+          onOpenWhatsNew={onOpenWhatsNew}
+        />
       </div>
+
+      {showWhatsNewToast && (
+        <WhatsNewToast
+          onOpenWhatsNew={onOpenWhatsNew}
+          onDismiss={onDismissWhatsNewToast}
+        />
+      )}
 
       <DashboardHeader
         greetingName={greetingName}

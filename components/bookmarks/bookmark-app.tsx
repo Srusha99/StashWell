@@ -12,7 +12,9 @@ import { useAppearanceSettings } from "@/hooks/use-appearance-settings"
 import { useColumnCount } from "@/hooks/use-column-count"
 import { useDailyWallpaper } from "@/hooks/use-daily-wallpaper"
 import { useHiddenFolders } from "@/hooks/use-hidden-folders"
+import { useWhatsNew } from "@/hooks/use-whats-new"
 import { DashboardView } from "@/components/bookmarks/dashboard-view"
+import { WhatsNewDialog } from "@/components/auth/whats-new-dialog"
 import {
   SettingsDialog,
   type SettingsSection,
@@ -274,6 +276,17 @@ function AppContent({
   const [settingsOpen, setSettingsOpen] = React.useState(false)
   const [settingsSection, setSettingsSection] =
     React.useState<SettingsSection>("general")
+  const { hasUnread, markSeen, showToast, dismissToast } = useWhatsNew()
+  const [whatsNewOpen, setWhatsNewOpen] = React.useState(false)
+
+  // Shared by the profile menu's "What's New" item and the dashboard toast -
+  // either trigger both opens the dialog and marks it seen, which is also
+  // what makes the toast disappear (its own visibility already depends on
+  // "seen").
+  function openWhatsNew() {
+    setWhatsNewOpen(true)
+    markSeen()
+  }
   // Which folder the organiser opens at. Null means the workspace root.
   const [bookmarksFolderId, setBookmarksFolderId] = React.useState<
     string | null
@@ -306,6 +319,10 @@ function AppContent({
         columnCount={columnCount}
         onOpenManager={openBookmarks}
         onOpenSettings={() => setSettingsOpen(true)}
+        hasUnread={hasUnread}
+        onOpenWhatsNew={openWhatsNew}
+        showWhatsNewToast={showToast}
+        onDismissWhatsNewToast={dismissToast}
         hiddenIds={hiddenIds}
         onHideFolder={hideFolder}
         greetingName={settings.greetingName}
@@ -329,6 +346,8 @@ function AppContent({
         onHideFolder={hideFolder}
         onUnhideFolder={unhideFolder}
       />
+
+      <WhatsNewDialog open={whatsNewOpen} onOpenChange={setWhatsNewOpen} />
     </React.Fragment>
   )
 }
