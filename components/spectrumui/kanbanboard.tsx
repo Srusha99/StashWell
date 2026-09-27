@@ -13,7 +13,8 @@ import {
   subscribeToKanbanCards,
   writeKanbanCards,
 } from '@/lib/kanban';
-import { formatWhen, parseLocalDateTime } from '@/lib/dates';
+import { formatWhen, isDateOnly, parseDueAt } from '@/lib/dates';
+import { createCalendarEvent, deleteCalendarEvent, updateCalendarEvent } from '@/lib/gcal-service';
 import { DateTimePicker } from '@/components/dashboard/date-time-picker';
 import { useAppearanceSettings } from '@/hooks/use-appearance-settings';
 
@@ -68,6 +69,80 @@ const SIZES: Record<
 
 const AUTOSIZE_CLASS =
   'w-full resize-none overflow-hidden rounded-lg border border-neutral-200/50 bg-white/80 px-2.5 py-1.5 text-xs font-medium text-neutral-900 outline-none dark:border-neutral-700/50 dark:bg-neutral-800/80 dark:text-neutral-100';
+
+// Serializes every patchCardAfterSync write behind a single in-memory queue.
+// Without this, two calendar syncs that resolve close together (e.g. two new
+// cards created back-to-back) would each read the *same* stale
+// readKanbanCards() snapshot and then write it back, and whichever write
+// lands second would silently discard the first patch's gcal_event_id.
+// Chaining every call onto the same promise forces each patch's full
+// read-modify-write to finish before the next one starts reading.
+let patchQueue: Promise<void> = Promise.resolve();
+
+async function patchCardAfterSync(cardId: string, patch: Partial<KanbanCard>): Promise<void> {
+  const run = patchQueue.then(() => applyCardPatch(cardId, patch));
+  // Keep the queue alive even if this patch rejects, so one failed write
+  // doesn't wedge every patch queued behind it.
+  patchQueue = run.catch(() => {});
+  return run;
+}
+
+async function applyCardPatch(cardId: string, patch: Partial<KanbanCard>): Promise<void> {
+  const latest = await readKanbanCards();
+  const current = latest.find((c) => c.id === cardId);
+  if (!current) {
+    // The card was deleted locally while this calendar sync was still in
+    // flight - the id we just learned about is now unreachable from local
+    // state and would otherwise leak as an orphaned event on Google's side.
+    if (patch.gcal_event_id) void syncDelete(patch.gcal_event_id);
+    return;
+  }
+  if (patch.gcal_event_id && !current.dueAt) {
+    // The due date was cleared (or never set) on this card while its
+    // create/update sync was still in flight. Attaching the id now would
+    // silently reattach a Calendar event to a card that shows no due date
+    // anywhere in the UI, so delete the event we just synced instead of
+    // storing its id.
+    void syncDelete(patch.gcal_event_id);
+    return;
+  }
+  await writeKanbanCards(latest.map((c) => (c.id === cardId ? { ...c, ...patch } : c)));
+}
+
+// Card ids with a createCalendarEvent request currently in flight. Without
+// this, re-saving a card (even with an unrelated trivial edit) before its
+// first sync's gcal_event_id has round-tripped back into storage still sees
+// no gcal_event_id and fires a second, duplicate create for the same card.
+const pendingCreates = new Set<string>();
+
+async function syncCreate(card: KanbanCard): Promise<void> {
+  if (pendingCreates.has(card.id)) return;
+  pendingCreates.add(card.id);
+  try {
+    const result = await createCalendarEvent(card);
+    await patchCardAfterSync(card.id, { gcal_event_id: result.id });
+  } catch (error) {
+    console.error('[StashWell] Failed to create Google Calendar event:', error);
+  } finally {
+    pendingCreates.delete(card.id);
+  }
+}
+
+async function syncUpdate(eventId: string, card: KanbanCard): Promise<void> {
+  try {
+    await updateCalendarEvent(eventId, card);
+  } catch (error) {
+    console.error('[StashWell] Failed to update Google Calendar event:', error);
+  }
+}
+
+async function syncDelete(eventId: string): Promise<void> {
+  try {
+    await deleteCalendarEvent(eventId);
+  } catch (error) {
+    console.error('[StashWell] Failed to delete Google Calendar event:', error);
+  }
+}
 
 /**
  * Grows with its content as the user types, instead of scrolling a fixed
@@ -165,7 +240,8 @@ function CardForm({
   saveLabel: string;
 }) {
   const [pickerOpen, setPickerOpen] = useState(false);
-  const parsedDueAt = parseLocalDateTime(dueAt);
+  const parsedDueAt = parseDueAt(dueAt);
+  const dueAtIsAllDay = isDateOnly(dueAt);
 
   return (
     <div className="space-y-2 rounded-lg border border-blue-400/60 bg-white/70 p-2 dark:border-blue-500/60 dark:bg-neutral-800/70">
@@ -203,7 +279,7 @@ function CardForm({
           aria-haspopup="dialog"
           aria-label={
             parsedDueAt
-              ? `Change date and time (${formatWhen(parsedDueAt, new Date(), use24Hour)})`
+              ? `Change date and time (${formatWhen(parsedDueAt, new Date(), use24Hour, dueAtIsAllDay)})`
               : 'Set date and time'
           }
           className={`min-w-0 flex-1 truncate text-left text-xs font-medium ${
@@ -212,7 +288,7 @@ function CardForm({
               : 'text-neutral-400 dark:text-neutral-500'
           }`}
         >
-          {parsedDueAt ? formatWhen(parsedDueAt, new Date(), use24Hour) : 'Set time (optional)'}
+          {parsedDueAt ? formatWhen(parsedDueAt, new Date(), use24Hour, dueAtIsAllDay) : 'Set date (optional)'}
         </button>
         {parsedDueAt && (
           <button
@@ -338,17 +414,18 @@ export default function KanbanBoard({
     const title = draftTitle.trim();
     const description = draftDescription.trim();
     if (title && cards) {
-      persist([
-        ...cards,
-        {
-          id: `task_${Date.now()}`,
-          title,
-          status,
-          priority: draftPriority,
-          description: description || undefined,
-          dueAt: draftDueAt || undefined,
-        },
-      ]);
+      const newCard: KanbanCard = {
+        id: `task_${Date.now()}`,
+        title,
+        status,
+        priority: draftPriority,
+        description: description || undefined,
+        dueAt: draftDueAt || undefined,
+      };
+      persist([...cards, newCard]);
+      if (newCard.dueAt) {
+        void syncCreate(newCard);
+      }
     }
     setDraftTitle('');
     setDraftDescription('');
@@ -366,7 +443,11 @@ export default function KanbanBoard({
   }
 
   function deleteCard(cardId: string) {
+    const card = cards?.find((c) => c.id === cardId);
     if (cards) persist(cards.filter((c) => c.id !== cardId));
+    if (card?.gcal_event_id) {
+      void syncDelete(card.gcal_event_id);
+    }
   }
 
   function startEditingCard(card: KanbanCard) {
@@ -388,20 +469,33 @@ export default function KanbanBoard({
   function commitCardEdit(cardId: string) {
     const title = editDraftTitle.trim();
     const description = editDraftDescription.trim();
-    if (title && cards) {
-      persist(
-        cards.map((c) =>
-          c.id === cardId
-            ? {
-                ...c,
-                title,
-                description: description || undefined,
-                dueAt: editDraftDueAt || undefined,
-                priority: editDraftPriority,
-              }
-            : c
-        )
-      );
+    const previous = cards?.find((c) => c.id === cardId);
+    if (title && cards && previous) {
+      const nextDueAt = editDraftDueAt || undefined;
+      const dueAtCleared = Boolean(previous.dueAt) && !nextDueAt;
+      const hasChanges =
+        previous.title !== title ||
+        (previous.description || '') !== description ||
+        (previous.dueAt || '') !== (nextDueAt || '');
+
+      const nextCard: KanbanCard = {
+        ...previous,
+        title,
+        description: description || undefined,
+        dueAt: nextDueAt,
+        priority: editDraftPriority,
+        gcal_event_id: dueAtCleared ? undefined : previous.gcal_event_id,
+      };
+
+      persist(cards.map((c) => (c.id === cardId ? nextCard : c)));
+
+      if (dueAtCleared && previous.gcal_event_id) {
+        void syncDelete(previous.gcal_event_id);
+      } else if (nextCard.gcal_event_id && nextDueAt && hasChanges) {
+        void syncUpdate(nextCard.gcal_event_id, nextCard);
+      } else if (!nextCard.gcal_event_id && nextDueAt && hasChanges) {
+        void syncCreate(nextCard);
+      }
     }
     cancelEditingCard();
   }
@@ -483,11 +577,16 @@ export default function KanbanBoard({
                           hidden from the card face by design, but a due time is
                           the point of setting one, so it needs to be visible
                           without opening the edit form. */}
-                      {card.dueAt && parseLocalDateTime(card.dueAt) && (
+                      {card.dueAt && parseDueAt(card.dueAt) && (
                         <div className="mt-0.5 flex items-center gap-1 text-[10px] font-normal text-neutral-500 dark:text-neutral-400">
                           <Clock className="size-2.5 shrink-0" />
                           <span className="truncate">
-                            {formatWhen(parseLocalDateTime(card.dueAt)!, new Date(), settings.use24HourClock)}
+                            {formatWhen(
+                              parseDueAt(card.dueAt)!,
+                              new Date(),
+                              settings.use24HourClock,
+                              isDateOnly(card.dueAt)
+                            )}
                           </span>
                         </div>
                       )}

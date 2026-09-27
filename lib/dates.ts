@@ -34,6 +34,28 @@ export function parseLocalDateTime(value: string): Date | null {
   return Number.isNaN(date.getTime()) ? null : date
 }
 
+const DATE_ONLY_RE = /^\d{4}-\d{2}-\d{2}$/
+
+/** True for a bare "YYYY-MM-DD" due date with no time component (all-day). */
+export function isDateOnly(value: string): boolean {
+  return DATE_ONLY_RE.test(value)
+}
+
+/**
+ * Parses a due-date value that may be either a `datetime-local` string or a
+ * bare "YYYY-MM-DD" all-day date. The all-day case is built from local Y/M/D
+ * parts rather than `new Date("YYYY-MM-DD")`, which parses as UTC midnight
+ * and can land on the wrong calendar day once read back with local getters.
+ */
+export function parseDueAt(value: string): Date | null {
+  if (!value) return null
+  if (isDateOnly(value)) {
+    const [year, month, day] = value.split("-").map(Number)
+    return new Date(year, month - 1, day)
+  }
+  return parseLocalDateTime(value)
+}
+
 /** Adds whole days via the calendar, not 86_400_000ms - DST days aren't 24h. */
 export function addDays(date: Date, days: number): Date {
   const next = new Date(date)
@@ -128,19 +150,22 @@ function timeOf(date: Date, use24Hour: boolean): string {
     : date.toLocaleTimeString("en-US", TIME_12H)
 }
 
-/** "Today · 18:10", "Tomorrow · 1:30 AM", "Jun 3 · 12:10 AM". */
-export function formatWhen(date: Date, now: Date = new Date(), use24Hour = false): string {
+/**
+ * "Today · 18:10", "Tomorrow · 1:30 AM", "Jun 3 · 12:10 AM" - or, for an
+ * all-day due date, the same labels with no time suffix ("Today", "Jun 3").
+ */
+export function formatWhen(date: Date, now: Date = new Date(), use24Hour = false, allDay = false): string {
   const key = localDayKey(date)
-  const time = timeOf(date, use24Hour)
+  const suffix = allDay ? "" : ` · ${timeOf(date, use24Hour)}`
 
-  if (key === localDayKey(now)) return `Today · ${time}`
-  if (key === localDayKey(addDays(now, 1))) return `Tomorrow · ${time}`
-  if (key === localDayKey(addDays(now, -1))) return `Yesterday · ${time}`
+  if (key === localDayKey(now)) return `Today${suffix}`
+  if (key === localDayKey(addDays(now, 1))) return `Tomorrow${suffix}`
+  if (key === localDayKey(addDays(now, -1))) return `Yesterday${suffix}`
 
   const day = date.toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
     ...(date.getFullYear() === now.getFullYear() ? {} : { year: "numeric" }),
   })
-  return `${day} · ${time}`
+  return `${day}${suffix}`
 }

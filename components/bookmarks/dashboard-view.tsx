@@ -42,6 +42,7 @@ interface CardData {
 
 export function DashboardView({
   columnCount,
+  columnCountReady,
   onOpenManager,
   onOpenSettings,
   hasUnread,
@@ -56,6 +57,7 @@ export function DashboardView({
   use24HourClock,
 }: {
   columnCount: number
+  columnCountReady: boolean
   onOpenManager: (folderId: string) => void
   onOpenSettings: () => void
   hasUnread: boolean
@@ -147,10 +149,11 @@ export function DashboardView({
     () => Array.from(cardsById.keys()),
     [cardsById]
   )
-  const [columns, moveCard] = useCardColumns(
+  const [columns, moveCard, hasHydrated] = useCardColumns(
     defaultOrder,
     columnCount,
-    activeId
+    activeId,
+    columnCountReady
   )
   // Mirrors `columns` to Supabase (debounced) whenever it changes - a drag
   // move, or a card added/removed by reconciliation - and whenever a title
@@ -159,7 +162,7 @@ export function DashboardView({
     (id: string) => cardsById.get(id)?.title ?? id,
     [cardsById]
   )
-  useDashboardLayoutSync(activeId, columns, titleOf)
+  useDashboardLayoutSync(activeId, columns, titleOf, hasHydrated)
   // A stored layout from before notes/reminders were removed may still list
   // their ids alongside folder ids - cardsById.get returns undefined for
   // those now, so they're dropped here rather than rendered as blanks.

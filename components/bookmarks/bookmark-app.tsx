@@ -42,7 +42,7 @@ export function BookmarkApp() {
   // at 1 to match the static-export markup and only reaches the real count in an
   // effect, so remounting it on every workspace switch would flash a
   // single-column dashboard each time.
-  const columnCount = useColumnCount()
+  const { count: columnCount, isReady: columnCountReady } = useColumnCount()
   const { resolvedTheme } = useTheme()
   const isLight = resolvedTheme === "light"
   const appearance = useAppearanceSettings()
@@ -121,6 +121,7 @@ export function BookmarkApp() {
   const content = (
     <AppContent
       columnCount={columnCount}
+      columnCountReady={columnCountReady}
       appearance={appearance}
       customBackgrounds={customBackgrounds}
       onUploadCustomBackground={handleCustomBackgroundUpload}
@@ -258,6 +259,7 @@ export function BookmarkApp() {
  */
 function AppContent({
   columnCount,
+  columnCountReady,
   appearance,
   customBackgrounds,
   onUploadCustomBackground,
@@ -265,6 +267,7 @@ function AppContent({
   onDeleteCustomBackground,
 }: {
   columnCount: number
+  columnCountReady: boolean
   appearance: ReturnType<typeof useAppearanceSettings>
   customBackgrounds: CustomBackgroundItem[]
   onUploadCustomBackground: (file: File) => void
@@ -317,6 +320,7 @@ function AppContent({
     <React.Fragment key={activeId}>
       <DashboardView
         columnCount={columnCount}
+        columnCountReady={columnCountReady}
         onOpenManager={openBookmarks}
         onOpenSettings={() => setSettingsOpen(true)}
         hasUnread={hasUnread}

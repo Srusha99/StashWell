@@ -53,10 +53,12 @@ function reconcile(defaultIds: string[], previous: Columns | null, count: number
 export function useCardColumns(
   defaultIds: string[],
   columnCount: number,
-  workspaceId: string
+  workspaceId: string,
+  columnCountReady: boolean
 ): [
   Columns,
   (draggedId: string, targetColumnIndex: number, targetId: string | null, position: "before" | "after") => void,
+  boolean,
 ] {
   const key = defaultIds.join(",")
 
@@ -128,11 +130,24 @@ export function useCardColumns(
     })
   }, [workspaceId])
 
-  if (key !== lastKey || columnCount !== lastCount || (hasLoadedStorage && !hasHydrated)) {
+  // Every input hasHydrated's flip depends on - storage loaded, ids loaded,
+  // and columnCount past its startup placeholder (see
+  // hooks/use-column-count.ts) - must also gate the outer retry clause below
+  // under the exact same name. If the outer clause could stay true for a
+  // reason the flip doesn't check (or vice versa), whichever of these three
+  // resolves last would leave `canHydrate && !hasHydrated` stuck true with
+  // nothing left to change it: every render re-enters this block and calls
+  // setColumns with a fresh array reference forever, an unbounded
+  // render-phase update loop that throws "Too many re-renders" (React error
+  // #301). Sharing one predicate makes that impossible - whenever it's true,
+  // the flip below fires in the very same pass.
+  const canHydrate = hasLoadedStorage && columnCountReady && defaultIds.length > 0
+
+  if (key !== lastKey || columnCount !== lastCount || (canHydrate && !hasHydrated)) {
     setLastKey(key)
     setLastCount(columnCount)
     setColumns((current) => reconcile(defaultIds, hasHydrated ? current : stored, columnCount))
-    if (!hasHydrated && defaultIds.length > 0 && hasLoadedStorage) setHasHydrated(true)
+    if (!hasHydrated && canHydrate) setHasHydrated(true)
   }
 
   function moveCard(
@@ -173,5 +188,5 @@ export function useCardColumns(
     })
   }
 
-  return [columns, moveCard]
+  return [columns, moveCard, hasHydrated]
 }

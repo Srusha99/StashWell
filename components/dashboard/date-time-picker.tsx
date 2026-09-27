@@ -9,8 +9,9 @@ import {
   composeLocalDateTime24,
   daysInMonth,
   firstWeekdayOfMonth,
+  isDateOnly,
   localDayKey,
-  parseLocalDateTime,
+  parseDueAt,
   splitLocalTime,
   splitLocalTime24,
 } from "@/lib/dates"
@@ -85,7 +86,7 @@ function PickerBody({
   onChange: (value: string) => void
   use24Hour: boolean
 }) {
-  const initial = React.useMemo(() => parseLocalDateTime(value) ?? new Date(), [value])
+  const initial = React.useMemo(() => parseDueAt(value) ?? new Date(), [value])
   const initialTime = React.useMemo(() => splitLocalTime(initial), [initial])
   const initialTime24 = React.useMemo(() => splitLocalTime24(initial), [initial])
 
@@ -96,6 +97,7 @@ function PickerBody({
   const [minutes, setMinutes] = React.useState(use24Hour ? initialTime24.minutes : initialTime.minutes)
   const [meridiem, setMeridiem] = React.useState<Meridiem>(initialTime.meridiem)
   const [monthOpen, setMonthOpen] = React.useState(false)
+  const [allDay, setAllDay] = React.useState(() => isDateOnly(value))
 
   const totalDays = daysInMonth(year, month)
   const leadingBlanks = firstWeekdayOfMonth(year, month)
@@ -114,10 +116,18 @@ function PickerBody({
       hours?: string
       minutes?: string
       meridiem?: Meridiem
+      allDay?: boolean
     }) => {
       const y = next.year ?? year
       const m = next.month ?? month
       const d = next.day ?? day
+
+      if (next.allDay ?? allDay) {
+        const clampedDay = Math.min(d, daysInMonth(y, m))
+        onChange(localDayKey(new Date(y, m, clampedDay)))
+        return
+      }
+
       const h = Number.parseInt(next.hours ?? hours, 10)
       const min = Number.parseInt(next.minutes ?? minutes, 10)
       const safeMinutes = Number.isNaN(min) ? 0 : min
@@ -127,8 +137,14 @@ function PickerBody({
           : composeLocalDateTime(y, m, d, Number.isNaN(h) || h === 0 ? 12 : h, safeMinutes, next.meridiem ?? meridiem)
       )
     },
-    [year, month, day, hours, minutes, meridiem, onChange, use24Hour]
+    [year, month, day, hours, minutes, meridiem, allDay, onChange, use24Hour]
   )
+
+  function toggleAllDay() {
+    const next = !allDay
+    setAllDay(next)
+    emit({ allDay: next })
+  }
 
   function goToMonth(nextMonth: number, nextYear: number) {
     // Clamp before emitting, or the 31st of a 30-day month rolls into the next.
@@ -292,58 +308,81 @@ function PickerBody({
       </div>
 
       <div className="flex items-center justify-between border-t border-black/[0.06] pt-4 dark:border-white/5">
-        <span className="text-[17px] font-semibold text-foreground">Time</span>
-
-        <div className="flex items-center gap-2">
-          <div className="flex items-center rounded-[8px] bg-[#e3e3e8] px-2 py-1 text-[17px] font-medium text-foreground dark:bg-[#2c2c2e]">
-            <input
-              type="text"
-              inputMode="numeric"
-              value={hours}
-              onChange={(event) => changeHours(event.target.value)}
-              onBlur={() => hours === "" && changeHours(use24Hour ? "00" : "12")}
-              aria-label="Hour"
-              placeholder="00"
-              className="w-6 bg-transparent text-center font-semibold outline-none"
-            />
-            <span className="opacity-70">:</span>
-            <input
-              type="text"
-              inputMode="numeric"
-              value={minutes}
-              onChange={(event) => changeMinutes(event.target.value)}
-              onBlur={() => minutes === "" && changeMinutes("00")}
-              aria-label="Minute"
-              placeholder="00"
-              className="w-6 bg-transparent text-center font-semibold outline-none"
-            />
-          </div>
-
-          {!use24Hour && (
-            <div className="flex rounded-[8px] bg-[#e3e3e8] p-[2px] text-[13px] font-semibold text-foreground dark:bg-[#2c2c2e]">
-              {(["AM", "PM"] as const).map((option) => (
-                <button
-                  key={option}
-                  type="button"
-                  aria-pressed={meridiem === option}
-                  onClick={() => {
-                    setMeridiem(option)
-                    emit({ meridiem: option })
-                  }}
-                  className={cn(
-                    "rounded-[6px] px-2.5 py-1 transition-all",
-                    meridiem === option
-                      ? "bg-white shadow-sm dark:bg-[#505054]"
-                      : "opacity-60 hover:opacity-100"
-                  )}
-                >
-                  {option}
-                </button>
-              ))}
-            </div>
+        <span className="text-[17px] font-semibold text-foreground">All day</span>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={allDay}
+          onClick={toggleAllDay}
+          className={cn(
+            "relative h-6 w-10 shrink-0 rounded-full transition-colors",
+            allDay ? "bg-primary" : "bg-[#e3e3e8] dark:bg-[#2c2c2e]"
           )}
-        </div>
+        >
+          <span
+            className={cn(
+              "absolute top-0.5 left-0.5 size-5 rounded-full bg-white shadow-sm transition-transform",
+              allDay && "translate-x-4"
+            )}
+          />
+        </button>
       </div>
+
+      {!allDay && (
+        <div className="flex items-center justify-between border-t border-black/[0.06] pt-4 dark:border-white/5">
+          <span className="text-[17px] font-semibold text-foreground">Time</span>
+
+          <div className="flex items-center gap-2">
+            <div className="flex items-center rounded-[8px] bg-[#e3e3e8] px-2 py-1 text-[17px] font-medium text-foreground dark:bg-[#2c2c2e]">
+              <input
+                type="text"
+                inputMode="numeric"
+                value={hours}
+                onChange={(event) => changeHours(event.target.value)}
+                onBlur={() => hours === "" && changeHours(use24Hour ? "00" : "12")}
+                aria-label="Hour"
+                placeholder="00"
+                className="w-6 bg-transparent text-center font-semibold outline-none"
+              />
+              <span className="opacity-70">:</span>
+              <input
+                type="text"
+                inputMode="numeric"
+                value={minutes}
+                onChange={(event) => changeMinutes(event.target.value)}
+                onBlur={() => minutes === "" && changeMinutes("00")}
+                aria-label="Minute"
+                placeholder="00"
+                className="w-6 bg-transparent text-center font-semibold outline-none"
+              />
+            </div>
+
+            {!use24Hour && (
+              <div className="flex rounded-[8px] bg-[#e3e3e8] p-[2px] text-[13px] font-semibold text-foreground dark:bg-[#2c2c2e]">
+                {(["AM", "PM"] as const).map((option) => (
+                  <button
+                    key={option}
+                    type="button"
+                    aria-pressed={meridiem === option}
+                    onClick={() => {
+                      setMeridiem(option)
+                      emit({ meridiem: option })
+                    }}
+                    className={cn(
+                      "rounded-[6px] px-2.5 py-1 transition-all",
+                      meridiem === option
+                        ? "bg-white shadow-sm dark:bg-[#505054]"
+                        : "opacity-60 hover:opacity-100"
+                    )}
+                  >
+                    {option}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </>
   )
 }

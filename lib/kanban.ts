@@ -20,10 +20,15 @@ export interface KanbanCard {
    * the card face - only the title renders there, so a long description
    * doesn't clutter the compact card list. */
   description?: string
-  /** datetime-local string ("2026-09-20T14:30") - lets the card form reuse
-   * components/dashboard/date-time-picker.tsx and lib/dates.ts's
-   * formatWhen() as-is. */
+  /** Either a datetime-local string ("2026-09-20T14:30") or, for an all-day
+   * due date with no specific time, a bare "YYYY-MM-DD" - see lib/dates.ts's
+   * isDateOnly()/parseDueAt(), which the card form and formatWhen() use to
+   * tell the two apart. */
   dueAt?: string
+  /** Google Calendar event id once this card has been synced (see
+   * lib/gcal-service.ts) - lets a later edit PATCH the same event instead of
+   * creating a duplicate, and lets delete remove it from Calendar too. */
+  gcal_event_id?: string
 }
 
 export const STORAGE_KEY = "kanbanCards"
@@ -66,7 +71,8 @@ function isKanbanCard(value: unknown): value is KanbanCard {
       candidate.priority === "medium" ||
       candidate.priority === "low") &&
     (candidate.description === undefined || typeof candidate.description === "string") &&
-    (candidate.dueAt === undefined || typeof candidate.dueAt === "string")
+    (candidate.dueAt === undefined || typeof candidate.dueAt === "string") &&
+    (candidate.gcal_event_id === undefined || typeof candidate.gcal_event_id === "string")
   )
 }
 

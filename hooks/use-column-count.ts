@@ -23,11 +23,24 @@ function hasChromeWindows(): boolean {
   return typeof chrome !== "undefined" && !!chrome.windows
 }
 
-export function useColumnCount(): number {
+/**
+ * `isReady` is false only for the brief window before the real count has
+ * been measured - callers that persist per-column layout (useCardColumns)
+ * must not treat that placeholder `count` as authoritative, or a saved
+ * multi-column layout gets flattened and round-robined back out once the
+ * real count arrives. See hooks/use-card-columns.ts.
+ */
+export interface ColumnCountState {
+  count: number
+  isReady: boolean
+}
+
+export function useColumnCount(): ColumnCountState {
   // Always starts at 1 so the client's first render matches the
   // window-less static export markup exactly; the real column count is
   // only picked up in the effect below, after hydration has completed.
   const [count, setCount] = React.useState(1)
+  const [isReady, setIsReady] = React.useState(false)
 
   React.useEffect(() => {
     // window.innerWidth (and matchMedia, which is built on it) is a CSS-pixel
@@ -44,6 +57,7 @@ export function useColumnCount(): number {
       const applyWindow = (win: chrome.windows.Window | undefined) => {
         if (cancelled || !win?.width) return
         setCount(countForWidth(win.width))
+        setIsReady(true)
       }
       chrome.windows.getCurrent().then(applyWindow)
       chrome.windows.onBoundsChanged.addListener(applyWindow)
@@ -56,11 +70,14 @@ export function useColumnCount(): number {
     // Outside the extension (e.g. `next dev` in a regular browser tab)
     // there's no OS window size to ask for, so fall back to the CSS
     // viewport - it's zoom-sensitive, but that's dev-only here.
-    const handleResize = () => setCount(countForWidth(window.innerWidth))
+    const handleResize = () => {
+      setCount(countForWidth(window.innerWidth))
+      setIsReady(true)
+    }
     window.addEventListener("resize", handleResize)
     handleResize()
     return () => window.removeEventListener("resize", handleResize)
   }, [])
 
-  return count
+  return { count, isReady }
 }
