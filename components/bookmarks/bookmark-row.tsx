@@ -7,6 +7,7 @@ import { type BookmarkNode, isFolder } from "@/hooks/use-bookmarks"
 import { useCustomIcon } from "@/hooks/use-custom-icon"
 import { FaviconImg } from "@/components/bookmarks/favicon-image"
 import { Button } from "@/components/ui/button"
+import { shortUrl } from "@/lib/utils"
 
 /** Bare host for the row's subtitle, e.g. "mail.google.com". */
 function hostOf(url: string | undefined): string | null {
@@ -16,6 +17,14 @@ function hostOf(url: string | undefined): string | null {
   } catch {
     return null
   }
+}
+
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
 }
 
 export function BookmarkRow({
@@ -53,8 +62,23 @@ export function BookmarkRow({
   async function handleCopy(event: React.MouseEvent) {
     event.preventDefault()
     if (!node.url) return
+    const label = node.title || host || node.url
+    // Plain-text targets (WhatsApp, SMS, bare textareas) can't carry a
+    // hidden href, so they get the title plus a short, still-clickable URL
+    // rather than losing the link entirely.
+    const plain = `${label}\n${shortUrl(node.url)}`
     try {
-      await navigator.clipboard.writeText(node.url)
+      if (typeof ClipboardItem !== "undefined" && navigator.clipboard.write) {
+        const html = `<a href="${escapeHtml(node.url)}">${escapeHtml(label)}</a>`
+        await navigator.clipboard.write([
+          new ClipboardItem({
+            "text/html": new Blob([html], { type: "text/html" }),
+            "text/plain": new Blob([plain], { type: "text/plain" }),
+          }),
+        ])
+      } else {
+        await navigator.clipboard.writeText(plain)
+      }
       setCopied(true)
       setTimeout(() => setCopied(false), 1200)
     } catch {

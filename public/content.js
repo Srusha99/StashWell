@@ -66,11 +66,23 @@
       justify-content: center;
       padding: 0;
       touch-action: none;
+      /* Hidden (and unclickable) until the real position - saved or default
+         - comes back from chrome.storage.local and gets applied. Painting
+         at the synchronous fallback spot first and correcting it afterwards
+         is what caused the icon to visibly jump/slide once storage
+         resolved; staying invisible until then means it only ever appears
+         already in its correct spot. See reveal() below. */
+      opacity: 0;
+      pointer-events: none;
       /* Only left/top ever change (see setIconPosition/snapToEdge) - this is
          what makes the post-drag snap-to-edge glide instead of jumping.
          .dragging turns it off below so the icon tracks the pointer with no
          lag while actually being dragged. */
-      transition: left 200ms ease, top 200ms ease, background 150ms ease;
+      transition: left 200ms ease, top 200ms ease, background 150ms ease, opacity 150ms ease;
+    }
+    .icon-btn.ready {
+      opacity: 1;
+      pointer-events: auto;
     }
     .icon-btn:hover {
       background: rgba(255, 255, 255, 0.35);
@@ -165,8 +177,23 @@
     if (open) positionPanel()
   }
 
+  // Left edge by default (per product decision) - only a user drag to the
+  // right side should ever put it there, and that gets remembered below.
   function defaultPosition() {
-    return { left: window.innerWidth - ICON_SIZE, top: window.innerHeight / 2 - ICON_SIZE / 2 }
+    return { left: 0, top: window.innerHeight / 2 - ICON_SIZE / 2 }
+  }
+
+  // Applies a position with the left/top CSS transition switched off, so
+  // reveal() (below) can set the icon's final spot and un-hide it in the
+  // same frame without a slide-in animation. Drags and resizes go through
+  // setIconPosition directly and keep the normal animated transition.
+  function setIconPositionInstant(left, top) {
+    button.style.transition = "none"
+    setIconPosition(left, top)
+    // Force a reflow so the "none" transition is committed before handing
+    // control back to the CSS transition (used for later drags/resizes).
+    void button.offsetHeight
+    button.style.transition = ""
   }
 
   // "Sticks to side" (like the reference extension icons) - after a drag,
@@ -179,20 +206,42 @@
     return { left: snappedLeft, top }
   }
 
-  // Applied synchronously so the icon has a sane position immediately -
-  // chrome.storage.local.get is async, and without this the icon would
-  // flash at the browser's default (0,0) for a frame while it resolves.
+  // Positioned synchronously (while still invisible via the CSS above) so
+  // there's a sane left/top the instant it does become visible, in case
+  // reveal() below ends up running off the timeout rather than the real
+  // storage response.
   {
     const fallback = defaultPosition()
     setIconPosition(fallback.left, fallback.top)
   }
 
+  // Makes the icon visible at its final position and only then - called
+  // once, by whichever of the storage callback / safety timeout fires
+  // first. chrome.storage.local.get's callback normally lands well within
+  // the timeout, but on a busy page it can be queued behind other work for
+  // a while; either way the icon stays hidden rather than flashing at the
+  // wrong spot and jumping once the real answer arrives.
+  let revealed = false
+  function reveal(saved) {
+    if (revealed) return
+    revealed = true
+    const target = saved
+      ? snapToEdge(saved.xFraction * window.innerWidth, saved.yFraction * window.innerHeight)
+      : defaultPosition()
+    setIconPositionInstant(target.left, target.top)
+    button.classList.add("ready")
+  }
+
   chrome.storage.local.get(POSITION_KEY, (stored) => {
     const saved = stored && stored[POSITION_KEY]
-    if (!saved) return
-    const snapped = snapToEdge(saved.xFraction * window.innerWidth, saved.yFraction * window.innerHeight)
-    setIconPosition(snapped.left, snapped.top)
+    reveal(saved)
   })
+
+  // Last-resort fallback in case the storage callback never fires (e.g. the
+  // extension context was invalidated mid-navigation) - without this the
+  // icon would stay invisible forever. Long enough that it should never
+  // preempt a normal (if slow) storage response.
+  setTimeout(() => reveal(null), 2000)
 
   // Keeps the icon on-screen (and the panel correctly anchored) if the
   // window is resized after the icon was placed.

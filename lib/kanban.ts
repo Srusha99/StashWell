@@ -6,10 +6,20 @@
 
 export type KanbanStatus = "todo" | "in-progress" | "done"
 
+export type KanbanPriority = "high" | "medium" | "low"
+
 export interface KanbanCard {
   id: string
   title: string
   status: KanbanStatus
+  /** Optional (not required) so cards saved before this field existed keep
+   * loading instead of being filtered out by isKanbanCard - components read
+   * it as `card.priority ?? "medium"`. */
+  priority?: KanbanPriority
+  /** Extra detail captured at creation time but deliberately never shown on
+   * the card face - only the title renders there, so a long description
+   * doesn't clutter the compact card list. */
+  description?: string
 }
 
 export const STORAGE_KEY = "kanbanCards"
@@ -18,6 +28,12 @@ export const STATUSES: { status: KanbanStatus; label: string }[] = [
   { status: "todo", label: "To Do" },
   { status: "in-progress", label: "In Progress" },
   { status: "done", label: "Done" },
+]
+
+export const PRIORITIES: { priority: KanbanPriority; label: string; color: string }[] = [
+  { priority: "high", label: "High", color: "#ef4444" },
+  { priority: "medium", label: "Medium", color: "#eab308" },
+  { priority: "low", label: "Low", color: "#22c55e" },
 ]
 
 export function hasStorageApi(): boolean {
@@ -40,7 +56,12 @@ function isKanbanCard(value: unknown): value is KanbanCard {
     typeof candidate.id === "string" &&
     candidate.id.length > 0 &&
     typeof candidate.title === "string" &&
-    (candidate.status === "todo" || candidate.status === "in-progress" || candidate.status === "done")
+    (candidate.status === "todo" || candidate.status === "in-progress" || candidate.status === "done") &&
+    (candidate.priority === undefined ||
+      candidate.priority === "high" ||
+      candidate.priority === "medium" ||
+      candidate.priority === "low") &&
+    (candidate.description === undefined || typeof candidate.description === "string")
   )
 }
 

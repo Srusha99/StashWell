@@ -8,6 +8,7 @@
  */
 
 import { pushToCloud } from "@/lib/syncEngine"
+import { shortUrl } from "@/lib/utils"
 
 export interface SessionTab {
   id: string
@@ -317,6 +318,23 @@ export function tabsToPlainUrls(tabs: SessionTab[]): string {
   return tabs.map((tab) => tab.url).join("\n")
 }
 
+/** `<a href>` per tab, one per line - the rich-text body for "Share Selected". */
+function tabsToHtmlLinks(tabs: SessionTab[]): string {
+  return tabs
+    .map((tab) => `<a href="${escapeHtml(tab.url)}">${escapeHtml(tab.title || tab.url)}</a>`)
+    .join("<br>")
+}
+
+/**
+ * "title — short url" per tab, one per line - the plain-text fallback for
+ * "Share Selected". Keeps the URL (shortened to its origin) rather than
+ * dropping it entirely, since plain-text targets like WhatsApp can't carry a
+ * hidden href and would otherwise show an unclickable title with no link.
+ */
+function tabsToTitles(tabs: SessionTab[]): string {
+  return tabs.map((tab) => `${tab.title || tab.url} — ${shortUrl(tab.url)}`).join("\n")
+}
+
 export function bundleToMarkdown(bundle: SessionBundle): string {
   return [`# ${bundle.name}`, "", tabsToMarkdownLinks(bundle.tabs)].join("\n")
 }
@@ -347,9 +365,29 @@ export async function copyToClipboard(text: string): Promise<boolean> {
   }
 }
 
-/** Copies each selected tab's bare URL, one per line, to the clipboard. */
+/**
+ * Copies the selected tabs to the clipboard as clickable links: each tab's
+ * title as the visible link text, with the URL only in the underlying href
+ * (text/html) so a paste into a rich-text target - email, Notion, chat -
+ * shows titles rather than raw URLs. text/plain carries just the titles as a
+ * fallback for plain-text targets.
+ */
 export async function copyTabUrls(tabs: SessionTab[]): Promise<boolean> {
-  return copyToClipboard(tabsToPlainUrls(tabs))
+  const plain = tabsToTitles(tabs)
+  try {
+    if (typeof ClipboardItem !== "undefined" && navigator.clipboard.write) {
+      await navigator.clipboard.write([
+        new ClipboardItem({
+          "text/html": new Blob([tabsToHtmlLinks(tabs)], { type: "text/html" }),
+          "text/plain": new Blob([plain], { type: "text/plain" }),
+        }),
+      ])
+      return true
+    }
+  } catch {
+    // fall through to the plain-text path below
+  }
+  return copyToClipboard(plain)
 }
 
 function toBase64Url(input: string): string {
