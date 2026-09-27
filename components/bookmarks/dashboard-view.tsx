@@ -67,6 +67,7 @@ export function DashboardView({
   searchBarEnabled,
   notesEnabled,
   remindersEnabled,
+  use24HourClock,
 }: {
   columnCount: number
   onOpenManager: (folderId: string) => void
@@ -78,6 +79,7 @@ export function DashboardView({
   searchBarEnabled: boolean
   notesEnabled: boolean
   remindersEnabled: boolean
+  use24HourClock: boolean
 }) {
   const { activeWorkspace, activeId, resolved, workspaceFolderIds } =
     useWorkspaces()
@@ -262,7 +264,14 @@ export function DashboardView({
       return <NotesCard key={item.id} workspaceId={activeId} {...dragProps} />
     }
     if (item.kind === "reminders") {
-      return <RemindersCard key={item.id} workspaceId={activeId} {...dragProps} />
+      return (
+        <RemindersCard
+          key={item.id}
+          workspaceId={activeId}
+          use24HourClock={use24HourClock}
+          {...dragProps}
+        />
+      )
     }
 
     const card = item.card
@@ -328,6 +337,7 @@ export function DashboardView({
         greetingName={greetingName}
         greetingEnabled={greetingEnabled}
         searchBarEnabled={searchBarEnabled}
+        use24HourClock={use24HourClock}
       />
 
       {/* Shown instead of the folder columns when the workspace's Chrome folder

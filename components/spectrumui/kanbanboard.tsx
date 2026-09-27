@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { X } from 'lucide-react';
+import { CalendarDays, Clock, X } from 'lucide-react';
 
 import {
   KanbanCard,
@@ -13,6 +13,10 @@ import {
   subscribeToKanbanCards,
   writeKanbanCards,
 } from '@/lib/kanban';
+import { parseLocalDateTime } from '@/lib/dates';
+import { formatWhen } from '@/lib/reminders';
+import { DateTimePicker } from '@/components/dashboard/date-time-picker';
+import { useAppearanceSettings } from '@/hooks/use-appearance-settings';
 
 const DEFAULT_PRIORITY: KanbanPriority = 'medium';
 
@@ -137,9 +141,12 @@ function AutosizeTextarea({
 function CardForm({
   title,
   description,
+  dueAt,
   priority,
+  use24Hour,
   onTitleChange,
   onDescriptionChange,
+  onDueAtChange,
   onPriorityChange,
   onCancel,
   onSave,
@@ -147,14 +154,20 @@ function CardForm({
 }: {
   title: string;
   description: string;
+  dueAt: string;
   priority: KanbanPriority;
+  use24Hour: boolean;
   onTitleChange: (value: string) => void;
   onDescriptionChange: (value: string) => void;
+  onDueAtChange: (value: string) => void;
   onPriorityChange: (priority: KanbanPriority) => void;
   onCancel: () => void;
   onSave: () => void;
   saveLabel: string;
 }) {
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const parsedDueAt = parseLocalDateTime(dueAt);
+
   return (
     <div className="space-y-2 rounded-lg border border-blue-400/60 bg-white/70 p-2 dark:border-blue-500/60 dark:bg-neutral-800/70">
       <AutosizeTextarea
@@ -177,6 +190,58 @@ function CardForm({
         onCommit={onSave}
         onCancel={onCancel}
         commitOnBlur={false}
+      />
+
+      {/* Opens the same calendar + wheel-style clock picker the reminders
+          composer uses (components/dashboard/date-time-picker.tsx), so
+          setting a card's time looks and behaves identically everywhere in
+          the app rather than falling back to Chrome's native popup here. */}
+      <div className="flex h-8 items-center gap-1.5 rounded-md border border-neutral-200/60 bg-white/80 px-2 dark:border-neutral-700/60 dark:bg-neutral-800/80">
+        <CalendarDays className="size-3.5 shrink-0 text-neutral-400 dark:text-neutral-500" />
+        <button
+          type="button"
+          onClick={() => setPickerOpen(true)}
+          aria-haspopup="dialog"
+          aria-label={
+            parsedDueAt
+              ? `Change date and time (${formatWhen(parsedDueAt, new Date(), use24Hour)})`
+              : 'Set date and time'
+          }
+          className={`min-w-0 flex-1 truncate text-left text-xs font-medium ${
+            parsedDueAt
+              ? 'text-neutral-900 dark:text-neutral-100'
+              : 'text-neutral-400 dark:text-neutral-500'
+          }`}
+        >
+          {parsedDueAt ? formatWhen(parsedDueAt, new Date(), use24Hour) : 'Set time (optional)'}
+        </button>
+        {parsedDueAt && (
+          <button
+            type="button"
+            onClick={() => onDueAtChange('')}
+            aria-label="Clear date"
+            title="Clear date"
+            className="shrink-0 text-neutral-400 transition-colors hover:text-neutral-700 dark:text-neutral-500 dark:hover:text-neutral-200"
+          >
+            <X className="size-3" />
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={() => setPickerOpen(true)}
+          aria-label="Open date and time picker"
+          className="shrink-0 text-neutral-400 transition-colors hover:text-neutral-700 dark:text-neutral-500 dark:hover:text-neutral-200"
+        >
+          <Clock className="size-3.5" />
+        </button>
+      </div>
+
+      <DateTimePicker
+        open={pickerOpen}
+        onOpenChange={setPickerOpen}
+        value={dueAt}
+        onChange={onDueAtChange}
+        use24Hour={use24Hour}
       />
 
       <div className="space-y-1 rounded-md border border-neutral-200/60 bg-neutral-50/60 p-1.5 dark:border-neutral-700/60 dark:bg-neutral-900/40">
@@ -237,14 +302,24 @@ export default function KanbanBoard({
   columnMinHeight?: string;
 }) {
   const size = SIZES[variant];
+  // Called here rather than threaded as a prop: this board renders in three
+  // separate, unconnected trees (the dashboard popover, the floating OS
+  // popup window, and the docked iframe panel - see kanban-board.tsx and
+  // kanban-panel.tsx), two of which have no settings plumbing today. This
+  // hook already reads/writes chrome.storage.local directly and live-syncs
+  // across extension contexts on its own, so calling it independently here
+  // keeps every instance in sync with zero prop drilling through those.
+  const { settings } = useAppearanceSettings();
   const [cards, setCards] = useState<KanbanCard[] | null>(null);
   const [addingToStatus, setAddingToStatus] = useState<KanbanStatus | null>(null);
   const [draftTitle, setDraftTitle] = useState('');
   const [draftDescription, setDraftDescription] = useState('');
+  const [draftDueAt, setDraftDueAt] = useState('');
   const [draftPriority, setDraftPriority] = useState<KanbanPriority>(DEFAULT_PRIORITY);
   const [editingCardId, setEditingCardId] = useState<string | null>(null);
   const [editDraftTitle, setEditDraftTitle] = useState('');
   const [editDraftDescription, setEditDraftDescription] = useState('');
+  const [editDraftDueAt, setEditDraftDueAt] = useState('');
   const [editDraftPriority, setEditDraftPriority] = useState<KanbanPriority>(DEFAULT_PRIORITY);
 
   useEffect(() => {
@@ -266,11 +341,19 @@ export default function KanbanBoard({
     if (title && cards) {
       persist([
         ...cards,
-        { id: `task_${Date.now()}`, title, status, priority: draftPriority, description: description || undefined },
+        {
+          id: `task_${Date.now()}`,
+          title,
+          status,
+          priority: draftPriority,
+          description: description || undefined,
+          dueAt: draftDueAt || undefined,
+        },
       ]);
     }
     setDraftTitle('');
     setDraftDescription('');
+    setDraftDueAt('');
     setDraftPriority(DEFAULT_PRIORITY);
     setAddingToStatus(null);
   }
@@ -278,6 +361,7 @@ export default function KanbanBoard({
   function cancelAdding() {
     setDraftTitle('');
     setDraftDescription('');
+    setDraftDueAt('');
     setDraftPriority(DEFAULT_PRIORITY);
     setAddingToStatus(null);
   }
@@ -290,6 +374,7 @@ export default function KanbanBoard({
     setEditingCardId(card.id);
     setEditDraftTitle(card.title);
     setEditDraftDescription(card.description ?? '');
+    setEditDraftDueAt(card.dueAt ?? '');
     setEditDraftPriority(card.priority ?? DEFAULT_PRIORITY);
   }
 
@@ -297,6 +382,7 @@ export default function KanbanBoard({
     setEditingCardId(null);
     setEditDraftTitle('');
     setEditDraftDescription('');
+    setEditDraftDueAt('');
     setEditDraftPriority(DEFAULT_PRIORITY);
   }
 
@@ -307,7 +393,13 @@ export default function KanbanBoard({
       persist(
         cards.map((c) =>
           c.id === cardId
-            ? { ...c, title, description: description || undefined, priority: editDraftPriority }
+            ? {
+                ...c,
+                title,
+                description: description || undefined,
+                dueAt: editDraftDueAt || undefined,
+                priority: editDraftPriority,
+              }
             : c
         )
       );
@@ -361,9 +453,12 @@ export default function KanbanBoard({
                     key={card.id}
                     title={editDraftTitle}
                     description={editDraftDescription}
+                    dueAt={editDraftDueAt}
                     priority={editDraftPriority}
+                    use24Hour={settings.use24HourClock}
                     onTitleChange={setEditDraftTitle}
                     onDescriptionChange={setEditDraftDescription}
+                    onDueAtChange={setEditDraftDueAt}
                     onPriorityChange={setEditDraftPriority}
                     onCancel={cancelEditingCard}
                     onSave={() => commitCardEdit(card.id)}
@@ -383,7 +478,21 @@ export default function KanbanBoard({
                       )?.color,
                     }}
                   >
-                    <span className="min-w-0 flex-1 whitespace-normal break-words">{card.title}</span>
+                    <div className="min-w-0 flex-1">
+                      <span className="whitespace-normal break-words">{card.title}</span>
+                      {/* The only place a set time shows up - description stays
+                          hidden from the card face by design, but a due time is
+                          the point of setting one, so it needs to be visible
+                          without opening the edit form. */}
+                      {card.dueAt && parseLocalDateTime(card.dueAt) && (
+                        <div className="mt-0.5 flex items-center gap-1 text-[10px] font-normal text-neutral-500 dark:text-neutral-400">
+                          <Clock className="size-2.5 shrink-0" />
+                          <span className="truncate">
+                            {formatWhen(parseLocalDateTime(card.dueAt)!, new Date(), settings.use24HourClock)}
+                          </span>
+                        </div>
+                      )}
+                    </div>
                     <button
                       type="button"
                       title="Delete card"
@@ -403,9 +512,12 @@ export default function KanbanBoard({
                 <CardForm
                   title={draftTitle}
                   description={draftDescription}
+                  dueAt={draftDueAt}
                   priority={draftPriority}
+                  use24Hour={settings.use24HourClock}
                   onTitleChange={setDraftTitle}
                   onDescriptionChange={setDraftDescription}
+                  onDueAtChange={setDraftDueAt}
                   onPriorityChange={setDraftPriority}
                   onCancel={cancelAdding}
                   onSave={() => commitDraft(status)}
@@ -418,6 +530,7 @@ export default function KanbanBoard({
                     setAddingToStatus(status);
                     setDraftTitle('');
                     setDraftDescription('');
+                    setDraftDueAt('');
                     setDraftPriority(DEFAULT_PRIORITY);
                   }}
                   className="w-full rounded-lg border border-dashed border-neutral-300/60 px-2.5 py-1.5 text-xs text-neutral-500 transition-colors hover:border-neutral-400 hover:text-neutral-700 dark:border-neutral-700/60 dark:text-neutral-500 dark:hover:text-neutral-300"

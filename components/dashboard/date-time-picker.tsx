@@ -6,11 +6,13 @@ import { ChevronDown, ChevronLeft, ChevronRight } from "lucide-react"
 import {
   type Meridiem,
   composeLocalDateTime,
+  composeLocalDateTime24,
   daysInMonth,
   firstWeekdayOfMonth,
   localDayKey,
   parseLocalDateTime,
   splitLocalTime,
+  splitLocalTime24,
 } from "@/lib/dates"
 import { cn } from "@/lib/utils"
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
@@ -47,12 +49,16 @@ export function DateTimePicker({
   onOpenChange,
   value,
   onChange,
+  use24Hour = false,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
   /** Current datetime-local value, or "" when no date is set. */
   value: string
   onChange: (value: string) => void
+  /** Hides the AM/PM control and allows hours 0-23 instead of 1-12 - see
+   * hooks/use-appearance-settings.ts's use24HourClock. */
+  use24Hour?: boolean
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -64,7 +70,7 @@ export function DateTimePicker({
             the current value each time it is opened. Deliberately NOT keyed on
             `value`: that would remount on every click, resetting the month grid
             and slamming the month/year dropdown shut mid-selection. */}
-        {open && <PickerBody value={value} onChange={onChange} />}
+        {open && <PickerBody value={value} onChange={onChange} use24Hour={use24Hour} />}
       </DialogContent>
     </Dialog>
   )
@@ -73,18 +79,21 @@ export function DateTimePicker({
 function PickerBody({
   value,
   onChange,
+  use24Hour,
 }: {
   value: string
   onChange: (value: string) => void
+  use24Hour: boolean
 }) {
   const initial = React.useMemo(() => parseLocalDateTime(value) ?? new Date(), [value])
   const initialTime = React.useMemo(() => splitLocalTime(initial), [initial])
+  const initialTime24 = React.useMemo(() => splitLocalTime24(initial), [initial])
 
   const [year, setYear] = React.useState(initial.getFullYear())
   const [month, setMonth] = React.useState(initial.getMonth())
   const [day, setDay] = React.useState(initial.getDate())
-  const [hours, setHours] = React.useState(initialTime.hours)
-  const [minutes, setMinutes] = React.useState(initialTime.minutes)
+  const [hours, setHours] = React.useState(use24Hour ? initialTime24.hours : initialTime.hours)
+  const [minutes, setMinutes] = React.useState(use24Hour ? initialTime24.minutes : initialTime.minutes)
   const [meridiem, setMeridiem] = React.useState<Meridiem>(initialTime.meridiem)
   const [monthOpen, setMonthOpen] = React.useState(false)
 
@@ -111,18 +120,14 @@ function PickerBody({
       const d = next.day ?? day
       const h = Number.parseInt(next.hours ?? hours, 10)
       const min = Number.parseInt(next.minutes ?? minutes, 10)
+      const safeMinutes = Number.isNaN(min) ? 0 : min
       onChange(
-        composeLocalDateTime(
-          y,
-          m,
-          d,
-          Number.isNaN(h) || h === 0 ? 12 : h,
-          Number.isNaN(min) ? 0 : min,
-          next.meridiem ?? meridiem
-        )
+        use24Hour
+          ? composeLocalDateTime24(y, m, d, Number.isNaN(h) ? 0 : h, safeMinutes)
+          : composeLocalDateTime(y, m, d, Number.isNaN(h) || h === 0 ? 12 : h, safeMinutes, next.meridiem ?? meridiem)
       )
     },
-    [year, month, day, hours, minutes, meridiem, onChange]
+    [year, month, day, hours, minutes, meridiem, onChange, use24Hour]
   )
 
   function goToMonth(nextMonth: number, nextYear: number) {
@@ -143,7 +148,8 @@ function PickerBody({
 
   function changeHours(raw: string) {
     let next = raw.replace(/\D/g, "").slice(0, 2)
-    if (Number.parseInt(next, 10) > 12) next = "12"
+    const max = use24Hour ? 23 : 12
+    if (Number.parseInt(next, 10) > max) next = String(max)
     setHours(next)
     emit({ hours: next })
   }
@@ -295,7 +301,7 @@ function PickerBody({
               inputMode="numeric"
               value={hours}
               onChange={(event) => changeHours(event.target.value)}
-              onBlur={() => hours === "" && changeHours("12")}
+              onBlur={() => hours === "" && changeHours(use24Hour ? "00" : "12")}
               aria-label="Hour"
               placeholder="00"
               className="w-6 bg-transparent text-center font-semibold outline-none"
@@ -313,27 +319,29 @@ function PickerBody({
             />
           </div>
 
-          <div className="flex rounded-[8px] bg-[#e3e3e8] p-[2px] text-[13px] font-semibold text-foreground dark:bg-[#2c2c2e]">
-            {(["AM", "PM"] as const).map((option) => (
-              <button
-                key={option}
-                type="button"
-                aria-pressed={meridiem === option}
-                onClick={() => {
-                  setMeridiem(option)
-                  emit({ meridiem: option })
-                }}
-                className={cn(
-                  "rounded-[6px] px-2.5 py-1 transition-all",
-                  meridiem === option
-                    ? "bg-white shadow-sm dark:bg-[#505054]"
-                    : "opacity-60 hover:opacity-100"
-                )}
-              >
-                {option}
-              </button>
-            ))}
-          </div>
+          {!use24Hour && (
+            <div className="flex rounded-[8px] bg-[#e3e3e8] p-[2px] text-[13px] font-semibold text-foreground dark:bg-[#2c2c2e]">
+              {(["AM", "PM"] as const).map((option) => (
+                <button
+                  key={option}
+                  type="button"
+                  aria-pressed={meridiem === option}
+                  onClick={() => {
+                    setMeridiem(option)
+                    emit({ meridiem: option })
+                  }}
+                  className={cn(
+                    "rounded-[6px] px-2.5 py-1 transition-all",
+                    meridiem === option
+                      ? "bg-white shadow-sm dark:bg-[#505054]"
+                      : "opacity-60 hover:opacity-100"
+                  )}
+                >
+                  {option}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </>

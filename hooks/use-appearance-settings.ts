@@ -38,6 +38,10 @@ export interface AppearanceSettings extends CardFeel {
   searchBarEnabled: boolean
   notesEnabled: boolean
   remindersEnabled: boolean
+  /** Every displayed/picked time in the app - dashboard clock, reminder and
+   * kanban due-times, the shared date/time picker - reads this instead of
+   * each choosing its own 12h/24h format independently. */
+  use24HourClock: boolean
   dailyWallpaperEnabled: boolean
   /** Local calendar day (YYYY-MM-DD) the wallpaper last rotated on. */
   lastWallpaperRotation: string | null
@@ -58,6 +62,7 @@ const DEFAULT_SETTINGS: AppearanceSettings = {
   searchBarEnabled: true,
   notesEnabled: true,
   remindersEnabled: true,
+  use24HourClock: false,
   dailyWallpaperEnabled: false,
   lastWallpaperRotation: null,
 }
@@ -130,6 +135,7 @@ export function useAppearanceSettings(): {
   setSearchBarEnabled: (enabled: boolean) => void
   setNotesEnabled: (enabled: boolean) => void
   setRemindersEnabled: (enabled: boolean) => void
+  setUse24HourClock: (enabled: boolean) => void
   setDailyWallpaperEnabled: (enabled: boolean) => void
   setCardFeel: (patch: Partial<CardFeel>) => void
   resetCardFeel: () => void
@@ -236,6 +242,7 @@ export function useAppearanceSettings(): {
     setSearchBarEnabled: (enabled) => update({ searchBarEnabled: enabled }),
     setNotesEnabled: (enabled) => update({ notesEnabled: enabled }),
     setRemindersEnabled: (enabled) => update({ remindersEnabled: enabled }),
+    setUse24HourClock: (enabled) => update({ use24HourClock: enabled }),
     setDailyWallpaperEnabled: (enabled) =>
       // Stamping today on enable means the first rotation happens at the next
       // midnight, not the instant the switch is flipped.

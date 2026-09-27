@@ -19,17 +19,23 @@ export function DashboardHeader({
   greetingName,
   greetingEnabled,
   searchBarEnabled,
+  use24HourClock,
 }: {
   greetingName: string
   greetingEnabled: boolean
   searchBarEnabled: boolean
+  use24HourClock: boolean
 }) {
   const now = useNow(1000)
   const [query, setQuery] = React.useState("")
   const { resolvedTheme } = useTheme()
   const isLight = resolvedTheme === "light"
 
-  const time = now.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true })
+  const time = now.toLocaleTimeString("en-US", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: !use24HourClock,
+  })
   const date = now.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })
   const greeting = getGreeting(now.getHours(), greetingName)
 

@@ -313,6 +313,7 @@ function AppContent({
         searchBarEnabled={settings.searchBarEnabled}
         notesEnabled={settings.notesEnabled}
         remindersEnabled={settings.remindersEnabled}
+        use24HourClock={settings.use24HourClock}
       />
 
       <SettingsDialog

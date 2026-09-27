@@ -161,16 +161,20 @@ export function sortedForDisplay(reminders: Reminder[], now: Date = new Date()):
 /* Formatting                                                                  */
 /* -------------------------------------------------------------------------- */
 
-const TIME: Intl.DateTimeFormatOptions = { hour: "2-digit", minute: "2-digit", hour12: false }
+const TIME_24H: Intl.DateTimeFormatOptions = { hour: "2-digit", minute: "2-digit", hour12: false }
+const TIME_12H: Intl.DateTimeFormatOptions = { hour: "numeric", minute: "2-digit", hour12: true }
 
-function timeOf(date: Date): string {
-  return date.toLocaleTimeString("en-GB", TIME)
+/** "18:10" or "6:10 PM" - see hooks/use-appearance-settings.ts's use24HourClock. */
+function timeOf(date: Date, use24Hour: boolean): string {
+  return use24Hour
+    ? date.toLocaleTimeString("en-GB", TIME_24H)
+    : date.toLocaleTimeString("en-US", TIME_12H)
 }
 
-/** "Today · 18:10", "Tomorrow · 01:30", "Jun 3 · 00:10". */
-export function formatWhen(date: Date, now: Date = new Date()): string {
+/** "Today · 18:10", "Tomorrow · 1:30 AM", "Jun 3 · 12:10 AM". */
+export function formatWhen(date: Date, now: Date = new Date(), use24Hour = false): string {
   const key = localDayKey(date)
-  const time = timeOf(date)
+  const time = timeOf(date, use24Hour)
 
   if (key === localDayKey(now)) return `Today · ${time}`
   if (key === localDayKey(addDays(now, 1))) return `Tomorrow · ${time}`
@@ -185,19 +189,23 @@ export function formatWhen(date: Date, now: Date = new Date()): string {
 }
 
 /** The line under a reminder's title. */
-export function describeReminder(reminder: Reminder, now: Date = new Date()): string {
+export function describeReminder(
+  reminder: Reminder,
+  now: Date = new Date(),
+  use24Hour = false
+): string {
   if (reminder.completedAt !== null) return "Done"
   if (hasFired(reminder, now)) return "Fired"
 
   const next = nextOccurrence(reminder, now)
   if (!next) return "No date"
 
-  if (reminder.recurrence === "daily") return `Every day at ${timeOf(next)}`
+  if (reminder.recurrence === "daily") return `Every day at ${timeOf(next, use24Hour)}`
   if (reminder.recurrence === "weekly") {
     const weekday = next.toLocaleDateString("en-US", { weekday: "long" })
-    return `Every ${weekday} at ${timeOf(next)}`
+    return `Every ${weekday} at ${timeOf(next, use24Hour)}`
   }
-  return formatWhen(next, now)
+  return formatWhen(next, now, use24Hour)
 }
 
 export const RECURRENCE_LABELS: Record<Recurrence, string> = {

@@ -34,12 +34,14 @@ export function ReminderComposer({
   onCancel,
   onSave,
   now,
+  use24Hour = false,
 }: {
   draft: ReminderDraft
   onChange: (next: ReminderDraft) => void
   onCancel: () => void
   onSave: () => void
   now: Date
+  use24Hour?: boolean
 }) {
   const parsed = parseLocalDateTime(draft.dueAt)
   const canSave = draft.title.trim().length > 0
@@ -85,14 +87,16 @@ export function ReminderComposer({
           onClick={() => setPickerOpen(true)}
           aria-haspopup="dialog"
           aria-label={
-            parsed ? `Change date and time (${formatWhen(parsed, now)})` : "Set date and time"
+            parsed
+              ? `Change date and time (${formatWhen(parsed, now, use24Hour)})`
+              : "Set date and time"
           }
           className={cn(
             "min-w-0 flex-1 truncate text-left text-sm",
             parsed ? "text-[#1c1c1e] dark:text-white" : "text-[#8e8e93] dark:text-white/40"
           )}
         >
-          {parsed ? formatWhen(parsed, now) : "No date set"}
+          {parsed ? formatWhen(parsed, now, use24Hour) : "No date set"}
         </button>
         {parsed && (
           <button
@@ -120,6 +124,7 @@ export function ReminderComposer({
         onOpenChange={setPickerOpen}
         value={draft.dueAt}
         onChange={(next) => onChange({ ...draft, dueAt: next })}
+        use24Hour={use24Hour}
       />
 
       <div className="flex items-center gap-0.5 rounded-xl border border-[#e5e5ea] p-0.5 dark:border-white/15">

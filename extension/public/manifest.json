@@ -8,6 +8,7 @@
     "newtab": "newtab.html"
   },
   "permissions": ["bookmarks", "storage", "favicon", "unlimitedStorage"],
+  "host_permissions": ["https://www.google.com/*"],
   "icons": {
     "16": "icons/icon16.png",
     "48": "icons/icon48.png",

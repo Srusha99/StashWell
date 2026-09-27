@@ -126,6 +126,7 @@ export function SettingsDialog({
                     onSearchBarEnabledChange={appearance.setSearchBarEnabled}
                     onNotesEnabledChange={appearance.setNotesEnabled}
                     onRemindersEnabledChange={appearance.setRemindersEnabled}
+                    onUse24HourClockChange={appearance.setUse24HourClock}
                   />
                 )}
 

@@ -59,6 +59,14 @@ export function splitLocalTime(date: Date): {
   }
 }
 
+/** Splits a Date into the 24-hour parts a clock UI needs - no meridiem. */
+export function splitLocalTime24(date: Date): { hours: string; minutes: string } {
+  return {
+    hours: `${date.getHours()}`.padStart(2, "0"),
+    minutes: `${date.getMinutes()}`.padStart(2, "0"),
+  }
+}
+
 /** The 24-hour hour for a 12-hour clock reading. 12 AM -> 0, 12 PM -> 12. */
 export function to24Hour(hours12: number, meridiem: Meridiem): number {
   const base = hours12 % 12
@@ -81,6 +89,23 @@ export function composeLocalDateTime(
 ): string {
   const clampedDay = Math.min(day, daysInMonth(year, month))
   const date = new Date(year, month, clampedDay, to24Hour(hours12, meridiem), minutes, 0, 0)
+  return localDateTimeValue(date)
+}
+
+/**
+ * Builds a `datetime-local` value from calendar and 24-hour clock parts - the
+ * 24-hour counterpart to composeLocalDateTime, with no meridiem and no
+ * hour-0 coercion (0 is a valid, distinct hour - midnight - in this mode).
+ */
+export function composeLocalDateTime24(
+  year: number,
+  month: number,
+  day: number,
+  hours24: number,
+  minutes: number
+): string {
+  const clampedDay = Math.min(day, daysInMonth(year, month))
+  const date = new Date(year, month, clampedDay, hours24, minutes, 0, 0)
   return localDateTimeValue(date)
 }
 

@@ -2,12 +2,16 @@
 
 import * as React from "react"
 
-import { faviconCandidates } from "@/lib/favicon"
+import { resolveFaviconSrc } from "@/lib/favicon"
 
 /**
- * Renders a bookmark's favicon, retrying against the apex domain and then
- * falling back to `fallback` if every candidate 404s - see faviconCandidates.
- * Without this, a failed <img> load just renders nothing (alt is empty).
+ * Renders a bookmark's favicon. Waits for resolveFaviconSrc to confirm a
+ * real icon exists (and fetch its bytes) before rendering anything, so a
+ * generic placeholder is never displayed as if it were the site's own icon
+ * - see that function for how it tells the two apart. Renders `fallback` if
+ * none exists, or if the resolved source still somehow fails to load (a
+ * network flake, not a "no icon" case - that's already been ruled out by
+ * the time rendering starts).
  */
 export function FaviconImg({
   url,
@@ -20,25 +24,45 @@ export function FaviconImg({
   className?: string
   fallback: React.ReactNode
 }) {
-  const candidates = React.useMemo(() => faviconCandidates(url, size), [url, size])
-  const [attempt, setAttempt] = React.useState(0)
-  const [prevCandidates, setPrevCandidates] = React.useState(candidates)
+  const key = `${url}:${size}`
+  const [lastKey, setLastKey] = React.useState(key)
+  // undefined = still resolving, null = confirmed no icon anywhere.
+  const [resolvedSrc, setResolvedSrc] = React.useState<string | null | undefined>(undefined)
+  const [failed, setFailed] = React.useState(false)
 
-  if (candidates !== prevCandidates) {
-    setPrevCandidates(candidates)
-    setAttempt(0)
+  // Reset during render rather than in the effect below, so the stale
+  // result from a previous url/size never flashes for a frame before the
+  // effect gets a chance to run.
+  if (key !== lastKey) {
+    setLastKey(key)
+    setResolvedSrc(undefined)
+    setFailed(false)
   }
 
-  if (attempt >= candidates.length) return <>{fallback}</>
+  React.useEffect(() => {
+    let active = true
+    resolveFaviconSrc(url, size).then((src) => {
+      if (active) setResolvedSrc(src)
+    })
+    return () => {
+      active = false
+    }
+  }, [url, size])
+
+  // resolveFaviconSrc hands back an object URL for a resolved icon it
+  // fetched itself - that URL is only valid for this component's lifetime
+  // and must be released, or the blob it points to leaks for the rest of
+  // the page's life.
+  React.useEffect(() => {
+    if (!resolvedSrc?.startsWith("blob:")) return
+    return () => URL.revokeObjectURL(resolvedSrc)
+  }, [resolvedSrc])
+
+  if (resolvedSrc === undefined) return null
+  if (resolvedSrc === null || failed) return <>{fallback}</>
 
   return (
     // eslint-disable-next-line @next/next/no-img-element
-    <img
-      key={attempt}
-      src={candidates[attempt]}
-      alt=""
-      className={className}
-      onError={() => setAttempt((current) => current + 1)}
-    />
+    <img src={resolvedSrc} alt="" className={className} onError={() => setFailed(true)} />
   )
 }

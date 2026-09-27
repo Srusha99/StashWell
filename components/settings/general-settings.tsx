@@ -12,6 +12,7 @@ export function GeneralSettings({
   onSearchBarEnabledChange,
   onNotesEnabledChange,
   onRemindersEnabledChange,
+  onUse24HourClockChange,
 }: {
   settings: AppearanceSettings
   onGreetingEnabledChange: (enabled: boolean) => void
@@ -19,6 +20,7 @@ export function GeneralSettings({
   onSearchBarEnabledChange: (enabled: boolean) => void
   onNotesEnabledChange: (enabled: boolean) => void
   onRemindersEnabledChange: (enabled: boolean) => void
+  onUse24HourClockChange: (enabled: boolean) => void
 }) {
   return (
     <div>
@@ -63,6 +65,19 @@ export function GeneralSettings({
               <Switch
                 checked={settings.searchBarEnabled}
                 onCheckedChange={onSearchBarEnabledChange}
+              />
+            }
+          />
+        </Group>
+
+        <Group title="Clock" description="Applies to the dashboard clock, reminders, and to-do due times.">
+          <Row
+            label="Use 24-hour clock"
+            hint="18:00 instead of 6:00 PM."
+            control={
+              <Switch
+                checked={settings.use24HourClock}
+                onCheckedChange={onUse24HourClockChange}
               />
             }
           />

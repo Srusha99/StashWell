@@ -28,8 +28,9 @@ const EMPTY_DRAFT: ReminderDraft = { title: "", dueAt: "", recurrence: "once" }
 
 export function RemindersCard({
   workspaceId,
+  use24HourClock = false,
   ...drag
-}: DashboardCardDragProps & { workspaceId: string }) {
+}: DashboardCardDragProps & { workspaceId: string; use24HourClock?: boolean }) {
   const { workspaces } = useWorkspaces()
   const {
     reminders,
@@ -135,6 +136,7 @@ export function RemindersCard({
             key={reminder.id}
             reminder={reminder}
             now={now}
+            use24HourClock={use24HourClock}
             onToggleDone={() => toggleDone(reminder.id)}
             onEdit={() => startEdit(reminder)}
             onDelete={() => {
@@ -163,6 +165,7 @@ export function RemindersCard({
           }}
           onSave={handleSave}
           now={now}
+          use24Hour={use24HourClock}
         />
       )}
 
@@ -219,12 +222,14 @@ export function RemindersCard({
 function ReminderRow({
   reminder,
   now,
+  use24HourClock,
   onToggleDone,
   onEdit,
   onDelete,
 }: {
   reminder: Reminder
   now: Date
+  use24HourClock: boolean
   onToggleDone: () => void
   onEdit: () => void
   onDelete: () => void
@@ -263,7 +268,7 @@ function ReminderRow({
           {reminder.title}
         </span>
         <span className="truncate text-[10px] text-[#8e8e93] dark:text-white/40">
-          {describeReminder(reminder, now)}
+          {describeReminder(reminder, now, use24HourClock)}
         </span>
       </div>
 

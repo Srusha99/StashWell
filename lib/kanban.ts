@@ -20,6 +20,11 @@ export interface KanbanCard {
    * the card face - only the title renders there, so a long description
    * doesn't clutter the compact card list. */
   description?: string
+  /** datetime-local string ("2026-09-20T14:30"), same representation
+   * lib/reminders.ts uses for `dueAt` - lets the card form reuse
+   * components/dashboard/date-time-picker.tsx and lib/reminders.ts's
+   * formatWhen() as-is. */
+  dueAt?: string
 }
 
 export const STORAGE_KEY = "kanbanCards"
@@ -61,7 +66,8 @@ function isKanbanCard(value: unknown): value is KanbanCard {
       candidate.priority === "high" ||
       candidate.priority === "medium" ||
       candidate.priority === "low") &&
-    (candidate.description === undefined || typeof candidate.description === "string")
+    (candidate.description === undefined || typeof candidate.description === "string") &&
+    (candidate.dueAt === undefined || typeof candidate.dueAt === "string")
   )
 }
 
