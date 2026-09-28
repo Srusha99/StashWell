@@ -82,12 +82,13 @@ export function BookmarkOrganizerPanel({
   const scopedRoot = root && effectiveRootId ? findNode([root], effectiveRootId) : null
   const scopedNodes = scopedRoot?.children ?? []
 
+  // Collapsed by default on mount and on every root-folder switch - a folder
+  // only opens once the user clicks its chevron, rather than dumping every
+  // top-level folder's contents on screen at once.
   const [lastResetKey, setLastResetKey] = React.useState<string | null>(null)
   if (effectiveRootId !== lastResetKey) {
     setLastResetKey(effectiveRootId)
-    if (effectiveRootId) {
-      setExpandedIds(new Set(scopedNodes.filter(isFolder).map((node) => node.id)))
-    }
+    setExpandedIds(new Set())
   }
 
   const folderOptions = React.useMemo(
@@ -183,7 +184,7 @@ export function BookmarkOrganizerPanel({
           </span>
         </div>
 
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-y-2">
           <label className="flex items-center gap-2 text-sm">
             <Switch checked={foldersOnly} onCheckedChange={setFoldersOnly} />
             Folders Only

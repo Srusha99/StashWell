@@ -15,19 +15,20 @@ import {
 export function ProUpgradeModal({
   open,
   onOpenChange,
+  title = "Upgrade to StashWell Pro",
+  description = "Kanban Board is a Pro feature. Upgrade to drag your folders and bookmarks through custom stages, plus everything else in Pro.",
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
+  title?: string
+  description?: string
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Upgrade to StashWell Pro</DialogTitle>
-          <DialogDescription>
-            Kanban Board is a Pro feature. Upgrade to drag your folders and
-            bookmarks through custom stages, plus everything else in Pro.
-          </DialogDescription>
+          <DialogTitle>{title}</DialogTitle>
+          <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>

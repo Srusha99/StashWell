@@ -1,13 +1,16 @@
 "use client"
 
 import * as React from "react"
-import { Bookmark, Layers, Palette, SlidersHorizontal } from "lucide-react"
+import { Bookmark, Layers, Lock, Palette, Plug, ShieldCheck, SlidersHorizontal } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { GeneralSettings } from "@/components/settings/general-settings"
 import { AppearanceSettingsPanel } from "@/components/settings/appearance-settings"
+import { PermissionsSettings } from "@/components/settings/permissions-settings"
+import { IntegrationsSettings } from "@/components/settings/integrations-settings"
+import { PrivacySettings } from "@/components/settings/privacy-settings"
 import { BookmarkManager } from "@/components/bookmarks/bookmark-manager"
 import { WorkspacesSettings } from "@/components/workspaces/workspaces-settings"
 import { Group, PaneHeader } from "@/components/settings/settings-parts"
@@ -22,7 +25,13 @@ interface CustomBackgroundItem {
 }
 
 export type SettingsSection =
-  "general" | "appearance" | "workspaces" | "bookmarks"
+  | "general"
+  | "appearance"
+  | "workspaces"
+  | "bookmarks"
+  | "integrations"
+  | "permissions"
+  | "privacy"
 
 const SECTIONS: { id: SettingsSection; label: string; icon: typeof Palette }[] =
   [
@@ -30,6 +39,9 @@ const SECTIONS: { id: SettingsSection; label: string; icon: typeof Palette }[] =
     { id: "appearance", label: "Appearance", icon: Palette },
     { id: "workspaces", label: "Workspaces", icon: Layers },
     { id: "bookmarks", label: "Bookmarks", icon: Bookmark },
+    { id: "integrations", label: "Integrations", icon: Plug },
+    { id: "permissions", label: "Permissions", icon: ShieldCheck },
+    { id: "privacy", label: "Privacy", icon: Lock },
   ]
 
 /**
@@ -104,62 +116,66 @@ export function SettingsDialog({
             ))}
           </nav>
 
-          {/* The organiser manages its own scrolling in two panes, so it fills
-              the section instead of sitting inside the scrolling column. */}
-          {section === "bookmarks" ? (
-            <BookmarkManager
-              initialFolderId={bookmarksFolderId ?? undefined}
-              hiddenIds={hiddenIds}
-              onHideFolder={onHideFolder}
-              onUnhideFolder={onUnhideFolder}
-            />
-          ) : (
-            /* Keyed on the section so each pane mounts fresh, which also puts the
-               scroll position back at the top on every switch. */
-            <ScrollArea key={section} className="min-w-0 flex-1">
-              <div className="w-full px-5 py-4">
-                {section === "general" && (
-                  <GeneralSettings
-                    settings={appearance.settings}
-                    onGreetingEnabledChange={appearance.setGreetingEnabled}
-                    onGreetingNameChange={appearance.setGreetingName}
-                    onSearchBarEnabledChange={appearance.setSearchBarEnabled}
-                    onUse24HourClockChange={appearance.setUse24HourClock}
-                  />
-                )}
+          {/* Keyed on the section so each pane mounts fresh, which also puts the
+              scroll position back at the top on every switch. */}
+          <ScrollArea key={section} className="min-w-0 flex-1">
+            <div className="w-full px-5 py-4">
+              {section === "general" && (
+                <GeneralSettings
+                  settings={appearance.settings}
+                  onGreetingEnabledChange={appearance.setGreetingEnabled}
+                  onGreetingNameChange={appearance.setGreetingName}
+                  onSearchBarEnabledChange={appearance.setSearchBarEnabled}
+                  onUse24HourClockChange={appearance.setUse24HourClock}
+                />
+              )}
 
-                {section === "appearance" && (
-                  <AppearanceSettingsPanel
-                    settings={appearance.settings}
-                    onColorModeChange={appearance.setColorMode}
-                    onBackgroundEnabledChange={appearance.setBackgroundEnabled}
-                    onCursorGlowEnabledChange={appearance.setCursorGlowEnabled}
-                    customBackgrounds={customBackgrounds}
-                    onUploadCustomBackground={onUploadCustomBackground}
-                    onSelectCustomBackground={onSelectCustomBackground}
-                    onDeleteCustomBackground={onDeleteCustomBackground}
-                    onDailyWallpaperEnabledChange={
-                      appearance.setDailyWallpaperEnabled
-                    }
-                    onCardFeelChange={appearance.setCardFeel}
-                    onResetAppearance={appearance.resetAppearance}
-                  />
-                )}
+              {section === "appearance" && (
+                <AppearanceSettingsPanel
+                  settings={appearance.settings}
+                  onColorModeChange={appearance.setColorMode}
+                  onBackgroundEnabledChange={appearance.setBackgroundEnabled}
+                  onCursorGlowEnabledChange={appearance.setCursorGlowEnabled}
+                  customBackgrounds={customBackgrounds}
+                  onUploadCustomBackground={onUploadCustomBackground}
+                  onSelectCustomBackground={onSelectCustomBackground}
+                  onDeleteCustomBackground={onDeleteCustomBackground}
+                  onDailyWallpaperEnabledChange={
+                    appearance.setDailyWallpaperEnabled
+                  }
+                  onCardFeelChange={appearance.setCardFeel}
+                  onResetAppearance={appearance.resetAppearance}
+                />
+              )}
 
-                {section === "workspaces" && (
-                  <div>
-                    <PaneHeader
-                      title="Workspaces"
-                      description="Each workspace keeps its own bookmarks."
-                    />
-                    <Group>
-                      <WorkspacesSettings listClassName="max-h-none" />
-                    </Group>
-                  </div>
-                )}
-              </div>
-            </ScrollArea>
-          )}
+              {section === "workspaces" && (
+                <div>
+                  <PaneHeader
+                    title="Workspaces"
+                    description="Each workspace keeps its own bookmarks."
+                  />
+                  <Group>
+                    <WorkspacesSettings listClassName="max-h-none" />
+                  </Group>
+                </div>
+              )}
+
+              {section === "bookmarks" && (
+                <BookmarkManager
+                  initialFolderId={bookmarksFolderId ?? undefined}
+                  hiddenIds={hiddenIds}
+                  onHideFolder={onHideFolder}
+                  onUnhideFolder={onUnhideFolder}
+                />
+              )}
+
+              {section === "integrations" && <IntegrationsSettings />}
+
+              {section === "permissions" && <PermissionsSettings />}
+
+              {section === "privacy" && <PrivacySettings />}
+            </div>
+          </ScrollArea>
         </div>
       </DialogContent>
     </Dialog>
