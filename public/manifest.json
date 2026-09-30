@@ -3,6 +3,7 @@
   "name": "StashWell",
   "description": "Your bookmarks, beautifully organized. StashWell replaces New Tab with a visual, stress-free way to stash and find what matters.",
   "version": "1.0.0",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAtmhr3iXeFtdgrfFOeTDulXm2O3mGjm5WW5WWi8ag40Wd9UqebaG3kdAqDVViZWPCoIqgkPK54Y1PemQe0w8bdFGIAw43ti4Z4YDNyjs3MaF+1UVU7DkLQE074HgwHnw9Uq0UkkUy4fj3hUM3kp4wezCsZCZjupjVSBOdersHHbKEX76ZN9cDLysKeKoJ2930Qmoclmu9e/zRZUGTjGOM95iEJYy9uLa056Ak6LPZaul3wkT/CrgBe5myYU0ZYh+4elq/kmj6KOox3PQhhigiB49E/6HzceLhEhise9Dfq7FnSHix59FSIzjCAmBRZ95vITT/v3Pw8ib5oxFVP+wfuQIDAQAB",
   "chrome_url_overrides": {
     "newtab": "index.html"
   },

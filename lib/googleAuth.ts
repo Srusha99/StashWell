@@ -1,5 +1,13 @@
 import { supabase } from "@/lib/supabaseClient"
 
+// The Chrome Web Store build's redirect URL - the one Supabase's Redirect URLs
+// allow-list needs. The live value always comes from getRedirectURL(); this
+// only exists to flag a mismatch, since an unpacked build without
+// manifest.json's "key" gets a different, path-derived extension ID and
+// Supabase silently swaps a non-allow-listed
+// redirectTo for its Site URL, so the auth window never lands back here.
+const WEB_STORE_REDIRECT_URL = "https://nblkphiogednjkhgfhkomcmeebohmamc.chromiumapp.org/"
+
 /**
  * Signs in with Google from an extension page via chrome.identity, since a
  * normal OAuth redirect has nowhere in-extension to land. Supabase issues
@@ -12,6 +20,11 @@ import { supabase } from "@/lib/supabaseClient"
 export async function signInWithGoogle(): Promise<{ error: string | null }> {
   const redirectUrl = chrome.identity.getRedirectURL()
   console.log("[StashWell] chrome.identity redirect URL:", redirectUrl)
+  if (redirectUrl !== WEB_STORE_REDIRECT_URL) {
+    console.warn(
+      `[StashWell] redirect URL doesn't match the Web Store build's (${WEB_STORE_REDIRECT_URL}) - add ${redirectUrl} to Supabase's Redirect URLs allow-list or Google sign-in won't complete.`
+    )
+  }
 
   const { data, error: oauthError } = await supabase.auth.signInWithOAuth({
     provider: "google",
