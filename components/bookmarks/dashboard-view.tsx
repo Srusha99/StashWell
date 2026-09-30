@@ -10,6 +10,7 @@ import {
 } from "@/hooks/use-bookmarks"
 import { useCardColumns } from "@/hooks/use-card-columns"
 import { useDashboardLayoutSync } from "@/hooks/use-dashboard-layout-sync"
+import { CARD_SHELL } from "@/components/dashboard/dashboard-card"
 import { DashboardHeader } from "@/components/bookmarks/dashboard-header"
 import { FolderCard } from "@/components/bookmarks/folder-card"
 import { WorkspaceSwitcher } from "@/components/workspaces/workspace-switcher"
@@ -71,10 +72,10 @@ export function DashboardView({
   searchBarEnabled: boolean
   use24HourClock: boolean
 }) {
-  const { activeWorkspace, activeId, resolved, workspaceFolderIds } =
+  const { activeWorkspace, activeId, resolved, workspaceFolderIds, isReady } =
     useWorkspaces()
   const bookmarks = useBookmarks(activeWorkspace.folderId)
-  const { root } = bookmarks
+  const { root, isLoading: bookmarksLoading } = bookmarks
 
   const [formDialog, setFormDialog] = React.useState<FormDialogState | null>(
     null
@@ -301,8 +302,11 @@ export function DashboardView({
       />
 
       {/* Shown instead of the folder columns when the workspace's Chrome folder
-          can't be resolved - never a fallback to another folder's contents. */}
-      {resolved.status !== "ok" && (
+          can't be resolved - never a fallback to another folder's contents.
+          Gated on isReady too: the tree starts empty and only loads async, so
+          resolved.status reads "missing-folder" for a frame on every load
+          without this - a false positive, not a real repair prompt. */}
+      {isReady && resolved.status !== "ok" && (
         <div className="mx-auto mb-4 w-full max-w-[960px]">
           <WorkspaceRepairNotice />
         </div>
@@ -312,7 +316,19 @@ export function DashboardView({
           columns on a wide screen each card ballooned past 360px, which is what
           made the dashboard feel heavy. ~228px per column at 4 columns. */}
       <div className="mx-auto flex w-full max-w-[960px] gap-[var(--grid-gap)]">
-          {visibleColumns.map((items, columnIndex) => (
+        {bookmarksLoading ? (
+          // Chrome's bookmarks.getTree() hasn't resolved yet - shown instead of
+          // an empty grid so that wait reads as "loading", not "no bookmarks".
+          Array.from({ length: Math.max(columnCount, 1) }).map((_, columnIndex) => (
+            <div
+              key={columnIndex}
+              className="flex min-w-0 flex-1 flex-col gap-[var(--grid-gap)]"
+            >
+              <div className={CARD_SHELL + " h-40 animate-pulse"} />
+            </div>
+          ))
+        ) : (
+          visibleColumns.map((items, columnIndex) => (
             <div
               key={columnIndex}
               className="flex min-w-0 flex-1 flex-col gap-[var(--grid-gap)]"
@@ -366,7 +382,8 @@ export function DashboardView({
                 </div>
               )}
             </div>
-          ))}
+          ))
+        )}
       </div>
 
       {root && (

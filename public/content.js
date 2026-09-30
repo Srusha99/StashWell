@@ -10,18 +10,26 @@
  * imports or TypeScript (same constraint as background.js).
  */
 ;(function () {
-  // Content scripts re-inject on every navigation within the same tab
-  // (history.pushState, etc. can also re-trigger document_idle in some
-  // cases) - guard so a page never ends up with two icons.
-  if (document.documentElement.hasAttribute("data-stashwell-injected")) return
-  document.documentElement.setAttribute("data-stashwell-injected", "true")
+  // This script can land on a page that already has a copy of it: content
+  // scripts can re-inject within the same tab (history.pushState, etc. can
+  // re-trigger document_idle in some cases), and background.js re-injects
+  // into every open tab after an install/update - where the copy from before
+  // the update is still running, orphaned. So each new copy announces itself
+  // first: a live copy cancels the event (see onReplaceRequest at the
+  // bottom), meaning "already here, stay out", so a page never ends up with
+  // two icons; an orphaned one removes itself instead and lets this copy
+  // take over. DOM events cross between content-script worlds, so this
+  // reaches a copy from the previous extension version too.
+  const REPLACE_EVENT = "stashwell-content-script-injected"
+  const liveCopyPresent = !document.dispatchEvent(new Event(REPLACE_EVENT, { cancelable: true }))
+  if (liveCopyPresent) return
 
   const ICON_SIZE = 44
   const GAP = 8
   // Kept a bit wider than the dashboard popover's own 640px so the docked
   // panel reads as a comfortably-sized floating window rather than a cramped
-  // tooltip - must match the w-[min(760px,...)] on the card in
-  // components/kanban/kanban-panel.tsx.
+  // tooltip. This is the only place the panel's width is set - the card in
+  // components/kanban/kanban-panel.tsx stretches to fill the iframe exactly.
   const PANEL_WIDTH = 760
   // Height is NOT fixed - kanban-panel.tsx measures its own card and posts
   // the real height back (see the "message" listener below). A fixed height
@@ -104,6 +112,19 @@
       max-height: calc(100vh - 16px);
       border: none;
       background: transparent;
+      /* Must match the color-scheme kanban-panel.tsx forces on its own
+         document. Chrome keeps an iframe see-through only while the <iframe>
+         element's color-scheme and its document's agree - left to inherit the
+         host page's instead (e.g. ChatGPT's color-scheme: dark), the mismatch
+         makes Chrome paint the iframe's whole box opaque white behind the
+         card. */
+      color-scheme: light;
+      /* The card fills this iframe edge to edge, so its rounded corners and
+         drop shadow have to live out here - anything the card drew outside
+         its own box would be clipped at the iframe's edge. Same values as
+         the dashboard popover's rounded-2xl + ring-black/5 + shadow-2xl. */
+      border-radius: 16px;
+      box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.05), 0 25px 50px -12px rgba(0, 0, 0, 0.25);
       opacity: 0;
       pointer-events: none;
       transform: scale(0.9);
@@ -245,10 +266,11 @@
 
   // Keeps the icon on-screen (and the panel correctly anchored) if the
   // window is resized after the icon was placed.
-  window.addEventListener("resize", () => {
+  function onResize() {
     const rect = button.getBoundingClientRect()
     setIconPosition(rect.left, rect.top)
-  })
+  }
+  window.addEventListener("resize", onResize)
 
   // --- Dragging ---
   let dragPointerId = null
@@ -256,6 +278,13 @@
   let moved = false
 
   button.addEventListener("pointerdown", (event) => {
+    // Covers an extension update that landed while this tab was in the
+    // foreground, so no visibilitychange (below) ever got the chance to
+    // notice - the click just removes the dead icon instead of doing nothing.
+    if (isOrphaned()) {
+      teardown()
+      return
+    }
     dragPointerId = event.pointerId
     dragStart = {
       pointerX: event.clientX,
@@ -337,23 +366,59 @@
   // kanban-panel.tsx's ResizeObserver reports the card's real height on
   // every change (cards added/removed, drag reorder) - this is what lets
   // the iframe hug the card exactly instead of leaving dead space around it.
-  window.addEventListener("message", (event) => {
+  function onPanelMessage(event) {
     const data = event.data
     if (!data || data.source !== "stashwell-kanban-panel") return
     lastPanelHeight = Number(data.height) || PANEL_HEIGHT_GUESS
     if (open) positionPanel()
-  })
+  }
+  window.addEventListener("message", onPanelMessage)
 
   // Closes on any click outside the icon/panel. composedPath() is what makes
   // this see through the shadow boundary to check whether the click actually
   // originated inside `host`.
-  document.addEventListener(
-    "click",
-    (event) => {
-      if (!open) return
-      if (event.composedPath().includes(host)) return
-      setOpen(false)
-    },
-    true
-  )
+  function onDocumentClick(event) {
+    if (!open) return
+    if (event.composedPath().includes(host)) return
+    setOpen(false)
+  }
+  document.addEventListener("click", onDocumentClick, true)
+
+  // --- Orphaned after an extension reload/update ---
+  // Chrome doesn't unload this script, or the extension iframe it created,
+  // when the extension is reloaded or updated - both keep running on any page
+  // that was already open, but every chrome.* call from either now throws
+  // "Extension context invalidated", leaving a dead icon and a board that
+  // neither saves edits nor hears about anyone else's - it just keeps showing
+  // whatever cards it had at the time. chrome.runtime.id going away is the
+  // signal. Removing `host` also unloads the iframe, so its page stops
+  // running entirely.
+  function isOrphaned() {
+    return !chrome.runtime?.id
+  }
+
+  function teardown() {
+    host.remove()
+    window.removeEventListener("resize", onResize)
+    window.removeEventListener("message", onPanelMessage)
+    document.removeEventListener("click", onDocumentClick, true)
+    document.removeEventListener("visibilitychange", onVisibilityChange)
+    document.removeEventListener(REPLACE_EVENT, onReplaceRequest)
+  }
+
+  // The usual way out: background.js injects the new version's copy right
+  // after an install/update, and its REPLACE_EVENT (top of file) arrives here.
+  function onReplaceRequest(event) {
+    if (isOrphaned()) teardown()
+    else event.preventDefault()
+  }
+  document.addEventListener(REPLACE_EVENT, onReplaceRequest)
+
+  // Fallback for a tab background.js couldn't re-inject into: reloading the
+  // extension means switching to chrome://extensions and back, so coming
+  // back to this tab is the next moment worth checking.
+  function onVisibilityChange() {
+    if (isOrphaned()) teardown()
+  }
+  document.addEventListener("visibilitychange", onVisibilityChange)
 })()

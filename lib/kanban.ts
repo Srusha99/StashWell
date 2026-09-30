@@ -98,10 +98,43 @@ export async function writeKanbanCards(cards: KanbanCard[]): Promise<void> {
   await chrome.storage.local.set({ [STORAGE_KEY]: cards })
 }
 
+// Serializes every updateKanbanCards call in this JS context behind one
+// queue, so two updates here can't both read the same snapshot and have the
+// second write silently discard the first.
+let updateQueue: Promise<unknown> = Promise.resolve()
+
+/**
+ * The one way to change the board: re-reads the latest stored cards, applies
+ * `apply` to them, and writes the result back. Every open New Tab dashboard,
+ * popup window and docked overlay iframe (content.js keeps one loaded on
+ * every page) holds its own in-memory copy of the cards - writing that copy
+ * wholesale would silently delete whatever another tab added since this one
+ * last heard about it. Applying each change by id to what's actually in
+ * storage means a stale copy can't clobber anyone else's edits. (Across tabs
+ * chrome.storage has no transactions, so two tabs writing within the same
+ * few milliseconds can still race - but that window is one storage round
+ * trip, not "however long this tab's copy has been stale".)
+ *
+ * Return `cards` itself (same array) from `apply` to skip the write.
+ */
+export function updateKanbanCards(apply: (cards: KanbanCard[]) => KanbanCard[]): Promise<KanbanCard[]> {
+  const run = updateQueue.then(async () => {
+    const current = await readKanbanCards()
+    const next = apply(current)
+    if (next !== current) await writeKanbanCards(next)
+    return next
+  })
+  // Keep the queue alive even if this update rejects, so one failed write
+  // doesn't wedge every update queued behind it.
+  updateQueue = run.catch(() => {})
+  return run
+}
+
 /**
  * Live updates when kanbanCards changes from *any* extension surface -
- * the toolbar popup's floating window and the dashboard's popover are
- * separate pages with separate JS contexts, so a write from one doesn't
+ * the toolbar popup's floating window, each New Tab dashboard's popover and
+ * each page's docked overlay iframe are all separate pages with separate JS
+ * contexts, so a write from one doesn't
  * touch the other's React state until something tells it to re-read.
  * chrome.storage.onChanged is that "something": it fires in every extension
  * page whenever chrome.storage.local.set() runs in any of them, including

@@ -9,9 +9,10 @@ import {
   KanbanStatus,
   PRIORITIES,
   STATUSES,
+  hasStorageApi,
   readKanbanCards,
   subscribeToKanbanCards,
-  writeKanbanCards,
+  updateKanbanCards,
 } from '@/lib/kanban';
 import { formatWhen, isDateOnly, parseDueAt } from '@/lib/dates';
 import { createCalendarEvent, deleteCalendarEvent, updateCalendarEvent } from '@/lib/gcal-service';
@@ -70,43 +71,33 @@ const SIZES: Record<
 const AUTOSIZE_CLASS =
   'w-full resize-none overflow-hidden rounded-lg border border-neutral-200/50 bg-white/80 px-2.5 py-1.5 text-xs font-medium text-neutral-900 outline-none dark:border-neutral-700/50 dark:bg-neutral-800/80 dark:text-neutral-100';
 
-// Serializes every patchCardAfterSync write behind a single in-memory queue.
-// Without this, two calendar syncs that resolve close together (e.g. two new
-// cards created back-to-back) would each read the *same* stale
-// readKanbanCards() snapshot and then write it back, and whichever write
-// lands second would silently discard the first patch's gcal_event_id.
-// Chaining every call onto the same promise forces each patch's full
-// read-modify-write to finish before the next one starts reading.
-let patchQueue: Promise<void> = Promise.resolve();
-
+// Goes through updateKanbanCards like every user edit does, so a calendar
+// sync's result is applied to the latest stored cards and queued behind (not
+// interleaved with) any edit already in flight - it can neither clobber that
+// edit nor be clobbered by it.
 async function patchCardAfterSync(cardId: string, patch: Partial<KanbanCard>): Promise<void> {
-  const run = patchQueue.then(() => applyCardPatch(cardId, patch));
-  // Keep the queue alive even if this patch rejects, so one failed write
-  // doesn't wedge every patch queued behind it.
-  patchQueue = run.catch(() => {});
-  return run;
-}
-
-async function applyCardPatch(cardId: string, patch: Partial<KanbanCard>): Promise<void> {
-  const latest = await readKanbanCards();
-  const current = latest.find((c) => c.id === cardId);
-  if (!current) {
-    // The card was deleted locally while this calendar sync was still in
-    // flight - the id we just learned about is now unreachable from local
-    // state and would otherwise leak as an orphaned event on Google's side.
-    if (patch.gcal_event_id) void syncDelete(patch.gcal_event_id);
-    return;
-  }
-  if (patch.gcal_event_id && !current.dueAt) {
-    // The due date was cleared (or never set) on this card while its
-    // create/update sync was still in flight. Attaching the id now would
-    // silently reattach a Calendar event to a card that shows no due date
-    // anywhere in the UI, so delete the event we just synced instead of
-    // storing its id.
-    void syncDelete(patch.gcal_event_id);
-    return;
-  }
-  await writeKanbanCards(latest.map((c) => (c.id === cardId ? { ...c, ...patch } : c)));
+  let orphanedEventId: string | undefined;
+  await updateKanbanCards((cards) => {
+    const current = cards.find((c) => c.id === cardId);
+    if (!current) {
+      // The card was deleted locally while this calendar sync was still in
+      // flight - the id we just learned about is now unreachable from local
+      // state and would otherwise leak as an orphaned event on Google's side.
+      orphanedEventId = patch.gcal_event_id;
+      return cards;
+    }
+    if (patch.gcal_event_id && !current.dueAt) {
+      // The due date was cleared (or never set) on this card while its
+      // create/update sync was still in flight. Attaching the id now would
+      // silently reattach a Calendar event to a card that shows no due date
+      // anywhere in the UI, so delete the event we just synced instead of
+      // storing its id.
+      orphanedEventId = patch.gcal_event_id;
+      return cards;
+    }
+    return cards.map((c) => (c.id === cardId ? { ...c, ...patch } : c));
+  });
+  if (orphanedEventId) void syncDelete(orphanedEventId);
 }
 
 // Card ids with a createCalendarEvent request currently in flight. Without
@@ -397,23 +388,92 @@ export default function KanbanBoard({
   const [editDraftDueAt, setEditDraftDueAt] = useState('');
   const [editDraftPriority, setEditDraftPriority] = useState<KanbanPriority>(DEFAULT_PRIORITY);
 
+  // Last card list actually confirmed by chrome.storage - what the board
+  // falls back to if a write fails, so it never keeps showing a change that
+  // didn't save.
+  const persistedRef = useRef<KanbanCard[] | null>(null);
+
   useEffect(() => {
-    readKanbanCards().then(setCards);
-    // Picks up edits made from the toolbar popup's floating Kanban window
-    // (a separate page - see subscribeToKanbanCards) while this popover is
+    let active = true;
+    // Bumped on every onChanged event. A read already in flight when one
+    // arrives may resolve with the older value, so it's dropped rather than
+    // allowed to overwrite the newer one.
+    let changeCount = 0;
+
+    function applyStored(stored: KanbanCard[]) {
+      persistedRef.current = stored;
+      setCards(stored);
+    }
+
+    // Picks up edits made from any other surface - another New Tab, the
+    // toolbar popup's floating window, or a docked overlay on some page (all
+    // separate pages - see subscribeToKanbanCards) - while this board is
     // already open, instead of only reflecting them on next open.
-    return subscribeToKanbanCards(setCards);
+    const unsubscribe = subscribeToKanbanCards((stored) => {
+      changeCount += 1;
+      applyStored(stored);
+    });
+
+    function resync() {
+      const startedAt = changeCount;
+      readKanbanCards().then(
+        (stored) => {
+          if (active && changeCount === startedAt) applyStored(stored);
+        },
+        (error) => console.error('[StashWell] Failed to load Kanban cards:', error)
+      );
+    }
+
+    // Also re-read whenever this page comes back into view: a background tab
+    // Chrome froze, or a page restored from the back/forward cache, may not
+    // have received onChanged events while it was suspended. Skipped outside
+    // the extension (e.g. `next dev`), where there's no storage to re-read
+    // and every resync would just reset the board to empty.
+    function resyncOnReturn() {
+      // chrome.runtime.id disappears once the extension is reloaded/updated
+      // while this page stays open (content.js's overlay iframe outlives
+      // that) - every chrome.storage call would just throw "Extension
+      // context invalidated" from then on.
+      if (chrome.runtime?.id) resync();
+    }
+    function onVisibilityChange() {
+      if (document.visibilityState === 'visible') resyncOnReturn();
+    }
+    function onPageShow(event: PageTransitionEvent) {
+      if (event.persisted) resyncOnReturn();
+    }
+
+    resync();
+    if (hasStorageApi()) {
+      document.addEventListener('visibilitychange', onVisibilityChange);
+      window.addEventListener('pageshow', onPageShow);
+    }
+    return () => {
+      active = false;
+      unsubscribe();
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+      window.removeEventListener('pageshow', onPageShow);
+    };
   }, []);
 
-  function persist(next: KanbanCard[]) {
-    setCards(next);
-    writeKanbanCards(next);
+  // Every add/move/edit/delete goes through here. `apply` runs twice: once
+  // on local state so the board responds instantly, then again by
+  // updateKanbanCards on the *latest* stored cards, which is what actually
+  // gets written - so it must be pure and change cards by id, never assume
+  // local state is current. The onChanged listener above then delivers
+  // what landed in storage, the same value every other tab receives.
+  function mutate(apply: (cards: KanbanCard[]) => KanbanCard[]) {
+    setCards((current) => (current ? apply(current) : current));
+    updateKanbanCards(apply).catch((error) => {
+      console.error('[StashWell] Failed to save Kanban cards:', error);
+      setCards(persistedRef.current);
+    });
   }
 
   function commitDraft(status: KanbanStatus) {
     const title = draftTitle.trim();
     const description = draftDescription.trim();
-    if (title && cards) {
+    if (title) {
       const newCard: KanbanCard = {
         id: `task_${Date.now()}`,
         title,
@@ -422,7 +482,7 @@ export default function KanbanBoard({
         description: description || undefined,
         dueAt: draftDueAt || undefined,
       };
-      persist([...cards, newCard]);
+      mutate((current) => [...current, newCard]);
       if (newCard.dueAt) {
         void syncCreate(newCard);
       }
@@ -444,7 +504,7 @@ export default function KanbanBoard({
 
   function deleteCard(cardId: string) {
     const card = cards?.find((c) => c.id === cardId);
-    if (cards) persist(cards.filter((c) => c.id !== cardId));
+    mutate((current) => current.filter((c) => c.id !== cardId));
     if (card?.gcal_event_id) {
       void syncDelete(card.gcal_event_id);
     }
@@ -470,7 +530,7 @@ export default function KanbanBoard({
     const title = editDraftTitle.trim();
     const description = editDraftDescription.trim();
     const previous = cards?.find((c) => c.id === cardId);
-    if (title && cards && previous) {
+    if (title && previous) {
       const nextDueAt = editDraftDueAt || undefined;
       const dueAtCleared = Boolean(previous.dueAt) && !nextDueAt;
       const hasChanges =
@@ -478,16 +538,19 @@ export default function KanbanBoard({
         (previous.description || '') !== description ||
         (previous.dueAt || '') !== (nextDueAt || '');
 
-      const nextCard: KanbanCard = {
-        ...previous,
+      // Only the fields this form edits - merged onto whatever the stored
+      // card is by then, so e.g. a gcal_event_id a calendar sync wrote in
+      // the meantime isn't reverted to this tab's older copy.
+      const edits: Partial<KanbanCard> = {
         title,
         description: description || undefined,
         dueAt: nextDueAt,
         priority: editDraftPriority,
-        gcal_event_id: dueAtCleared ? undefined : previous.gcal_event_id,
+        ...(dueAtCleared ? { gcal_event_id: undefined } : {}),
       };
+      const nextCard: KanbanCard = { ...previous, ...edits };
 
-      persist(cards.map((c) => (c.id === cardId ? nextCard : c)));
+      mutate((current) => current.map((c) => (c.id === cardId ? { ...c, ...edits } : c)));
 
       if (dueAtCleared && previous.gcal_event_id) {
         void syncDelete(previous.gcal_event_id);
@@ -511,12 +574,10 @@ export default function KanbanBoard({
   const handleDrop = (e: React.DragEvent, targetStatus: KanbanStatus) => {
     e.preventDefault();
     const cardId = e.dataTransfer.getData('text/plain');
-    if (!cards) return;
-
-    const card = cards.find((c) => c.id === cardId);
+    const card = cards?.find((c) => c.id === cardId);
     if (!card || card.status === targetStatus) return;
 
-    persist(cards.map((c) => (c.id === cardId ? { ...c, status: targetStatus } : c)));
+    mutate((current) => current.map((c) => (c.id === cardId ? { ...c, status: targetStatus } : c)));
   };
 
   return (

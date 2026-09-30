@@ -122,6 +122,9 @@ function writeStoredSettings(settings: AppearanceSettings) {
 
 export function useAppearanceSettings(): {
   settings: AppearanceSettings
+  /** False until the real stored settings have been read, so callers can hold
+   * off rendering a wallpaper rather than flashing the default first. */
+  loaded: boolean
   setColorMode: (mode: BackgroundColorMode) => void
   setBackgroundEnabled: (enabled: boolean) => void
   setCursorGlowEnabled: (enabled: boolean) => void
@@ -147,11 +150,14 @@ export function useAppearanceSettings(): {
   const [settings, setSettings] = React.useState<AppearanceSettings>(
     DEFAULT_SETTINGS
   )
+  const [loaded, setLoaded] = React.useState(false)
 
   React.useEffect(() => {
     let active = true
     readStoredSettings().then((loaded) => {
-      if (active) setSettings(loaded)
+      if (!active) return
+      setSettings(loaded)
+      setLoaded(true)
     })
     return () => {
       active = false
@@ -209,6 +215,7 @@ export function useAppearanceSettings(): {
   return {
     applyDailyWallpaper,
     settings,
+    loaded,
     setCardFeel: (patch) => update(patch),
     resetCardFeel: () => update(DEFAULT_CARD_FEEL),
     // Only the Appearance section's own settings: greetingName, greetingEnabled

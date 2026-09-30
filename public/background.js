@@ -1,6 +1,7 @@
 /**
  * StashWell's MV3 service worker: the right-click "Save all open tabs in
- * window as bundle" context menu, plus the first-install onboarding tab.
+ * window as bundle" context menu, the first-install onboarding tab, and
+ * re-injecting content.js into already-open tabs after an install/update.
  *
  * The Tab Session Bundles context menu opens the toolbar popup with its
  * "name this bundle" field already active (via a one-shot flag in
@@ -23,6 +24,29 @@
 const PENDING_SAVE_KEY = "stashwell_pending_save"
 const SAVE_SESSION_MENU_ID = "stashwell-save-session"
 
+/**
+ * Chrome only injects manifest content scripts into pages loaded *after* the
+ * extension (re)loads. Without this, every tab already open at install time
+ * would have no docked icon until refreshed, and every tab open across an
+ * update/reload would keep the previous version's copy, orphaned - its
+ * Kanban iframe can no longer read storage or hear about changes, so it
+ * silently stops syncing with the dashboard and every other tab. content.js
+ * removes that orphaned copy itself when this new one arrives.
+ */
+async function injectContentScriptIntoOpenTabs() {
+  const tabs = await chrome.tabs.query({ url: ["http://*/*", "https://*/*"] })
+  for (const tab of tabs) {
+    // Discarded tabs reload - and get the manifest content script - when
+    // next activated; executeScript would only fail on them.
+    if (tab.id === undefined || tab.discarded) continue
+    chrome.scripting
+      .executeScript({ target: { tabId: tab.id }, files: ["content.js"] })
+      // Some pages can never be scripted (e.g. the Chrome Web Store) -
+      // nothing to do for those.
+      .catch(() => {})
+  }
+}
+
 chrome.runtime.onInstalled.addListener((details) => {
   console.log("[StashWell] service worker installed.")
 
@@ -31,6 +55,13 @@ chrome.runtime.onInstalled.addListener((details) => {
   // update would be noise rather than help.
   if (details.reason === "install") {
     chrome.tabs.create({ url: chrome.runtime.getURL("onboarding.html") })
+  }
+
+  // Reloading an unpacked extension fires this with reason "update" too.
+  if (details.reason === "install" || details.reason === "update") {
+    injectContentScriptIntoOpenTabs().catch((error) => {
+      console.error("[StashWell] couldn't re-inject the docked icon into open tabs:", error)
+    })
   }
 
   // removeAll() first: onInstalled can also fire for an unpacked-extension

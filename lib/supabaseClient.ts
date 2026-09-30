@@ -7,9 +7,8 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 // extension's popup and dashboard contexts and doesn't survive them closing.
 // chrome.storage.local is the extension-wide store that does.
 //
-// This adapter also runs inside pages the docked-icon content script injects
-// into (see public/content.js's kanban-panel iframe), which stay open across
-// an extension reload/update. The first chrome.* call after that throws
+// The try/catch in each method is a backstop for a page that outlives an
+// extension reload/update: the first chrome.* call after that throws
 // "Extension context invalidated" - including from Supabase's own periodic
 // auto-refresh tick, which would otherwise repeat that throw on every tick
 // forever until the page is reloaded. Failing quietly (session-not-found)
@@ -50,10 +49,23 @@ const chromeStorageAdapter = {
   },
 }
 
+// The docked overlay iframe public/content.js keeps loaded on every web page
+// (index.html?view=kanban-panel) never uses Supabase - it only renders the
+// Kanban board, whose calendar sync signs in through chrome.identity instead
+// (see lib/gcal-service.ts) - but this module still loads there because every
+// view shares one bundle. On defaults, each of those iframes would read and
+// refresh the session from chrome.storage on every tab switch (Supabase
+// always installs a visibilitychange handler in a browser), and those
+// iframes are exactly the pages that outlive an extension reload. An
+// in-memory, never-refreshed session there means it never touches storage.
+const isOverlayPanel =
+  typeof window !== 'undefined' &&
+  new URLSearchParams(window.location.search).get('view') === 'kanban-panel'
+
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     storage: chromeStorageAdapter,
-    persistSession: true,
-    autoRefreshToken: true,
+    persistSession: !isOverlayPanel,
+    autoRefreshToken: !isOverlayPanel,
   },
 })
