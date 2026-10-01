@@ -49,7 +49,7 @@ export function BookmarkRow({
         className="flex w-full items-center gap-2 py-1 text-left"
       >
         <Folder className="size-4 shrink-0 text-[#8e8e93] dark:text-white/50" />
-        <span className="truncate text-xs text-[#1c1c1e] dark:text-white/85">
+        <span className="truncate text-bookmark text-[#1c1c1e] dark:text-white/85">
           {node.title || "(untitled)"}
         </span>
       </button>
@@ -101,7 +101,7 @@ export function BookmarkRow({
         ) : (
           fallbackIcon
         )}
-        <span className="min-w-0 flex-1 truncate text-xs text-[#1c1c1e] dark:text-white/85">
+        <span className="min-w-0 flex-1 truncate text-bookmark text-[#1c1c1e] dark:text-white/85">
           {node.title || host || node.url}
         </span>
       </a>

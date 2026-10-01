@@ -49,7 +49,7 @@ export function DashboardHeader({
   return (
     <div className="mb-7 flex flex-col items-center gap-1 pt-4 text-center text-[#1c1c1e] dark:text-white">
       <span className="text-5xl font-semibold tracking-tight tabular-nums">{time}</span>
-      <div className="text-xs text-[#8e8e93] dark:text-white/50">{date}</div>
+      <div className="text-sm text-[#8e8e93] dark:text-white/50">{date}</div>
       {greetingEnabled && (
         <TextType
           as="div"

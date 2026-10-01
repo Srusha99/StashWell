@@ -1,45 +1,53 @@
 /**
- * Backing logic for the Privacy settings panel's two data actions - export a
- * local backup, and clear cached app data. Built entirely on existing
+ * Backing logic for the Privacy settings panel's data actions - export a local
+ * backup, and clear cached app data. (Restoring a backup lives with the file
+ * format in lib/workspace-backup.ts.) Built entirely on existing
  * readers/writers from lib/kanban.ts, lib/session-bundles.ts and
  * lib/bookmarks.ts rather than touching chrome.storage.local directly for
  * data that already has an owner.
  */
 
 import { STORAGE_KEY as KANBAN_STORAGE_KEY, readKanbanCards } from "@/lib/kanban"
-import { getTree } from "@/lib/bookmarks"
+import { findNode, getTree, isFolder } from "@/lib/bookmarks"
 import {
   PENDING_SAVE_KEY,
   STORAGE_KEY as SESSIONS_STORAGE_KEY,
-  downloadTextFile,
   readSessionBundles,
 } from "@/lib/session-bundles"
+import { type WorkspaceSnapshot, downloadBackup, snapshotWorkspace } from "@/lib/workspace-backup"
+import type { Workspace } from "@/lib/workspaces"
 
 function hasStorageApi(): boolean {
   return typeof chrome !== "undefined" && !!chrome.storage?.local
 }
 
-/** Downloads a single JSON file with everything the user has stored locally. */
-export async function exportUserData(): Promise<void> {
-  const [tasks, sessions, bookmarks] = await Promise.all([
+/**
+ * Downloads a single JSON file with everything the user has stored locally:
+ * every workspace's dashboard, the kanban board and saved sessions - the file
+ * the panel's "Restore from backup" row reads back.
+ */
+export async function exportUserData(workspaces: Workspace[]): Promise<void> {
+  const [tasks, sessions, tree] = await Promise.all([
     readKanbanCards(),
     readSessionBundles(),
     getTree(),
   ])
 
-  const payload = {
-    exportedAt: new Date().toISOString(),
-    version: 1,
-    tasks,
-    sessions,
-    bookmarks,
+  const workspaceFolderIds = new Set(workspaces.map((workspace) => workspace.folderId))
+  const snapshots: WorkspaceSnapshot[] = []
+  for (const workspace of workspaces) {
+    const root = findNode(tree, workspace.folderId)
+    // A workspace whose folder is gone has nothing to back up - its
+    // dashboard's repair notice is where that gets fixed.
+    if (!root || !isFolder(root)) continue
+    snapshots.push(await snapshotWorkspace(workspace, root, workspaceFolderIds))
   }
 
-  downloadTextFile(
-    `stashwell-export-${new Date().toISOString().slice(0, 10)}.json`,
-    JSON.stringify(payload, null, 2),
-    "application/json"
-  )
+  downloadBackup(`stashwell-export-${new Date().toISOString().slice(0, 10)}.json`, {
+    workspaces: snapshots,
+    tasks,
+    sessions,
+  })
 }
 
 /**

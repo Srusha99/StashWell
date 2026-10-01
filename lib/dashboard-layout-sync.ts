@@ -1,28 +1,39 @@
 /**
- * Syncs the dashboard's per-workspace column layout between
- * chrome.storage.local and the `user_profiles.dashboard_layouts` jsonb
- * column in Supabase - a map of workspaceId -> LayoutEntry[].
+ * Backs the dashboard's per-workspace card layout up to the
+ * `user_profiles.dashboard_layouts` jsonb column in Supabase - a map of
+ * workspaceId -> DashboardLayout - and restores it onto a device that has none
+ * of its own (a reinstall, or cleared extension storage).
  *
- * Local-first, same idiom as lib/syncEngine.ts: callers write to
- * chrome.storage.local first (see hooks/use-card-columns.ts), then call
- * pushDashboardLayout without awaiting it. dashboard_layouts is a single
- * jsonb map shared across every workspace, so a push has to read-modify-write
- * the row rather than a plain upsert of one column - acceptable because
- * pushes are already debounced client-side (hooks/use-dashboard-layout-sync.ts)
- * and are not a hot path.
+ * A backup, not a sync: the cloud copy never replaces a layout the user has
+ * arranged on this device. It used to, on every page load and on every tab
+ * refocus (Supabase fires SIGNED_IN for both), and the copy it pulled was
+ * routinely stale - the debounced push after a drag was cancelled by the
+ * refresh that followed it, and a window-width reflow got pushed as though it
+ * were an arrangement. That is what kept moving cards the user had placed.
+ * Bookmark ids also differ between Chrome installs, so another device's
+ * layout wouldn't even name this device's folders.
  */
 
 import { supabase } from "@/lib/supabaseClient"
-import { writeDashboardLayout, type Columns } from "@/lib/dashboard-layout-storage"
+import { type BookmarkNode, getTree, hasBookmarksApi } from "@/lib/bookmarks"
+import {
+  type Columns,
+  type DashboardLayout,
+  layoutFromColumns,
+  parseDashboardLayout,
+  readDashboardLayout,
+  writeDashboardLayout,
+} from "@/lib/dashboard-layout-storage"
 
-export interface LayoutEntry {
+/** The pre-per-count cloud format, still read so an existing backup restores. */
+interface LegacyLayoutEntry {
   id: string
   title: string
   column: number
   position: number
 }
 
-type LayoutMap = Record<string, LayoutEntry[]>
+type LayoutMap = Record<string, unknown>
 
 interface UserProfileLayoutRow {
   dashboard_layouts: LayoutMap | null
@@ -32,18 +43,17 @@ function hasStorageApi(): boolean {
   return typeof chrome !== "undefined" && !!chrome.storage?.local
 }
 
-function isLayoutEntry(value: unknown): value is LayoutEntry {
+function isLegacyEntry(value: unknown): value is LegacyLayoutEntry {
   if (!value || typeof value !== "object") return false
   const entry = value as Record<string, unknown>
   return (
     typeof entry.id === "string" &&
-    typeof entry.title === "string" &&
     typeof entry.column === "number" &&
     typeof entry.position === "number"
   )
 }
 
-function entriesToColumns(entries: LayoutEntry[]): Columns {
+function legacyEntriesToColumns(entries: LegacyLayoutEntry[]): Columns {
   const columns: Columns = []
   const sorted = [...entries].sort((a, b) => a.position - b.position)
   for (const entry of sorted) {
@@ -54,16 +64,45 @@ function entriesToColumns(entries: LayoutEntry[]): Columns {
   return columns
 }
 
-/**
- * Fire-and-forget upsert of this workspace's layout into this user's
- * `user_profiles` row. Callers must write to chrome.storage.local first -
- * this never blocks on the network.
- */
-export function pushDashboardLayout(workspaceId: string, entries: LayoutEntry[]): void {
-  void pushDashboardLayoutAsync(workspaceId, entries)
+function parseCloudLayout(raw: unknown): DashboardLayout | null {
+  if (Array.isArray(raw) && raw.length > 0 && raw.every(isLegacyEntry)) {
+    return layoutFromColumns(legacyEntriesToColumns(raw), true)
+  }
+  return parseDashboardLayout(raw)
 }
 
-async function pushDashboardLayoutAsync(workspaceId: string, entries: LayoutEntry[]): Promise<void> {
+function collectFolderIds(nodes: BookmarkNode[], into: Set<string>): Set<string> {
+  for (const node of nodes) {
+    if (node.children) {
+      into.add(node.id)
+      collectFolderIds(node.children, into)
+    }
+  }
+  return into
+}
+
+// Every push is a read-modify-write of one shared jsonb map, so they run one
+// at a time: two in flight together would each write back a map missing the
+// other's change.
+let pushQueue: Promise<void> = Promise.resolve()
+
+/**
+ * Backs up this workspace's layout. Fire-and-forget, and only for a layout the
+ * user arranged - callers write chrome.storage.local first, and a push never
+ * blocks on the network or gets cancelled by the page unloading.
+ */
+export function pushDashboardLayout(workspaceId: string, layout: DashboardLayout): void {
+  pushQueue = pushQueue.then(() =>
+    pushDashboardLayoutAsync(workspaceId, layout).catch((error: unknown) => {
+      console.warn("dashboardLayoutSync.push failed:", error)
+    })
+  )
+}
+
+async function pushDashboardLayoutAsync(
+  workspaceId: string,
+  layout: DashboardLayout
+): Promise<void> {
   const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
   const user = sessionData.session?.user
   if (sessionError || !user) return
@@ -78,7 +117,7 @@ async function pushDashboardLayoutAsync(workspaceId: string, entries: LayoutEntr
     return
   }
 
-  const nextLayouts: LayoutMap = { ...(existing?.dashboard_layouts ?? {}), [workspaceId]: entries }
+  const nextLayouts: LayoutMap = { ...(existing?.dashboard_layouts ?? {}), [workspaceId]: layout }
 
   const { error } = await supabase
     .from("user_profiles")
@@ -89,16 +128,14 @@ async function pushDashboardLayoutAsync(workspaceId: string, entries: LayoutEntr
 }
 
 /**
- * Reads every workspace's layout from this user's `user_profiles` row and
- * overwrites the matching chrome.storage.local entry for each. Call on
- * mount once a session is found, alongside syncEngine's pullFromCloud - see
- * lib/auth-context.tsx. A workspace id from the cloud map that doesn't
- * exist on this device (different Chrome install, unresolvable folder) is
- * written anyway; it simply sits unread until/unless that workspace id ever
- * resolves locally.
+ * Restores backed-up layouts onto this device - but only for a workspace with
+ * no layout the user arranged here, and only when the backup names at least
+ * one folder that exists here. Safe to call on every load and sign-in event
+ * (see lib/auth-context.tsx): once a workspace has its own arrangement, this
+ * never touches it again.
  */
 export async function pullDashboardLayouts(userId: string): Promise<void> {
-  if (!hasStorageApi()) return
+  if (!hasStorageApi() || !hasBookmarksApi()) return
 
   const { data, error } = await supabase
     .from("user_profiles")
@@ -113,8 +150,25 @@ export async function pullDashboardLayouts(userId: string): Promise<void> {
   const layouts = data?.dashboard_layouts
   if (!layouts || typeof layouts !== "object") return
 
-  for (const [workspaceId, entries] of Object.entries(layouts)) {
-    if (!Array.isArray(entries) || !entries.every(isLayoutEntry)) continue
-    await writeDashboardLayout(workspaceId, entriesToColumns(entries))
+  const folderIds = collectFolderIds(await getTree(), new Set())
+
+  for (const [workspaceId, raw] of Object.entries(layouts)) {
+    const backup = parseCloudLayout(raw)
+    if (!backup?.arrangedByUser) continue
+
+    let local: DashboardLayout | null
+    try {
+      local = await readDashboardLayout(workspaceId)
+    } catch {
+      continue // unreadable: never risk writing over it
+    }
+    if (local?.arrangedByUser) continue
+
+    const namesLocalFolders = Object.values(backup.byCount).some((columns) =>
+      columns.some((column) => column.some((id) => folderIds.has(id)))
+    )
+    if (!namesLocalFolders) continue
+
+    await writeDashboardLayout(workspaceId, backup)
   }
 }

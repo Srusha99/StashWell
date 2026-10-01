@@ -1,12 +1,13 @@
 "use client"
 
 import * as React from "react"
-import { ChevronDown, Plus, Settings2 } from "lucide-react"
+import { ChevronDown, Plus, Settings2, Star } from "lucide-react"
 
 import { cn, deferred } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
+  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
@@ -37,7 +38,8 @@ function Emoji({ children, className }: { children: React.ReactNode; className?:
 }
 
 export function WorkspaceSwitcher({ className }: { className?: string }) {
-  const { workspaces, activeWorkspace, activeId, isReady, switchTo } = useWorkspaces()
+  const { workspaces, activeWorkspace, activeId, startupId, isReady, switchTo, setStartupWorkspace } =
+    useWorkspaces()
   const [manageOpen, setManageOpen] = React.useState(false)
   const [createOnOpen, setCreateOnOpen] = React.useState(false)
 
@@ -91,6 +93,12 @@ export function WorkspaceSwitcher({ className }: { className?: string }) {
               <DropdownMenuRadioItem key={workspace.id} value={workspace.id} className="gap-2">
                 <Emoji className="text-[13px]">{workspace.emoji}</Emoji>
                 <span className="truncate">{workspace.name}</span>
+                {workspace.id === startupId && (
+                  <>
+                    <Star aria-hidden className="size-3 fill-current opacity-50" />
+                    <span className="sr-only">(default)</span>
+                  </>
+                )}
               </DropdownMenuRadioItem>
             ))}
           </DropdownMenuRadioGroup>
@@ -98,6 +106,15 @@ export function WorkspaceSwitcher({ className }: { className?: string }) {
           {/* Outside the radio group: a plain item nested inside one inherits
               its semantics and gets announced as an unchecked radio. */}
           <DropdownMenuSeparator />
+          {/* Acts on the active workspace. Stays open on click (Base UI's
+              default for checkbox items) so the star can be seen landing. */}
+          <DropdownMenuCheckboxItem
+            className="gap-2"
+            checked={startupId === activeId}
+            onCheckedChange={(checked) => setStartupWorkspace(checked ? activeId : null)}
+          >
+            <Star /> Set as default
+          </DropdownMenuCheckboxItem>
           <DropdownMenuItem className="gap-2" onClick={deferred(() => openManage(true))}>
             <Plus /> New workspace
           </DropdownMenuItem>

@@ -298,7 +298,8 @@ function AppContent({
   // Owned here, not in each view: Settings can unhide a folder while the
   // dashboard is behind it, and two useHiddenFolders instances would not see
   // each other's writes until one of them remounted.
-  const { hiddenIds, hideFolder, unhideFolder } = useHiddenFolders(activeId)
+  const { hiddenIds, hideFolder, unhideFolder, reloadHiddenFolders } =
+    useHiddenFolders(activeId)
 
   // This state sits outside the workspace-keyed subtree below, so the folder id
   // has to be dropped on a switch - an id from one workspace means nothing in
@@ -350,6 +351,7 @@ function AppContent({
         hiddenIds={hiddenIds}
         onHideFolder={hideFolder}
         onUnhideFolder={unhideFolder}
+        onReloadHiddenFolders={reloadHiddenFolders}
       />
 
       <WhatsNewDialog open={whatsNewOpen} onOpenChange={setWhatsNewOpen} />

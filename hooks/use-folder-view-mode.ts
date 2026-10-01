@@ -2,31 +2,21 @@
 
 import * as React from "react"
 
-export type FolderViewMode = "list" | "grid"
+import {
+  type FolderViewMode,
+  readFolderViewMode,
+  writeFolderViewMode,
+} from "@/lib/folder-view-mode"
 
-function storageKey(folderId: string) {
-  return `bm:view:${folderId}`
-}
-
-function readStoredMode(folderId: string): FolderViewMode {
-  try {
-    return window.localStorage.getItem(storageKey(folderId)) === "grid" ? "grid" : "list"
-  } catch {
-    return "list"
-  }
-}
+export type { FolderViewMode }
 
 export function useFolderViewMode(folderId: string): [FolderViewMode, (mode: FolderViewMode) => void] {
-  const [mode, setMode] = React.useState<FolderViewMode>(() => readStoredMode(folderId))
+  const [mode, setMode] = React.useState<FolderViewMode>(() => readFolderViewMode(folderId))
 
   const update = React.useCallback(
     (next: FolderViewMode) => {
       setMode(next)
-      try {
-        window.localStorage.setItem(storageKey(folderId), next)
-      } catch {
-        // ignore write failures (e.g. storage disabled)
-      }
+      writeFolderViewMode(folderId, next)
     },
     [folderId]
   )

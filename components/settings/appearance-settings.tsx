@@ -20,9 +20,10 @@ import {
   Row,
   SegmentedControl,
 } from "@/components/settings/settings-parts"
-import type {
-  AppearanceSettings,
-  BackgroundColorMode,
+import {
+  type AppearanceSettings,
+  type BackgroundColorMode,
+  BOOKMARK_TEXT_SCALE,
 } from "@/hooks/use-appearance-settings"
 import { ROTATING_BUILT_INS } from "@/hooks/use-daily-wallpaper"
 import type { CustomBackgroundKind } from "@/lib/custom-background-store"
@@ -54,6 +55,7 @@ export function AppearanceSettingsPanel({
   onDeleteCustomBackground,
   onDailyWallpaperEnabledChange,
   onCardFeelChange,
+  onBookmarkTextScaleChange,
   onResetAppearance,
 }: {
   settings: AppearanceSettings
@@ -66,6 +68,7 @@ export function AppearanceSettingsPanel({
   onDeleteCustomBackground: (id: string) => void
   onDailyWallpaperEnabledChange: (enabled: boolean) => void
   onCardFeelChange: (patch: Partial<CardFeel>) => void
+  onBookmarkTextScaleChange: (percent: number) => void
   onResetAppearance: () => void
 }) {
   const { theme, setTheme, resolvedTheme } = useTheme()
@@ -286,6 +289,29 @@ export function AppearanceSettingsPanel({
               </div>
             ))}
           </div>
+        </Group>
+
+        <Group title="Text size">
+          <Row
+            stacked
+            label="Bookmark names"
+            hint="How large bookmark names appear in the dashboard cards."
+            control={
+              <Slider
+                label="Bookmark name size"
+                value={settings.bookmarkTextScale}
+                min={BOOKMARK_TEXT_SCALE.min}
+                max={BOOKMARK_TEXT_SCALE.max}
+                step={1}
+                // Keeps the floating value inside the card at either end.
+                thumbAlignment="edge"
+                valueLabel={(percent) => `${percent}%`}
+                onValueChange={(value) =>
+                  onBookmarkTextScaleChange(value as number)
+                }
+              />
+            }
+          />
         </Group>
       </div>
     </div>

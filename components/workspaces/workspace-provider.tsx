@@ -22,13 +22,16 @@ import {
   type Workspace,
   type WorkspaceState,
   adoptOrphanedFolders,
+  applyStartupWorkspace,
   clearWorkspaceData,
   createWorkspaceFolder,
   ensureWorkspacesContainer,
   newWorkspaceId,
+  readStartupWorkspaceId,
   readWorkspaceState,
   resolveWorkspace,
   runWorkspaceMigrations,
+  writeStartupWorkspaceId,
   writeWorkspaceState,
 } from "@/lib/workspaces"
 
@@ -36,6 +39,8 @@ interface WorkspaceContextValue {
   workspaces: Workspace[]
   activeWorkspace: Workspace
   activeId: string
+  /** The workspace every load opens on; null reopens the last-used one. */
+  startupId: string | null
   /** Folder-resolution result for the active workspace. */
   resolved: ResolvedWorkspace
   /** Every workspace's folder id, for excluding them from folder listings. */
@@ -46,7 +51,11 @@ interface WorkspaceContextValue {
   isReady: boolean
   isBusy: boolean
   switchTo: (id: string) => void
+  /** Pins a workspace as the one every load opens on, or clears it with null. */
+  setStartupWorkspace: (id: string | null) => void
   createWorkspace: (input: { name: string; emoji: string }) => Promise<Workspace | null>
+  /** Adds a workspace whose folder already exists, or updates the one with its id. Doesn't switch to it. */
+  registerWorkspace: (workspace: Workspace) => void
   updateWorkspace: (id: string, patch: { name?: string; emoji?: string }) => Promise<void>
   deleteWorkspace: (id: string, options: { deleteBookmarks: boolean }) => Promise<void>
   /** Moves a bookmark folder out of the active workspace and into another. */
@@ -81,9 +90,11 @@ export function WorkspaceProvider({
   // happen before any per-workspace hook reads its namespaced key, which rules
   // out an effect, and they touch `window`, which rules out module scope (this
   // module still executes in Node during the static-export prerender).
+  // A chosen default wins over the last-used workspace, but only here, on load.
   const [state, setState] = React.useState<WorkspaceState>(() =>
-    runWorkspaceMigrations(readWorkspaceState())
+    applyStartupWorkspace(runWorkspaceMigrations(readWorkspaceState()), readStartupWorkspaceId())
   )
+  const [startupId, setStartupId] = React.useState<string | null>(readStartupWorkspaceId)
   const [tree, setTree] = React.useState<BookmarkNode[]>([])
   const [isReady, setIsReady] = React.useState(false)
   const [isBusy, setIsBusy] = React.useState(false)
@@ -142,6 +153,15 @@ export function WorkspaceProvider({
     [onWorkspaceChange]
   )
 
+  const setStartupWorkspace = React.useCallback(
+    (id: string | null) => {
+      if (id !== null && !state.workspaces.some((workspace) => workspace.id === id)) return
+      writeStartupWorkspaceId(id)
+      setStartupId(id)
+    },
+    [state.workspaces]
+  )
+
   const createWorkspace = React.useCallback(
     async ({ name, emoji }: { name: string; emoji: string }) => {
       const trimmed = name.trim()
@@ -177,6 +197,24 @@ export function WorkspaceProvider({
     },
     [commit, onWorkspaceChange, state]
   )
+
+  // For a caller that built the folder itself - restoring a backup creates
+  // missing workspaces (lib/workspace-backup.ts). A functional update rather
+  // than commit(), because a restore registers several in a row from one async
+  // handler, where `state` in a closure would be stale by the second.
+  const registerWorkspace = React.useCallback((workspace: Workspace) => {
+    setState((current) => {
+      const exists = current.workspaces.some((existing) => existing.id === workspace.id)
+      const next = {
+        ...current,
+        workspaces: exists
+          ? current.workspaces.map((existing) => (existing.id === workspace.id ? workspace : existing))
+          : [...current.workspaces, workspace],
+      }
+      writeWorkspaceState(next)
+      return next
+    })
+  }, [])
 
   const updateWorkspace = React.useCallback(
     async (id: string, patch: { name?: string; emoji?: string }) => {
@@ -222,6 +260,10 @@ export function WorkspaceProvider({
 
         // Hidden folders and card layout always go.
         clearWorkspaceData(id)
+        if (startupId === id) {
+          writeStartupWorkspaceId(null)
+          setStartupId(null)
+        }
 
         const workspaces = state.workspaces.filter((workspace) => workspace.id !== id)
         const activeId = state.activeId === id ? DEFAULT_WORKSPACE_ID : state.activeId
@@ -232,7 +274,7 @@ export function WorkspaceProvider({
         setIsBusy(false)
       }
     },
-    [commit, onWorkspaceChange, state]
+    [commit, onWorkspaceChange, state, startupId]
   )
 
   /**
@@ -382,18 +424,27 @@ export function WorkspaceProvider({
     [state.workspaces, activeWorkspace.id, tree]
   )
 
+  // The key can outlive its workspace (deleted from another tab), so never
+  // report a default that isn't in the list.
+  const validStartupId = state.workspaces.some((workspace) => workspace.id === startupId)
+    ? startupId
+    : null
+
   const value = React.useMemo<WorkspaceContextValue>(
     () => ({
       workspaces: state.workspaces,
       activeWorkspace,
       activeId: activeWorkspace.id,
+      startupId: validStartupId,
       resolved,
       workspaceFolderIds,
       moveTargets,
       isReady,
       isBusy,
       switchTo,
+      setStartupWorkspace,
       createWorkspace,
+      registerWorkspace,
       updateWorkspace,
       deleteWorkspace,
       moveFolderToWorkspace,
@@ -404,13 +455,16 @@ export function WorkspaceProvider({
     [
       state.workspaces,
       activeWorkspace,
+      validStartupId,
       resolved,
       workspaceFolderIds,
       moveTargets,
       isReady,
       isBusy,
       switchTo,
+      setStartupWorkspace,
       createWorkspace,
+      registerWorkspace,
       updateWorkspace,
       deleteWorkspace,
       moveFolderToWorkspace,

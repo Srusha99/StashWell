@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Check, Loader2, Pencil, Plus, Trash2, X } from "lucide-react"
+import { Check, Loader2, Pencil, Plus, Star, Trash2, X } from "lucide-react"
 
 import { hasBookmarksApi } from "@/lib/bookmarks"
 import { cn } from "@/lib/utils"
@@ -39,8 +39,10 @@ export function WorkspacesSettings({
   const {
     workspaces,
     activeId,
+    startupId,
     isBusy,
     switchTo,
+    setStartupWorkspace,
     createWorkspace,
     updateWorkspace,
   } = useWorkspaces()
@@ -97,7 +99,11 @@ export function WorkspacesSettings({
               key={workspace.id}
               workspace={workspace}
               isActive={workspace.id === activeId}
+              isStartup={workspace.id === startupId}
               onSelect={() => switchTo(workspace.id)}
+              onToggleStartup={() =>
+                setStartupWorkspace(workspace.id === startupId ? null : workspace.id)
+              }
               onEdit={() => setEditingId(workspace.id)}
               onDelete={() => setDeleteTarget(workspace)}
             />
@@ -177,17 +183,21 @@ export function WorkspacesSettings({
 function WorkspaceRow({
   workspace,
   isActive,
+  isStartup,
   onSelect,
+  onToggleStartup,
   onEdit,
   onDelete,
 }: {
   workspace: Workspace
   isActive: boolean
+  isStartup: boolean
   onSelect: () => void
+  onToggleStartup: () => void
   onEdit: () => void
   onDelete: () => void
 }) {
-  const isDefault = workspace.id === DEFAULT_WORKSPACE_ID
+  const isBookmarksBar = workspace.id === DEFAULT_WORKSPACE_ID
 
   return (
     <div className="group flex items-center gap-2 rounded-lg px-1.5 py-1.5 hover:bg-accent/50">
@@ -205,7 +215,7 @@ function WorkspaceRow({
         <span className="min-w-0 flex-1 truncate text-sm">
           {workspace.name}
         </span>
-        {isDefault && (
+        {isBookmarksBar && (
           <span className="shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
             Bookmarks Bar
           </span>
@@ -213,6 +223,21 @@ function WorkspaceRow({
         {isActive && <Check className="size-4 shrink-0 text-primary" />}
       </button>
 
+      <Button
+        variant="ghost"
+        size="icon-xs"
+        onClick={onToggleStartup}
+        aria-pressed={isStartup}
+        aria-label={`Set ${workspace.name} as default`}
+        title={
+          isStartup
+            ? "Default - opens on every new tab. Click to unset."
+            : "Set as default"
+        }
+        className={cn(!isStartup && "text-muted-foreground")}
+      >
+        <Star className={cn(isStartup && "fill-current")} />
+      </Button>
       <Button
         variant="ghost"
         size="icon-xs"
@@ -227,15 +252,15 @@ function WorkspaceRow({
         onClick={onDelete}
         // The Bookmarks-Bar-backed workspace is permanent: there must always be
         // somewhere to land, and removeTree("1") would target a root folder.
-        disabled={isDefault}
+        disabled={isBookmarksBar}
         aria-label={
-          isDefault
-            ? "The default workspace can't be deleted"
+          isBookmarksBar
+            ? "The Bookmarks Bar workspace can't be deleted"
             : `Delete ${workspace.name}`
         }
         title={
-          isDefault
-            ? "The default workspace can't be deleted"
+          isBookmarksBar
+            ? "The Bookmarks Bar workspace can't be deleted"
             : "Delete workspace"
         }
         className="text-muted-foreground hover:text-destructive"

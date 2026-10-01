@@ -43,7 +43,14 @@ export interface AppearanceSettings extends CardFeel {
   dailyWallpaperEnabled: boolean
   /** Local calendar day (YYYY-MM-DD) the wallpaper last rotated on. */
   lastWallpaperRotation: string | null
+  /** Size of the bookmark names in the dashboard cards, as a percentage of
+   * their base size (see text-bookmark in globals.css). */
+  bookmarkTextScale: number
 }
+
+/** 100% is the text-xs the rows were hard-coded to before this was
+ * adjustable, so nothing shifts for anyone who never touches the slider. */
+export const BOOKMARK_TEXT_SCALE = { min: 80, max: 150, default: 100 } as const
 
 // Re-exported so existing import sites keep working; the implementation moved
 // to lib/dates.ts so pure lib/ modules can use it too.
@@ -61,17 +68,29 @@ const DEFAULT_SETTINGS: AppearanceSettings = {
   use24HourClock: false,
   dailyWallpaperEnabled: false,
   lastWallpaperRotation: null,
+  bookmarkTextScale: BOOKMARK_TEXT_SCALE.default,
 }
 
 function hasChromeStorage(): boolean {
   return typeof chrome !== "undefined" && !!chrome.storage?.local
 }
 
+function clampBookmarkTextScale(value: unknown): number {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return BOOKMARK_TEXT_SCALE.default
+  }
+  return Math.min(BOOKMARK_TEXT_SCALE.max, Math.max(BOOKMARK_TEXT_SCALE.min, value))
+}
+
 function mergeSettings(raw: unknown): AppearanceSettings {
   const merged = { ...DEFAULT_SETTINGS, ...(raw as object) }
   // Clamp/fill the slider values, so a partial or hand-edited blob can't put
   // NaN into a CSS variable and blank every card.
-  return { ...merged, ...readCardFeel(merged) }
+  return {
+    ...merged,
+    ...readCardFeel(merged),
+    bookmarkTextScale: clampBookmarkTextScale(merged.bookmarkTextScale),
+  }
 }
 
 /**
@@ -134,6 +153,7 @@ export function useAppearanceSettings(): {
   setSearchBarEnabled: (enabled: boolean) => void
   setUse24HourClock: (enabled: boolean) => void
   setDailyWallpaperEnabled: (enabled: boolean) => void
+  setBookmarkTextScale: (percent: number) => void
   setCardFeel: (patch: Partial<CardFeel>) => void
   resetCardFeel: () => void
   resetAppearance: () => void
@@ -207,9 +227,14 @@ export function useAppearanceSettings(): {
   )
 
   // Cards read their radius, blur, opacity and so on from CSS variables on
-  // <html>, so one write here restyles every card with no re-render.
+  // <html>, so one write here restyles every card with no re-render. Bookmark
+  // name size rides the same mechanism (see text-bookmark in globals.css).
   React.useEffect(() => {
     applyCardFeel(settings)
+    document.documentElement.style.setProperty(
+      "--bookmark-text-scale",
+      `${settings.bookmarkTextScale / 100}`
+    )
   }, [settings])
 
   return {
@@ -230,6 +255,7 @@ export function useAppearanceSettings(): {
         customBackgroundId: DEFAULT_SETTINGS.customBackgroundId,
         dailyWallpaperEnabled: DEFAULT_SETTINGS.dailyWallpaperEnabled,
         lastWallpaperRotation: DEFAULT_SETTINGS.lastWallpaperRotation,
+        bookmarkTextScale: DEFAULT_SETTINGS.bookmarkTextScale,
       }),
     // backgroundEnabled is the master switch for every background, uploads
     // included, so picking any wallpaper turns it back on.
@@ -242,6 +268,8 @@ export function useAppearanceSettings(): {
     setGreetingEnabled: (enabled) => update({ greetingEnabled: enabled }),
     setSearchBarEnabled: (enabled) => update({ searchBarEnabled: enabled }),
     setUse24HourClock: (enabled) => update({ use24HourClock: enabled }),
+    setBookmarkTextScale: (percent) =>
+      update({ bookmarkTextScale: clampBookmarkTextScale(percent) }),
     setDailyWallpaperEnabled: (enabled) =>
       // Stamping today on enable means the first rotation happens at the next
       // midnight, not the instant the switch is flipped.

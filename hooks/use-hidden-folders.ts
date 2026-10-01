@@ -17,6 +17,7 @@ export function useHiddenFolders(workspaceId: string): {
   hiddenIds: Set<string>
   hideFolder: (id: string) => void
   unhideFolder: (id: string) => void
+  reloadHiddenFolders: () => void
 } {
   const [state, setState] = React.useState<{
     workspaceId: string
@@ -50,10 +51,19 @@ export function useHiddenFolders(workspaceId: string): {
     })
   }, [])
 
+  // For a write that didn't go through this hook: restoring a backup stores the
+  // hidden list for the folders it recreated (lib/workspace-backup.ts).
+  const reloadHiddenFolders = React.useCallback(() => {
+    setState((current) => ({
+      workspaceId: current.workspaceId,
+      ids: new Set(readHiddenFolders(current.workspaceId)),
+    }))
+  }, [])
+
   // A render-phase setState above has not landed yet when this render reads the
   // set, so take the list for the workspace being asked about either way.
   const hiddenIds =
     state.workspaceId === workspaceId ? state.ids : new Set<string>()
 
-  return { hiddenIds, hideFolder, unhideFolder }
+  return { hiddenIds, hideFolder, unhideFolder, reloadHiddenFolders }
 }

@@ -10,8 +10,17 @@ import {
   Laptop,
   ShieldCheck,
   Trash2,
+  Upload,
 } from "lucide-react"
 
+import { getTree } from "@/lib/bookmarks"
+import { readKanbanCards } from "@/lib/kanban"
+import {
+  type RestorePlan,
+  parseBackup,
+  planRestore,
+  restoreBackup,
+} from "@/lib/workspace-backup"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -22,6 +31,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Group, PaneHeader, Row } from "@/components/settings/settings-parts"
+import { RestoreBackupDialog } from "@/components/settings/restore-backup-dialog"
+import { useWorkspaces } from "@/components/workspaces/workspace-provider"
 import { clearLocalCache, exportUserData } from "@/lib/privacy-data"
 
 const THIRD_PARTY_SERVICES = [
@@ -67,16 +78,29 @@ const SECURITY_COMMITMENTS = [
 ]
 
 /**
- * What StashWell sends off this device, what stays local, and two
- * self-serve data actions. Sits alongside Integrations and Permissions in
- * the settings rail rather than inside either - it's about data handling,
- * not about a specific connection or the extension's own manifest access.
+ * What StashWell sends off this device, what stays local, and the
+ * self-serve data actions - export a backup, restore one, clear the cache.
+ * Sits alongside Integrations and Permissions in the settings rail rather
+ * than inside either - it's about data handling, not about a specific
+ * connection or the extension's own manifest access.
  */
-export function PrivacySettings() {
+export function PrivacySettings({
+  onReloadHiddenFolders,
+}: {
+  /** A restore writes the hidden-folders list itself; this re-reads it into the shared state. */
+  onReloadHiddenFolders: () => void
+}) {
+  const { workspaces, registerWorkspace } = useWorkspaces()
   const [isExporting, setIsExporting] = React.useState(false)
   const [isClearing, setIsClearing] = React.useState(false)
   const [confirmingClear, setConfirmingClear] = React.useState(false)
   const [statusMessage, setStatusMessage] = React.useState<string | null>(null)
+  const [pendingRestore, setPendingRestore] = React.useState<{
+    plan: RestorePlan
+    currentTaskCount: number
+  } | null>(null)
+  const [restoreError, setRestoreError] = React.useState<string | null>(null)
+  const restoreFileInputRef = React.useRef<HTMLInputElement>(null)
 
   function flashStatus(message: string) {
     setStatusMessage(message)
@@ -86,11 +110,56 @@ export function PrivacySettings() {
   async function handleExport() {
     setIsExporting(true)
     try {
-      await exportUserData()
+      await exportUserData(workspaces)
       flashStatus("Exported ✓")
     } finally {
       setIsExporting(false)
     }
+  }
+
+  function handleRestoreClick() {
+    setRestoreError(null)
+    restoreFileInputRef.current?.click()
+  }
+
+  async function handleRestoreFileChange(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0]
+    event.target.value = ""
+    if (!file) return
+
+    const backup = parseBackup(await file.text())
+    if (!backup) {
+      setRestoreError("That doesn't look like a StashWell backup.")
+      return
+    }
+    const plan = planRestore(backup, workspaces, await getTree())
+    if ("error" in plan) {
+      setRestoreError(plan.error)
+      return
+    }
+    const currentTaskCount = plan.tasks ? (await readKanbanCards()).length : 0
+    setRestoreError(null)
+    setPendingRestore({ plan, currentTaskCount })
+  }
+
+  async function handleConfirmRestore() {
+    if (!pendingRestore) return
+    try {
+      const { failed } = await restoreBackup(pendingRestore.plan, workspaces, registerWorkspace)
+      if (failed.length > 0) {
+        setRestoreError(
+          `Couldn't restore ${failed.map((name) => `“${name}”`).join(", ")}, so ${
+            failed.length === 1 ? "it was" : "they were"
+          } left unchanged. Everything else was restored.`
+        )
+      } else {
+        flashStatus("Restored ✓")
+      }
+    } catch (error) {
+      console.error("[StashWell] Restore failed:", error)
+      setRestoreError("Couldn't restore that backup.")
+    }
+    onReloadHiddenFolders()
   }
 
   async function handleClearConfirmed() {
@@ -154,7 +223,7 @@ export function PrivacySettings() {
           )}
           <Row
             label="Export my data"
-            hint="Download a local JSON backup of your tasks, saved sessions, and bookmarks."
+            hint="Download a JSON backup of every workspace - bookmarks, card layout and hidden folders - plus your kanban board and saved sessions."
             control={
               <Button
                 size="sm"
@@ -165,6 +234,28 @@ export function PrivacySettings() {
                 <Download className="size-3.5" />
                 {isExporting ? "Exporting…" : "Export My Data (JSON)"}
               </Button>
+            }
+          />
+          <Row
+            label="Restore from backup"
+            hint={
+              restoreError ??
+              "Put every workspace in a backup file and your kanban board back as they were. Saved sessions aren't changed."
+            }
+            control={
+              <>
+                <Button size="sm" variant="outline" onClick={handleRestoreClick}>
+                  <Upload className="size-3.5" />
+                  Restore
+                </Button>
+                <input
+                  ref={restoreFileInputRef}
+                  type="file"
+                  accept="application/json"
+                  className="hidden"
+                  onChange={handleRestoreFileChange}
+                />
+              </>
             }
           />
           <Row
@@ -211,6 +302,15 @@ export function PrivacySettings() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {pendingRestore && (
+        <RestoreBackupDialog
+          plan={pendingRestore.plan}
+          currentTaskCount={pendingRestore.currentTaskCount}
+          onOpenChange={(open) => !open && setPendingRestore(null)}
+          onConfirm={handleConfirmRestore}
+        />
+      )}
     </div>
   )
 }

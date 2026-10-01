@@ -15,7 +15,12 @@ import {
   updateKanbanCards,
 } from '@/lib/kanban';
 import { formatWhen, isDateOnly, parseDueAt } from '@/lib/dates';
-import { createCalendarEvent, deleteCalendarEvent, updateCalendarEvent } from '@/lib/gcal-service';
+import {
+  createCalendarEvent,
+  deleteCalendarEvent,
+  isCalendarSyncEnabled,
+  updateCalendarEvent,
+} from '@/lib/gcal-service';
 import { DateTimePicker } from '@/components/dashboard/date-time-picker';
 import { useAppearanceSettings } from '@/hooks/use-appearance-settings';
 
@@ -106,10 +111,14 @@ async function patchCardAfterSync(cardId: string, patch: Partial<KanbanCard>): P
 // no gcal_event_id and fires a second, duplicate create for the same card.
 const pendingCreates = new Set<string>();
 
+// Each sync checks the Integrations toggle first. The event calls fetch their
+// token interactively, so without the check an edit would quietly reconnect a
+// Calendar the user switched off.
 async function syncCreate(card: KanbanCard): Promise<void> {
   if (pendingCreates.has(card.id)) return;
   pendingCreates.add(card.id);
   try {
+    if (!(await isCalendarSyncEnabled())) return;
     const result = await createCalendarEvent(card);
     await patchCardAfterSync(card.id, { gcal_event_id: result.id });
   } catch (error) {
@@ -120,6 +129,7 @@ async function syncCreate(card: KanbanCard): Promise<void> {
 }
 
 async function syncUpdate(eventId: string, card: KanbanCard): Promise<void> {
+  if (!(await isCalendarSyncEnabled())) return;
   try {
     await updateCalendarEvent(eventId, card);
   } catch (error) {
@@ -128,6 +138,7 @@ async function syncUpdate(eventId: string, card: KanbanCard): Promise<void> {
 }
 
 async function syncDelete(eventId: string): Promise<void> {
+  if (!(await isCalendarSyncEnabled())) return;
   try {
     await deleteCalendarEvent(eventId);
   } catch (error) {

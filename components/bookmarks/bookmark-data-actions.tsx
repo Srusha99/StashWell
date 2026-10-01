@@ -1,32 +1,17 @@
 "use client"
 
 import * as React from "react"
-import {
-  ArrowLeftRight,
-  Download,
-  FolderInput,
-  Stethoscope,
-  Upload,
-} from "lucide-react"
+import { ArrowLeftRight, FolderInput, Stethoscope } from "lucide-react"
 
 import { type BookmarkNode, createBookmark } from "@/lib/bookmarks"
 import { parseNetscapeBookmarksHtml, copyImportTree } from "@/lib/bookmark-import"
-import {
-  type WorkspaceBackup,
-  exportWorkspaceBookmarks,
-  parseWorkspaceBackup,
-  restoreWorkspaceBookmarks,
-} from "@/lib/workspace-backup"
 import { readWorkspaceJson, writeWorkspaceJson } from "@/lib/workspace-storage"
-import { useIsPro } from "@/hooks/use-is-pro"
 import { Button } from "@/components/ui/button"
-import { ProUpgradeModal } from "@/components/dashboard/pro-upgrade-modal"
 import { ImportFromBrowserDialog } from "@/components/bookmarks/import-from-browser-dialog"
 import {
   BookmarkHealthDialog,
   type DeletedBookmarkRecord,
 } from "@/components/bookmarks/bookmark-health-dialog"
-import { RestoreBackupDialog } from "@/components/bookmarks/restore-backup-dialog"
 import { UndoToast } from "@/components/bookmarks/undo-toast"
 
 const LAST_CHECKED_KEY = "bookmark-health-last-checked"
@@ -65,10 +50,10 @@ function DataRow({
 }
 
 /**
- * The five data-management rows below the Organiser section: import from the
- * browser or a competitor's export file, a duplicate-bookmark health check,
- * and a workspace-scoped JSON export/restore. Each row owns just the dialog
- * state its action needs.
+ * The three data-management rows below the Organiser section: import from the
+ * browser or a competitor's export file, and a duplicate-bookmark health
+ * check. Each row owns just the dialog state its action needs. Backing up and
+ * restoring is the Privacy panel's job - one backup covers every workspace.
  */
 export function BookmarkDataActions({
   workspace,
@@ -83,12 +68,8 @@ export function BookmarkDataActions({
   root: BookmarkNode
   onRefresh: () => Promise<void>
 }) {
-  const isPro = useIsPro()
   const [importBrowserOpen, setImportBrowserOpen] = React.useState(false)
   const [healthOpen, setHealthOpen] = React.useState(false)
-  const [upgradeOpen, setUpgradeOpen] = React.useState(false)
-  const [pendingRestore, setPendingRestore] = React.useState<WorkspaceBackup | null>(null)
-  const [restoreError, setRestoreError] = React.useState<string | null>(null)
   const [importFileError, setImportFileError] = React.useState<string | null>(null)
   const [isImportingFile, setIsImportingFile] = React.useState(false)
   const [undoState, setUndoState] = React.useState<{
@@ -98,7 +79,6 @@ export function BookmarkDataActions({
   const [lastCheckedAt, setLastCheckedAt] = React.useState<string | null>(null)
 
   const importFileInputRef = React.useRef<HTMLInputElement>(null)
-  const restoreFileInputRef = React.useRef<HTMLInputElement>(null)
   const undoTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const [lastCheckedWorkspaceId, setLastCheckedWorkspaceId] = React.useState<string | null>(null)
@@ -173,42 +153,6 @@ export function BookmarkDataActions({
     }
   }
 
-  function handleExportClick() {
-    if (!isPro) {
-      setUpgradeOpen(true)
-      return
-    }
-    exportWorkspaceBookmarks(workspace, root)
-  }
-
-  function handleRestoreClick() {
-    setRestoreError(null)
-    restoreFileInputRef.current?.click()
-  }
-
-  async function handleRestoreFileChange(event: React.ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0]
-    event.target.value = ""
-    if (!file) return
-
-    const text = await file.text()
-    const backup = parseWorkspaceBackup(text)
-    if (!backup) {
-      setRestoreError("That doesn't look like a StashWell workspace backup.")
-      return
-    }
-    setRestoreError(null)
-    setPendingRestore(backup)
-  }
-
-  async function handleConfirmRestore() {
-    if (!pendingRestore) return
-    await restoreWorkspaceBookmarks(root, pendingRestore)
-    await onRefresh()
-  }
-
-  const currentItemCount = countRootItems(root)
-
   return (
     <div className="flex flex-col">
       <DataRow title="Import from browser" description="Pull your existing Chrome bookmarks into a section.">
@@ -248,28 +192,6 @@ export function BookmarkDataActions({
         </Button>
       </DataRow>
 
-      <DataRow title="Export workspace" description="Download a JSON backup of everything.">
-        <Button variant="outline" size="sm" onClick={handleExportClick}>
-          <Download /> Export{!isPro ? " (Pro)" : ""}
-        </Button>
-      </DataRow>
-
-      <DataRow
-        title="Restore from file"
-        description={restoreError ?? "Replace your data with a backup."}
-      >
-        <Button variant="outline" size="sm" onClick={handleRestoreClick}>
-          <Upload /> Restore
-        </Button>
-        <input
-          ref={restoreFileInputRef}
-          type="file"
-          accept="application/json"
-          className="hidden"
-          onChange={handleRestoreFileChange}
-        />
-      </DataRow>
-
       <ImportFromBrowserDialog
         open={importBrowserOpen}
         onOpenChange={setImportBrowserOpen}
@@ -290,23 +212,6 @@ export function BookmarkDataActions({
         }}
       />
 
-      <ProUpgradeModal
-        open={upgradeOpen}
-        onOpenChange={setUpgradeOpen}
-        title="Upgrade to export"
-        description="Exporting a workspace backup is a Pro feature. Upgrade to download JSON backups, plus everything else in Pro."
-      />
-
-      {pendingRestore && (
-        <RestoreBackupDialog
-          backup={pendingRestore}
-          workspaceName={workspace.name}
-          currentItemCount={currentItemCount}
-          onOpenChange={(open) => !open && setPendingRestore(null)}
-          onConfirm={handleConfirmRestore}
-        />
-      )}
-
       {undoState && (
         <UndoToast
           message={undoState.message}
@@ -316,13 +221,4 @@ export function BookmarkDataActions({
       )}
     </div>
   )
-}
-
-function countRootItems(root: BookmarkNode): number {
-  let count = 0
-  for (const child of root.children ?? []) {
-    count += 1
-    if (child.url === undefined) count += countRootItems(child)
-  }
-  return count
 }

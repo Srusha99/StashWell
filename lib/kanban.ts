@@ -76,6 +76,11 @@ function isKanbanCard(value: unknown): value is KanbanCard {
   )
 }
 
+/** The valid cards in untrusted data (a backup file), or null if it isn't a list. */
+export function parseKanbanCards(raw: unknown): KanbanCard[] | null {
+  return Array.isArray(raw) ? raw.filter(isKanbanCard) : null
+}
+
 /** Saved cards, or an empty board on first run. */
 export async function readKanbanCards(): Promise<KanbanCard[]> {
   if (!hasStorageApi()) {

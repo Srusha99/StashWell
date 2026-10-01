@@ -9,7 +9,6 @@ import {
   useBookmarks,
 } from "@/hooks/use-bookmarks"
 import { useCardColumns } from "@/hooks/use-card-columns"
-import { useDashboardLayoutSync } from "@/hooks/use-dashboard-layout-sync"
 import { CARD_SHELL } from "@/components/dashboard/dashboard-card"
 import { DashboardHeader } from "@/components/bookmarks/dashboard-header"
 import { FolderCard } from "@/components/bookmarks/folder-card"
@@ -150,20 +149,14 @@ export function DashboardView({
     () => Array.from(cardsById.keys()),
     [cardsById]
   )
-  const [columns, moveCard, hasHydrated] = useCardColumns(
+  // Backs itself up to Supabase on each drag - see lib/dashboard-layout-sync.ts
+  // for why only a drag, and why the backup never overwrites this device.
+  const [columns, moveCard, layoutReady] = useCardColumns(
     defaultOrder,
     columnCount,
     activeId,
     columnCountReady
   )
-  // Mirrors `columns` to Supabase (debounced) whenever it changes - a drag
-  // move, or a card added/removed by reconciliation - and whenever a title
-  // looked up below changes, e.g. a folder renamed via chrome.bookmarks.
-  const titleOf = React.useCallback(
-    (id: string) => cardsById.get(id)?.title ?? id,
-    [cardsById]
-  )
-  useDashboardLayoutSync(activeId, columns, titleOf, hasHydrated)
   // A stored layout from before notes/reminders were removed may still list
   // their ids alongside folder ids - cardsById.get returns undefined for
   // those now, so they're dropped here rather than rendered as blanks.
@@ -316,9 +309,13 @@ export function DashboardView({
           columns on a wide screen each card ballooned past 360px, which is what
           made the dashboard feel heavy. ~228px per column at 4 columns. */}
       <div className="mx-auto flex w-full max-w-[960px] gap-[var(--grid-gap)]">
-        {bookmarksLoading ? (
-          // Chrome's bookmarks.getTree() hasn't resolved yet - shown instead of
-          // an empty grid so that wait reads as "loading", not "no bookmarks".
+        {bookmarksLoading || (root && !layoutReady) ? (
+          // Chrome's bookmarks.getTree() or the saved layout hasn't resolved
+          // yet - shown instead of an empty grid so that wait reads as
+          // "loading", not "no bookmarks", and so cards appear once, already
+          // in their saved places. Gated on `root` because a workspace whose
+          // folder is missing has no cards to wait for (the repair notice
+          // above covers it).
           Array.from({ length: Math.max(columnCount, 1) }).map((_, columnIndex) => (
             <div
               key={columnIndex}

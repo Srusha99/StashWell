@@ -141,6 +141,45 @@ export function writeWorkspaceState(state: WorkspaceState): void {
 }
 
 /**
+ * The workspace every load opens on, or null to reopen whichever was last
+ * active. Kept out of the main state blob on purpose: every open new-tab page
+ * rewrites that blob from its own in-memory copy on each switch, so a default
+ * chosen in one tab would be wiped by a switch in any tab opened before it.
+ */
+const STARTUP_KEY = "bm:startup-workspace"
+
+export function readStartupWorkspaceId(): string | null {
+  try {
+    return window.localStorage.getItem(STARTUP_KEY) || null
+  } catch {
+    return null
+  }
+}
+
+export function writeStartupWorkspaceId(id: string | null): void {
+  try {
+    if (id) window.localStorage.setItem(STARTUP_KEY, id)
+    else window.localStorage.removeItem(STARTUP_KEY)
+  } catch {
+    // ignore write failures (storage disabled, quota exceeded)
+  }
+}
+
+/**
+ * Lands a fresh load on the chosen default workspace, if it still exists. Only
+ * the provider's initial read goes through this - a mid-session switch has to
+ * stick until the next load.
+ */
+export function applyStartupWorkspace(
+  state: WorkspaceState,
+  startupId: string | null
+): WorkspaceState {
+  if (!startupId || startupId === state.activeId) return state
+  if (!state.workspaces.some((workspace) => workspace.id === startupId)) return state
+  return { ...state, activeId: startupId }
+}
+
+/**
  * Moves the pre-workspaces global keys into the default workspace's namespace,
  * so an existing user's card layout and hidden folders survive the upgrade.
  *

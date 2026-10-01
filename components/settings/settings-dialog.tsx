@@ -68,6 +68,7 @@ export function SettingsDialog({
   hiddenIds,
   onHideFolder,
   onUnhideFolder,
+  onReloadHiddenFolders,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -83,6 +84,7 @@ export function SettingsDialog({
   hiddenIds: Set<string>
   onHideFolder: (id: string) => void
   onUnhideFolder: (id: string) => void
+  onReloadHiddenFolders: () => void
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -144,6 +146,7 @@ export function SettingsDialog({
                     appearance.setDailyWallpaperEnabled
                   }
                   onCardFeelChange={appearance.setCardFeel}
+                  onBookmarkTextScaleChange={appearance.setBookmarkTextScale}
                   onResetAppearance={appearance.resetAppearance}
                 />
               )}
@@ -173,7 +176,9 @@ export function SettingsDialog({
 
               {section === "permissions" && <PermissionsSettings />}
 
-              {section === "privacy" && <PrivacySettings />}
+              {section === "privacy" && (
+                <PrivacySettings onReloadHiddenFolders={onReloadHiddenFolders} />
+              )}
             </div>
           </ScrollArea>
         </div>

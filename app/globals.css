@@ -45,6 +45,10 @@
     --radius-2xl: calc(var(--radius) * 1.8);
     --radius-3xl: calc(var(--radius) * 2.2);
     --radius-4xl: calc(var(--radius) * 2.6);
+    /* text-bookmark: text-xs (0.75rem) times the Appearance slider's scale,
+       line-height kept at text-xs's ratio so rows grow in proportion. */
+    --text-bookmark: calc(0.75rem * var(--bookmark-text-scale));
+    --text-bookmark--line-height: calc(1 / 0.75);
 }
 
 :root {
@@ -170,6 +174,8 @@
   --card-pad: 14px;
   --grid-gap: 13px;
   --card-glow-alpha: 0.05;
+  /* Appearance > Text size; written by hooks/use-appearance-settings.ts. */
+  --bookmark-text-scale: 1;
 }
 
 :root:not(.dark) {
