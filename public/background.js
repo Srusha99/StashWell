@@ -1,7 +1,8 @@
 /**
  * StashWell's MV3 service worker: the right-click "Save all open tabs in
- * window as bundle" context menu, the first-install onboarding tab, and
- * re-injecting content.js into already-open tabs after an install/update.
+ * window as bundle" context menu, the first-install onboarding tab, the
+ * uninstall feedback page, and re-injecting content.js into already-open tabs
+ * after an install/update.
  *
  * The Tab Session Bundles context menu opens the toolbar popup with its
  * "name this bundle" field already active (via a one-shot flag in
@@ -23,6 +24,32 @@
  */
 const PENDING_SAVE_KEY = "stashwell_pending_save"
 const SAVE_SESSION_MENU_ID = "stashwell-save-session"
+
+/**
+ * The "sorry to see you go" feedback page Chrome opens right after StashWell
+ * is removed - website/uninstalled/index.html, deployed to stashwell.app. It
+ * has to be a real web page: by then the extension's own pages are gone, and
+ * setUninstallURL only takes http(s). The version rides along (?v=) so
+ * feedback can be tied to the release it came from.
+ *
+ * Set at the top level rather than in onInstalled, so it's re-applied every
+ * time the service worker starts. Chrome keeps the last value anyway; this
+ * just means a changed URL takes effect without waiting for an update.
+ *
+ * Wrapped in try/catch as well as .catch(): this runs at the top level, where
+ * a synchronous throw would abort the whole service worker - the context
+ * menu, onboarding and content-script re-injection below included.
+ */
+const UNINSTALL_URL = "https://stashwell.app/uninstalled"
+try {
+  chrome.runtime
+    .setUninstallURL(`${UNINSTALL_URL}?v=${encodeURIComponent(chrome.runtime.getManifest().version)}`)
+    .catch((error) => {
+      console.error("[StashWell] couldn't set the uninstall URL:", error)
+    })
+} catch (error) {
+  console.error("[StashWell] couldn't set the uninstall URL:", error)
+}
 
 /**
  * Chrome only injects manifest content scripts into pages loaded *after* the

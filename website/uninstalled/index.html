@@ -1,0 +1,803 @@
+<!doctype html>
+<!--
+  StashWell's offboarding page - where Chrome sends someone right after they
+  remove the extension (chrome.runtime.setUninstallURL in public/background.js).
+
+  It is NOT part of the extension build: by the time Chrome opens it the
+  extension and every page inside it are gone, and setUninstallURL only takes
+  an http(s) address. Deploy this folder so it's served at
+  https://stashwell.app/uninstalled.
+
+  Self-contained on purpose (inline CSS, JS and logo, no build step), and
+  styled to match public/onboarding.html. Answers go straight into Supabase's
+  public.uninstall_feedback table - see
+  supabase/migrations/20261003130000_uninstall_feedback.sql.
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Sorry to see you go · StashWell</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex" />
+    <style>
+      /* Same tokens as public/onboarding.html. */
+      :root {
+        --bg: #0d0d0f;
+        --card: #17171a;
+        --border: #2a2a2e;
+        --text: #f5f5f7;
+        --muted: #9a9aa2;
+        --faint: #55555c;
+        --accent: #5227ff;
+        --accent-hover: #6340ff;
+        --accent-soft: rgba(82, 39, 255, 0.15);
+        --field: #0f0f12;
+        --error: #ff6b6b;
+        color-scheme: dark;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      [hidden] {
+        display: none !important;
+      }
+
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 64px 24px 40px;
+      }
+
+      .page {
+        width: 100%;
+        max-width: 600px;
+      }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        width: 100%;
+        max-width: 600px;
+        font-weight: 600;
+        font-size: 15px;
+      }
+
+      .brand svg {
+        width: 28px;
+        height: 28px;
+      }
+
+      .hero {
+        text-align: center;
+        margin-top: 48px;
+      }
+
+      .hero svg {
+        width: 64px;
+        height: 64px;
+        margin-bottom: 24px;
+      }
+
+      h1 {
+        font-size: 34px;
+        line-height: 1.25;
+        font-weight: 700;
+        margin: 0 0 12px;
+      }
+
+      .subtitle {
+        color: var(--muted);
+        font-size: 15px;
+        line-height: 1.5;
+        margin: 0 0 36px;
+      }
+
+      .card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 28px;
+      }
+
+      fieldset {
+        border: 0;
+        margin: 0;
+        padding: 0;
+        min-width: 0;
+      }
+
+      legend {
+        font-size: 17px;
+        font-weight: 600;
+        padding: 0;
+        margin-bottom: 14px;
+      }
+
+      .options {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      .option {
+        /* Anchors the visually hidden radio, so focusing it can't scroll the page. */
+        position: relative;
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        background: var(--field);
+        transition:
+          border-color 150ms ease,
+          background 150ms ease;
+      }
+
+      .option:hover {
+        border-color: #3a3a40;
+      }
+
+      .option:has(input[type="radio"]:checked) {
+        border-color: var(--accent);
+        background: var(--accent-soft);
+      }
+
+      .option:has(input[type="radio"]:focus-visible) {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
+      }
+
+      .option-row {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px 14px;
+        cursor: pointer;
+        font-size: 14px;
+        line-height: 1.4;
+      }
+
+      .option-row input {
+        /* Visually hidden but still focusable - the whole row is the control. */
+        position: absolute;
+        opacity: 0;
+        width: 1px;
+        height: 1px;
+      }
+
+      .emoji {
+        font-size: 18px;
+        width: 24px;
+        text-align: center;
+        flex-shrink: 0;
+      }
+
+      .check {
+        margin-left: auto;
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        border: 1.5px solid #4a4a52;
+        flex-shrink: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .option:has(input[type="radio"]:checked) .check {
+        border-color: var(--accent);
+        background: var(--accent);
+      }
+
+      .option:has(input[type="radio"]:checked) .check::after {
+        content: "";
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: #fff;
+      }
+
+      .follow-up {
+        padding: 0 14px 14px 50px;
+      }
+
+      .follow-up label,
+      .field > label {
+        display: block;
+        font-size: 13px;
+        color: var(--muted);
+        margin-bottom: 6px;
+      }
+
+      input[type="text"],
+      input[type="email"],
+      textarea {
+        width: 100%;
+        background: var(--field);
+        color: var(--text);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 10px 12px;
+        font: inherit;
+        font-size: 14px;
+        outline: none;
+        transition:
+          border-color 150ms ease,
+          box-shadow 150ms ease;
+      }
+
+      .follow-up input[type="text"] {
+        background: var(--bg);
+      }
+
+      input[type="text"]:focus,
+      input[type="email"]:focus,
+      textarea:focus {
+        border-color: var(--accent);
+        box-shadow: 0 0 0 3px var(--accent-soft);
+      }
+
+      input::placeholder,
+      textarea::placeholder {
+        color: var(--faint);
+      }
+
+      textarea {
+        resize: vertical;
+        min-height: 96px;
+        line-height: 1.5;
+      }
+
+      .field {
+        margin-top: 24px;
+      }
+
+      .optional {
+        color: var(--faint);
+        font-weight: 400;
+      }
+
+      /* Off-screen, not display:none - some bots skip fields they can tell are hidden. */
+      .hp {
+        position: absolute;
+        left: -10000px;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+      }
+
+      .error {
+        color: var(--error);
+        font-size: 13px;
+        line-height: 1.5;
+        margin: 16px 0 0;
+      }
+
+      .error a {
+        color: inherit;
+      }
+
+      .submit {
+        margin-top: 24px;
+        width: 100%;
+        height: 46px;
+        border: 0;
+        border-radius: 12px;
+        background: var(--accent);
+        color: #fff;
+        font: inherit;
+        font-size: 15px;
+        font-weight: 600;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        transition:
+          background 150ms ease,
+          opacity 150ms ease;
+      }
+
+      .submit:hover:not(:disabled) {
+        background: var(--accent-hover);
+      }
+
+      .submit:focus-visible {
+        outline: 2px solid #fff;
+        outline-offset: 2px;
+      }
+
+      .submit:disabled {
+        cursor: not-allowed;
+        opacity: 0.45;
+      }
+
+      .submit[aria-busy="true"] {
+        opacity: 0.8;
+        cursor: progress;
+      }
+
+      .spinner {
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        border: 2px solid rgba(255, 255, 255, 0.35);
+        border-top-color: #fff;
+        animation: spin 700ms linear infinite;
+      }
+
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+
+      .hint {
+        color: var(--faint);
+        font-size: 12px;
+        text-align: center;
+        margin: 10px 0 0;
+      }
+
+      .thanks {
+        text-align: center;
+        padding: 20px 8px;
+        outline: none;
+      }
+
+      .thanks-icon {
+        width: 56px;
+        height: 56px;
+        margin: 0 auto 18px;
+        border-radius: 50%;
+        background: var(--accent-soft);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 26px;
+      }
+
+      .thanks h2 {
+        font-size: 22px;
+        margin: 0 0 8px;
+      }
+
+      .thanks p {
+        color: var(--muted);
+        font-size: 15px;
+        margin: 0;
+      }
+
+      .fallback {
+        margin-top: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 20px 24px;
+      }
+
+      .fallback h2 {
+        font-size: 15px;
+        margin: 0 0 4px;
+      }
+
+      .fallback p {
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.5;
+        margin: 0;
+      }
+
+      .reinstall {
+        flex-shrink: 0;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 16px;
+        border-radius: 10px;
+        border: 1px solid var(--accent);
+        color: var(--text);
+        background: var(--accent-soft);
+        font-size: 14px;
+        font-weight: 600;
+        text-decoration: none;
+        white-space: nowrap;
+        transition: background 150ms ease;
+      }
+
+      .reinstall:hover {
+        background: rgba(82, 39, 255, 0.28);
+      }
+
+      .reinstall:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
+      }
+
+      .support {
+        margin: 28px 0 0;
+        text-align: center;
+        color: var(--faint);
+        font-size: 13px;
+      }
+
+      .support a {
+        color: var(--muted);
+      }
+
+      .support a:hover {
+        color: var(--text);
+      }
+
+      @media (max-width: 560px) {
+        body {
+          padding-top: 40px;
+        }
+        h1 {
+          font-size: 27px;
+        }
+        .card {
+          padding: 20px;
+        }
+        .follow-up {
+          padding-left: 14px;
+        }
+        .fallback {
+          flex-direction: column;
+          align-items: stretch;
+          text-align: center;
+        }
+        .reinstall {
+          justify-content: center;
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .spinner {
+          animation-duration: 2s;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <!-- The logo, defined once and drawn twice with <use>. Not display:none:
+         Chrome won't paint gradients defined inside a display:none <svg>. -->
+    <svg width="0" height="0" style="position: absolute" aria-hidden="true" focusable="false">
+      <defs>
+        <linearGradient id="logo-r1" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#3D3880" />
+          <stop offset="100%" stop-color="#2E2A6B" />
+        </linearGradient>
+        <linearGradient id="logo-r2" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#2E2A6B" />
+          <stop offset="100%" stop-color="#151235" />
+        </linearGradient>
+        <linearGradient id="logo-r3" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#A79BE8" />
+          <stop offset="100%" stop-color="#3D3880" />
+        </linearGradient>
+        <filter id="logo-shadow" x="-50%" y="-50%" width="200%" height="200%">
+          <feDropShadow dx="0" dy="1.8" stdDeviation="1.8" flood-color="#000000" flood-opacity="0.18" />
+        </filter>
+        <symbol id="logo" viewBox="0 0 128 128">
+          <circle cx="64" cy="64" r="64" fill="#e6e1fa" />
+          <g transform="translate(-3.2 0)">
+            <g transform="translate(64 64) scale(0.875) translate(-64 -64)" filter="url(#logo-shadow)">
+              <g transform="rotate(-14 64 64)">
+                <path d="M 40 34 Q 40 28 46 28 L 66 28 Q 72 28 72 34 L 72 96 L 56 84 L 40 96 Z" fill="url(#logo-r1)" />
+              </g>
+              <g transform="rotate(-5 64 64)">
+                <path d="M 50 30 Q 50 24 56 24 L 76 24 Q 82 24 82 30 L 82 100 L 66 88 L 50 100 Z" fill="url(#logo-r2)" />
+              </g>
+              <g transform="rotate(5 64 64)">
+                <path d="M 60 28 Q 60 22 66 22 L 86 22 Q 92 22 92 28 L 92 104 L 76 92 L 60 104 Z" fill="url(#logo-r3)" />
+              </g>
+            </g>
+          </g>
+        </symbol>
+      </defs>
+    </svg>
+
+    <div class="brand">
+      <svg aria-hidden="true"><use href="#logo" /></svg>
+      StashWell
+    </div>
+
+    <main class="page">
+      <div class="hero">
+        <svg role="img" aria-label="StashWell"><use href="#logo" /></svg>
+        <h1>We're sorry to see you go! 🥺</h1>
+        <p class="subtitle">StashWell has been removed. Help us improve with 30 seconds of feedback.</p>
+      </div>
+
+      <section class="card" aria-labelledby="survey-question">
+        <form id="feedback-form" novalidate>
+          <fieldset>
+            <legend id="survey-question">What made you uninstall StashWell?</legend>
+            <!-- Values: keep in sync with the reason check constraint in
+                 supabase/migrations/20261003130000_uninstall_feedback.sql. -->
+            <div class="options">
+              <div class="option">
+                <label class="option-row">
+                  <input type="radio" name="reason" value="bug" />
+                  <span class="emoji" aria-hidden="true">🐛</span>
+                  <span>I ran into a bug or technical glitch</span>
+                  <span class="check" aria-hidden="true"></span>
+                </label>
+              </div>
+
+              <div class="option">
+                <label class="option-row">
+                  <input type="radio" name="reason" value="too-complicated" />
+                  <span class="emoji" aria-hidden="true">🧩</span>
+                  <span>It felt too complicated or hard to use</span>
+                  <span class="check" aria-hidden="true"></span>
+                </label>
+              </div>
+
+              <div class="option">
+                <label class="option-row">
+                  <input type="radio" name="reason" value="missing-feature" aria-controls="detail-missing-feature-box" />
+                  <span class="emoji" aria-hidden="true">💡</span>
+                  <span>It was missing a feature I needed</span>
+                  <span class="check" aria-hidden="true"></span>
+                </label>
+                <div class="follow-up" id="detail-missing-feature-box" hidden>
+                  <label for="detail-missing-feature">Which feature were you looking for?</label>
+                  <input type="text" id="detail-missing-feature" maxlength="300" placeholder="e.g. Sync across devices" />
+                </div>
+              </div>
+
+              <div class="option">
+                <label class="option-row">
+                  <input type="radio" name="reason" value="switched-tool" aria-controls="detail-switched-tool-box" />
+                  <span class="emoji" aria-hidden="true">🔄</span>
+                  <span>I switched to another tool</span>
+                  <span class="check" aria-hidden="true"></span>
+                </label>
+                <div class="follow-up" id="detail-switched-tool-box" hidden>
+                  <label for="detail-switched-tool">Which tool are you using now?</label>
+                  <input type="text" id="detail-switched-tool" maxlength="300" placeholder="e.g. Raindrop, Toby, Workona" />
+                </div>
+              </div>
+
+              <div class="option">
+                <label class="option-row">
+                  <input type="radio" name="reason" value="cleanup" />
+                  <span class="emoji" aria-hidden="true">🧹</span>
+                  <span>Just cleaning up unused browser extensions</span>
+                  <span class="check" aria-hidden="true"></span>
+                </label>
+              </div>
+
+              <div class="option">
+                <label class="option-row">
+                  <input type="radio" name="reason" value="other" aria-controls="detail-other-box" />
+                  <span class="emoji" aria-hidden="true">❓</span>
+                  <span>Other reason</span>
+                  <span class="check" aria-hidden="true"></span>
+                </label>
+                <div class="follow-up" id="detail-other-box" hidden>
+                  <label for="detail-other">What was the reason?</label>
+                  <input type="text" id="detail-other" maxlength="300" placeholder="Tell us a little more" />
+                </div>
+              </div>
+            </div>
+          </fieldset>
+
+          <div class="field">
+            <label for="comments">
+              Any additional thoughts or suggestions for us? <span class="optional">(optional)</span>
+            </label>
+            <textarea id="comments" maxlength="2000" rows="4" placeholder="Anything that would have made StashWell work better for you"></textarea>
+          </div>
+
+          <div class="field">
+            <label for="email">
+              Your email <span class="optional">(optional - if you'd like a response or feature update notification)</span>
+            </label>
+            <input type="email" id="email" maxlength="254" autocomplete="email" placeholder="you@example.com" />
+          </div>
+
+          <!-- Honeypot: people never see or fill this; a bot that does is answered with a fake success. -->
+          <div class="hp" aria-hidden="true">
+            <label for="website">Leave this field empty</label>
+            <input type="text" id="website" name="website" tabindex="-1" autocomplete="off" />
+          </div>
+
+          <p class="error" id="form-error" role="alert" hidden></p>
+
+          <button type="submit" class="submit" id="submit" disabled>
+            <span class="spinner" id="submit-spinner" hidden></span>
+            <span id="submit-label">Send feedback</span>
+          </button>
+          <p class="hint" id="submit-hint">Choose a reason above to send your feedback.</p>
+        </form>
+
+        <div class="thanks" id="thanks" tabindex="-1" hidden>
+          <div class="thanks-icon" aria-hidden="true">✨</div>
+          <h2>Thank you for your feedback!</h2>
+          <p>Wish you a great day ahead. ✨</p>
+        </div>
+      </section>
+
+      <section class="fallback" aria-labelledby="fallback-title">
+        <div>
+          <h2 id="fallback-title">Uninstalled by mistake?</h2>
+          <p>Your bookmarks are still saved in Chrome - reinstall and pick up where you left off.</p>
+        </div>
+        <a class="reinstall" id="reinstall" href="#" target="_blank" rel="noopener">
+          <span aria-hidden="true">🔗</span> Reinstall from Chrome Web Store
+        </a>
+      </section>
+
+      <p class="support">
+        Need immediate help? Email <a href="mailto:support@stashwell.app">support@stashwell.app</a>
+      </p>
+    </main>
+
+    <script>
+      "use strict"
+
+      /* --------------------------------------------------------------------
+       * Configuration - the only part of this file to edit.
+       *
+       * supabaseAnonKey: Supabase -> Project Settings -> API -> "anon public"
+       * key, the same value as NEXT_PUBLIC_SUPABASE_ANON_KEY in .env.local.
+       * It's designed to be public (the extension already ships it); row-level
+       * security on uninstall_feedback only lets it add rows, never read them.
+       * ------------------------------------------------------------------ */
+      const CONFIG = {
+        supabaseUrl: "https://vzniswfdsnukbwwnzmvg.supabase.co",
+        supabaseAnonKey: "PASTE_SUPABASE_ANON_KEY_HERE",
+        // Derived from the "key" in public/manifest.json, which fixes the
+        // extension id. Correct once StashWell is published under that id.
+        storeUrl: "https://chromewebstore.google.com/detail/nblkphiogednjkhgfhkomcmeebohmamc",
+        supportEmail: "support@stashwell.app",
+      }
+
+      // Same rule as the email check constraint in the migration, which is
+      // stricter than <input type="email"> (that one accepts "a@b").
+      const EMAIL_PATTERN = /^[^@\s]+@[^@\s]+\.[^@\s]+$/
+
+      const form = document.getElementById("feedback-form")
+      const submit = document.getElementById("submit")
+      const submitLabel = document.getElementById("submit-label")
+      const submitSpinner = document.getElementById("submit-spinner")
+      const submitHint = document.getElementById("submit-hint")
+      const errorBox = document.getElementById("form-error")
+      const thanks = document.getElementById("thanks")
+      const emailInput = document.getElementById("email")
+      const commentsInput = document.getElementById("comments")
+      const honeypot = document.getElementById("website")
+
+      document.getElementById("reinstall").href = CONFIG.storeUrl
+
+      /** The extension version Chrome put on the uninstall URL (?v=1.0.0), if any. */
+      function extensionVersion() {
+        const raw = new URLSearchParams(window.location.search).get("v") || ""
+        return /^[\w.\-]{1,32}$/.test(raw) ? raw : null
+      }
+
+      function selectedReason() {
+        const checked = form.querySelector('input[name="reason"]:checked')
+        return checked ? checked.value : null
+      }
+
+      /** The follow-up text box that belongs to `reason`, if it has one. */
+      function detailInputFor(reason) {
+        return document.getElementById(`detail-${reason}`)
+      }
+
+      // Reveals only the chosen reason's follow-up box. The others keep what
+      // was typed, so switching back and forth loses nothing - but only the
+      // chosen one is sent.
+      form.addEventListener("change", (event) => {
+        if (event.target.name !== "reason") return
+        for (const radio of form.querySelectorAll('input[name="reason"]')) {
+          const box = document.getElementById(`detail-${radio.value}-box`)
+          if (box) box.hidden = !radio.checked
+        }
+        const detail = detailInputFor(event.target.value)
+        if (detail) detail.focus()
+
+        submit.disabled = false
+        submitHint.hidden = true
+        hideError()
+      })
+
+      function showError(html) {
+        errorBox.innerHTML = html
+        errorBox.hidden = false
+      }
+
+      function hideError() {
+        errorBox.hidden = true
+        errorBox.textContent = ""
+      }
+
+      function setSending(sending) {
+        submit.disabled = sending
+        submit.setAttribute("aria-busy", sending ? "true" : "false")
+        submitSpinner.hidden = !sending
+        submitLabel.textContent = sending ? "Sending…" : "Send feedback"
+      }
+
+      function showThanks() {
+        form.hidden = true
+        thanks.hidden = false
+        thanks.focus()
+      }
+
+      async function sendFeedback(payload) {
+        const response = await fetch(`${CONFIG.supabaseUrl}/rest/v1/uninstall_feedback`, {
+          method: "POST",
+          headers: {
+            apikey: CONFIG.supabaseAnonKey,
+            Authorization: `Bearer ${CONFIG.supabaseAnonKey}`,
+            "Content-Type": "application/json",
+            // Insert-only: the anon key isn't allowed to read the row back.
+            Prefer: "return=minimal",
+          },
+          body: JSON.stringify(payload),
+        })
+        if (!response.ok) {
+          throw new Error(`Supabase answered ${response.status}: ${await response.text()}`)
+        }
+      }
+
+      form.addEventListener("submit", async (event) => {
+        event.preventDefault()
+        hideError()
+
+        const reason = selectedReason()
+        if (!reason) return
+
+        // A bot filled the honeypot: thank it and send nothing.
+        if (honeypot.value) {
+          showThanks()
+          return
+        }
+
+        const email = emailInput.value.trim()
+        if (email && !EMAIL_PATTERN.test(email)) {
+          showError("That email doesn't look quite right - fix it or leave it blank.")
+          emailInput.focus()
+          return
+        }
+
+        const detailInput = detailInputFor(reason)
+        const detail = detailInput ? detailInput.value.trim() : ""
+        const comments = commentsInput.value.trim()
+
+        setSending(true)
+        try {
+          await sendFeedback({
+            reason,
+            detail: detail || null,
+            comments: comments || null,
+            email: email || null,
+            extension_version: extensionVersion(),
+          })
+          showThanks()
+        } catch (error) {
+          console.error("[StashWell] Couldn't send uninstall feedback:", error)
+          setSending(false)
+          showError(
+            `Couldn't send your feedback. Please try again, or email us at ` +
+              `<a href="mailto:${CONFIG.supportEmail}">${CONFIG.supportEmail}</a>.`
+          )
+        }
+      })
+    </script>
+  </body>
+</html>
