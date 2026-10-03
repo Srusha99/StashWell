@@ -103,7 +103,7 @@ export function UserMenu({
       >
         <Avatar avatarUrl={avatarUrl} initials={initials} className="size-9" />
         {hasUnread && (
-          <span className="absolute top-0 right-0 size-2.5 rounded-full bg-primary ring-2 ring-background" />
+          <span className="absolute top-0 right-0 size-2.5 rounded-full bg-emerald-500 ring-2 ring-background" />
         )}
       </DropdownMenuTrigger>
 
@@ -141,7 +141,7 @@ export function UserMenu({
 
         <DropdownMenuItem onClick={deferred(onOpenWhatsNew)}>
           <Sparkles /> What&apos;s New
-          {hasUnread && <span className="ml-auto size-2 rounded-full bg-primary" />}
+          {hasUnread && <span className="ml-auto size-2 rounded-full bg-emerald-500" />}
         </DropdownMenuItem>
         <DropdownMenuItem onClick={deferred(onOpenSettings)}>
           <Settings /> Settings
