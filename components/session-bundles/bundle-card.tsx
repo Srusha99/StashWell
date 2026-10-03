@@ -11,10 +11,12 @@ import {
 } from "lucide-react"
 
 import {
-  copyTabUrls,
-  type SessionBundle,
-  type SessionTab,
-} from "@/lib/session-bundles"
+  ShareTabsButton,
+  TabSelectionHeader,
+  shareCheckboxClass,
+} from "@/components/session-bundles/tab-share-controls"
+import { TONES } from "@/components/session-bundles/tones"
+import { type SessionBundle } from "@/lib/session-bundles"
 import { cn } from "@/lib/utils"
 
 /** Same format as the auto-generated bundle name (defaultBundleName), for consistency. */
@@ -27,6 +29,11 @@ function formatDateTime(iso: string): string {
     hour: "numeric",
     minute: "2-digit",
   })
+}
+
+/** The raised-glass shadow shared by every card in the popup. */
+export const GLASS_CARD_STYLE: React.CSSProperties = {
+  boxShadow: "inset 0 1px 0 0 rgba(255,255,255,0.7), 0 8px 24px -10px rgba(0,0,0,0.12)",
 }
 
 /** Small circular glass button - the shared action-icon style for this card. */
@@ -43,7 +50,7 @@ function IconButton({ className, ...props }: React.ComponentPropsWithoutRef<"but
   )
 }
 
-function Favicon({ url }: { url: string }) {
+export function Favicon({ url }: { url: string }) {
   const [failed, setFailed] = React.useState(false)
   if (!url || failed) {
     return (
@@ -82,8 +89,11 @@ export function BundleCard({
   const [confirmingDelete, setConfirmingDelete] = React.useState(false)
   const [isDeleting, setIsDeleting] = React.useState(false)
   const [isRestoring, setIsRestoring] = React.useState(false)
-  const [selectedTabIds, setSelectedTabIds] = React.useState<Set<string>>(new Set())
-  const [shareStatus, setShareStatus] = React.useState<string | null>(null)
+  // Every tab starts checked, same as the Quick Share panel, so Share works
+  // on the whole bundle without any ticking first.
+  const [selectedTabIds, setSelectedTabIds] = React.useState<Set<string>>(
+    () => new Set(bundle.tabs.map((tab) => tab.id))
+  )
 
   // Filtering over bundle.tabs (rather than mapping selectedTabIds directly)
   // means a tab removed via onDeleteTab drops out of the selection for free,
@@ -105,16 +115,6 @@ export function BundleCard({
 
   function deselectAllTabs() {
     setSelectedTabIds(new Set())
-  }
-
-  function flashShareStatus(message: string) {
-    setShareStatus(message)
-    setTimeout(() => setShareStatus(null), 1500)
-  }
-
-  async function handleShareTabUrls(tabs: SessionTab[]) {
-    const ok = await copyTabUrls(tabs)
-    if (ok) flashShareStatus(`Copied ${tabs.length} URL${tabs.length === 1 ? "" : "s"}`)
   }
 
   async function handleDeleteConfirmed() {
@@ -143,9 +143,7 @@ export function BundleCard({
   return (
     <div
       className="rounded-2xl border border-black/5 bg-white/70 p-2 text-neutral-900 backdrop-blur-xl transition hover:bg-white/85"
-      style={{
-        boxShadow: "inset 0 1px 0 0 rgba(255,255,255,0.7), 0 8px 24px -10px rgba(0,0,0,0.12)",
-      }}
+      style={GLASS_CARD_STYLE}
     >
       <div className="flex items-center gap-1.5">
         <IconButton
@@ -190,7 +188,7 @@ export function BundleCard({
           onClick={handleRestore}
           disabled={isRestoring || bundle.tabs.length === 0}
           aria-label="Restore bundle in a new window"
-          className="bg-blue-500 text-white hover:bg-blue-600 hover:text-white"
+          className={cn(TONES.save.button, "text-white hover:text-white")}
         >
           <PlayIcon className="size-3" />
         </IconButton>
@@ -234,36 +232,13 @@ export function BundleCard({
           )}
 
           {bundle.tabs.length > 0 && (
-            <div className="flex items-center justify-between gap-1.5 pb-1">
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={selectAllTabs}
-                  className="text-[10px] font-medium text-neutral-500 transition hover:text-neutral-900 hover:underline"
-                >
-                  Select All
-                </button>
-                <button
-                  type="button"
-                  onClick={deselectAllTabs}
-                  className="text-[10px] font-medium text-neutral-500 transition hover:text-neutral-900 hover:underline"
-                >
-                  Deselect All
-                </button>
-              </div>
-
-              <button
-                type="button"
-                disabled={selectedTabs.length === 0}
-                onClick={() => handleShareTabUrls(selectedTabs)}
-                className="shrink-0 rounded-full bg-blue-500 px-2.5 py-1 text-[10px] font-medium text-white shadow-sm transition hover:bg-blue-600 disabled:pointer-events-none disabled:opacity-40"
-              >
-                {`Share Selected (${selectedTabs.length})`}
-              </button>
-            </div>
+            <TabSelectionHeader
+              selectedCount={selectedTabs.length}
+              totalCount={bundle.tabs.length}
+              onSelectAll={selectAllTabs}
+              onDeselectAll={deselectAllTabs}
+            />
           )}
-
-          {shareStatus && <p className="pb-1 text-[10px] text-neutral-500">{shareStatus}</p>}
 
           {bundle.tabs.map((tab) => (
             <div key={tab.id} className="flex items-center gap-2">
@@ -272,7 +247,7 @@ export function BundleCard({
                 checked={selectedTabIds.has(tab.id)}
                 onChange={() => toggleTabSelection(tab.id)}
                 aria-label={`Select ${tab.title}`}
-                className="size-3.5 shrink-0 rounded-sm border border-black/20 accent-blue-500"
+                className={shareCheckboxClass("save")}
               />
               <Favicon url={tab.favIconUrl} />
               <button
@@ -293,6 +268,8 @@ export function BundleCard({
               </IconButton>
             </div>
           ))}
+
+          {bundle.tabs.length > 0 && <ShareTabsButton tabs={selectedTabs} tone="save" />}
         </div>
       )}
     </div>

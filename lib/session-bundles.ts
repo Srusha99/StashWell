@@ -8,7 +8,6 @@
  */
 
 import { pushToCloud } from "@/lib/syncEngine"
-import { shortUrl } from "@/lib/utils"
 
 export interface SessionTab {
   id: string
@@ -164,6 +163,23 @@ function reserveBundleId(map: SessionBundleMap): string {
 }
 
 /**
+ * Every non-internal tab in the current window, in tab-strip order. Read-only:
+ * the popup's "Share selected" panel uses this directly, so sharing never
+ * writes anything to storage. Ids are only unique within a single call.
+ */
+export async function readCurrentWindowTabs(): Promise<SessionTab[]> {
+  if (!hasTabsApi()) {
+    warnUnavailable()
+    return []
+  }
+
+  const tabs = await chrome.tabs.query({ currentWindow: true })
+  return tabs
+    .map((tab, index) => tabToSessionTab(tab, index))
+    .filter((tab): tab is SessionTab => tab !== null)
+}
+
+/**
  * Snapshots every non-internal tab in the current window into a new named
  * bundle. Returns null when there's nothing to save (no tabs, or no
  * chrome.tabs API - e.g. running the popup outside the extension).
@@ -176,11 +192,7 @@ export async function createSessionBundleFromCurrentWindow(
     return null
   }
 
-  const tabs = await chrome.tabs.query({ currentWindow: true })
-  const sessionTabs = tabs
-    .map((tab, index) => tabToSessionTab(tab, index))
-    .filter((tab): tab is SessionTab => tab !== null)
-
+  const sessionTabs = await readCurrentWindowTabs()
   if (sessionTabs.length === 0) return null
 
   const map = await readSessionBundleMap()
@@ -313,26 +325,73 @@ export function tabsToMarkdownLinks(tabs: SessionTab[]): string {
   return tabs.map((tab) => `- [${shortenTitle(tab.title)}](${tab.url})`).join("\n")
 }
 
-/** Bare URL per tab, one per line, no title - what "Share Selected" copies. */
-export function tabsToPlainUrls(tabs: SessionTab[]): string {
-  return tabs.map((tab) => tab.url).join("\n")
-}
+/** Query params that only record where a click came from - never what the page shows. */
+const TRACKING_PARAM =
+  /^(utm_\w+|fbclid|gclid|dclid|gbraid|wbraid|msclkid|yclid|twclid|ttclid|igshid|mc_cid|mc_eid|_ga|_gl)$/i
 
-/** `<a href>` per tab, one per line - the rich-text body for "Share Selected". */
-function tabsToHtmlLinks(tabs: SessionTab[]): string {
-  return tabs
-    .map((tab) => `<a href="${escapeHtml(tab.url)}">${escapeHtml(tab.title || tab.url)}</a>`)
-    .join("<br>")
+/**
+ * The Google Search params that change the results; everything else on a
+ * search URL (oq, gs_lcrp, sourceid, ie, ei, ved, ...) is session noise that
+ * can be several hundred characters long.
+ */
+const GOOGLE_SEARCH_PARAMS = new Set(["q", "tbm", "udm", "tbs", "start", "hl"])
+
+function isGoogleSearch(url: URL): boolean {
+  return /(^|\.)google\.[a-z.]+$/.test(url.hostname) && url.pathname === "/search"
 }
 
 /**
- * "title — short url" per tab, one per line - the plain-text fallback for
- * "Share Selected". Keeps the URL (shortened to its origin) rather than
- * dropping it entirely, since plain-text targets like WhatsApp can't carry a
- * hidden href and would otherwise show an unclickable title with no link.
+ * Strips tracking and search-session params so a shared link is short but
+ * still opens the same page. A URL with nothing to strip is returned
+ * byte-for-byte, since re-serializing can re-encode an otherwise valid query.
  */
-function tabsToTitles(tabs: SessionTab[]): string {
-  return tabs.map((tab) => `${tab.title || tab.url} — ${shortUrl(tab.url)}`).join("\n")
+export function cleanShareUrl(raw: string): string {
+  let url: URL
+  try {
+    url = new URL(raw)
+  } catch {
+    return raw
+  }
+
+  const googleSearch = isGoogleSearch(url)
+  const noise = [...url.searchParams.keys()].filter(
+    (key) => TRACKING_PARAM.test(key) || (googleSearch && !GOOGLE_SEARCH_PARAMS.has(key))
+  )
+  if (noise.length === 0) return raw
+
+  for (const key of noise) url.searchParams.delete(key)
+  return url.toString()
+}
+
+/** Drops unread-count prefixes, e.g. "(125) WhatsApp" -> "WhatsApp". */
+export function cleanShareTitle(tab: SessionTab): string {
+  return tab.title.replace(/^\(\d[\d,.]*\+?\)\s*/, "").trim() || cleanShareUrl(tab.url)
+}
+
+/** Bare cleaned URL per tab, one per line, no title. */
+export function tabsToPlainUrls(tabs: SessionTab[]): string {
+  return tabs.map((tab) => cleanShareUrl(tab.url)).join("\n")
+}
+
+/**
+ * Title on one line, link underneath, a blank line between tabs - the
+ * plain-text side of copyTabsWithTitles, for targets like WhatsApp or
+ * Notepad that can't hide a URL behind its title. Chat apps auto-link the
+ * URL line on their own.
+ */
+function tabsToReadableText(tabs: SessionTab[]): string {
+  return tabs.map((tab) => `${cleanShareTitle(tab)}\n${cleanShareUrl(tab.url)}`).join("\n\n")
+}
+
+/** Bulleted list of clickable titles, the URL only in the href - the rich-text side of copyTabsWithTitles. */
+function tabsToHtmlList(tabs: SessionTab[]): string {
+  const items = tabs
+    .map(
+      (tab) =>
+        `<li><a href="${escapeHtml(cleanShareUrl(tab.url))}">${escapeHtml(cleanShareTitle(tab))}</a></li>`
+    )
+    .join("")
+  return `<ul>${items}</ul>`
 }
 
 export function bundleToMarkdown(bundle: SessionBundle): string {
@@ -366,19 +425,16 @@ export async function copyToClipboard(text: string): Promise<boolean> {
 }
 
 /**
- * Copies the selected tabs to the clipboard as clickable links: each tab's
- * title as the visible link text, with the URL only in the underlying href
- * (text/html) so a paste into a rich-text target - email, Notion, chat -
- * shows titles rather than raw URLs. text/plain carries just the titles as a
- * fallback for plain-text targets.
+ * Puts both a text/html and a text/plain version on the clipboard: the
+ * paste target picks whichever it understands - rich-text targets (email,
+ * Docs, Notion, Slack) take the HTML, plain-text ones take `plain`.
  */
-export async function copyTabUrls(tabs: SessionTab[]): Promise<boolean> {
-  const plain = tabsToTitles(tabs)
+async function copyRichText(html: string, plain: string): Promise<boolean> {
   try {
     if (typeof ClipboardItem !== "undefined" && navigator.clipboard.write) {
       await navigator.clipboard.write([
         new ClipboardItem({
-          "text/html": new Blob([tabsToHtmlLinks(tabs)], { type: "text/html" }),
+          "text/html": new Blob([html], { type: "text/html" }),
           "text/plain": new Blob([plain], { type: "text/plain" }),
         }),
       ])
@@ -388,6 +444,16 @@ export async function copyTabUrls(tabs: SessionTab[]): Promise<boolean> {
     // fall through to the plain-text path below
   }
   return copyToClipboard(plain)
+}
+
+/**
+ * What every "Share" pill in the popup copies: pastes as a clean list of
+ * clickable titles in rich-text targets, and as readable title-then-link
+ * pairs in plain-text ones - full titles, tracking params stripped, no
+ * Markdown syntax.
+ */
+export async function copyTabsWithTitles(tabs: SessionTab[]): Promise<boolean> {
+  return copyRichText(tabsToHtmlList(tabs), tabsToReadableText(tabs))
 }
 
 function toBase64Url(input: string): string {
