@@ -81,6 +81,24 @@ export function parseKanbanCards(raw: unknown): KanbanCard[] | null {
   return Array.isArray(raw) ? raw.filter(isKanbanCard) : null
 }
 
+/**
+ * The cards in `incoming` the board doesn't have yet - a restore's Smart
+ * Merge. A card counts as already there when the board has its id, or a card
+ * with exactly the same title (trimmed), so a task re-created by hand on
+ * another device isn't doubled up either.
+ */
+export function missingKanbanCards(current: KanbanCard[], incoming: KanbanCard[]): KanbanCard[] {
+  const ids = new Set(current.map((card) => card.id))
+  const titles = new Set(current.map((card) => card.title.trim()))
+  return incoming.filter((card) => {
+    const title = card.title.trim()
+    if (ids.has(card.id) || titles.has(title)) return false
+    ids.add(card.id)
+    titles.add(title)
+    return true
+  })
+}
+
 /** Saved cards, or an empty board on first run. */
 export async function readKanbanCards(): Promise<KanbanCard[]> {
   if (!hasStorageApi()) {

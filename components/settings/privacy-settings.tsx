@@ -14,11 +14,13 @@ import {
 } from "lucide-react"
 
 import { getTree } from "@/lib/bookmarks"
-import { readKanbanCards } from "@/lib/kanban"
 import {
+  type RestoreCounts,
   type RestorePlan,
+  mergeBackup,
   parseBackup,
   planRestore,
+  readRestoreCounts,
   restoreBackup,
 } from "@/lib/workspace-backup"
 import { Button } from "@/components/ui/button"
@@ -31,7 +33,11 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Group, PaneHeader, Row } from "@/components/settings/settings-parts"
-import { RestoreBackupDialog } from "@/components/settings/restore-backup-dialog"
+import {
+  type RestoreMode,
+  type RestoreOutcome,
+  RestoreBackupDialog,
+} from "@/components/settings/restore-backup-dialog"
 import { useWorkspaces } from "@/components/workspaces/workspace-provider"
 import { clearLocalCache, exportUserData } from "@/lib/privacy-data"
 
@@ -97,7 +103,7 @@ export function PrivacySettings({
   const [statusMessage, setStatusMessage] = React.useState<string | null>(null)
   const [pendingRestore, setPendingRestore] = React.useState<{
     plan: RestorePlan
-    currentTaskCount: number
+    counts: RestoreCounts
   } | null>(null)
   const [restoreError, setRestoreError] = React.useState<string | null>(null)
   const restoreFileInputRef = React.useRef<HTMLInputElement>(null)
@@ -137,29 +143,24 @@ export function PrivacySettings({
       setRestoreError(plan.error)
       return
     }
-    const currentTaskCount = plan.tasks ? (await readKanbanCards()).length : 0
     setRestoreError(null)
-    setPendingRestore({ plan, currentTaskCount })
+    setPendingRestore({ plan, counts: await readRestoreCounts(plan) })
   }
 
-  async function handleConfirmRestore() {
-    if (!pendingRestore) return
+  /** Runs the mode picked in RestoreBackupDialog, which shows the outcome (or a thrown error) itself. */
+  async function handleConfirmRestore(mode: RestoreMode): Promise<RestoreOutcome> {
+    if (!pendingRestore) throw new Error("No backup is waiting to be restored")
+    const { plan } = pendingRestore
     try {
-      const { failed } = await restoreBackup(pendingRestore.plan, workspaces, registerWorkspace)
-      if (failed.length > 0) {
-        setRestoreError(
-          `Couldn't restore ${failed.map((name) => `“${name}”`).join(", ")}, so ${
-            failed.length === 1 ? "it was" : "they were"
-          } left unchanged. Everything else was restored.`
-        )
-      } else {
-        flashStatus("Restored ✓")
+      if (mode === "merge") {
+        const { failed, added } = await mergeBackup(plan, workspaces, registerWorkspace)
+        return { mode, failed, added }
       }
-    } catch (error) {
-      console.error("[StashWell] Restore failed:", error)
-      setRestoreError("Couldn't restore that backup.")
+      const { failed } = await restoreBackup(plan, workspaces, registerWorkspace)
+      return { mode, failed }
+    } finally {
+      onReloadHiddenFolders()
     }
-    onReloadHiddenFolders()
   }
 
   async function handleClearConfirmed() {
@@ -240,7 +241,7 @@ export function PrivacySettings({
             label="Restore from backup"
             hint={
               restoreError ??
-              "Put every workspace in a backup file and your kanban board back as they were. Saved sessions aren't changed."
+              "Bring a backup file back in - merge in only what's missing, or replace matching workspaces and the kanban board. You choose before anything changes."
             }
             control={
               <>
@@ -306,7 +307,7 @@ export function PrivacySettings({
       {pendingRestore && (
         <RestoreBackupDialog
           plan={pendingRestore.plan}
-          currentTaskCount={pendingRestore.currentTaskCount}
+          counts={pendingRestore.counts}
           onOpenChange={(open) => !open && setPendingRestore(null)}
           onConfirm={handleConfirmRestore}
         />

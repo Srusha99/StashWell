@@ -138,6 +138,51 @@ export async function readSessionBundles(): Promise<SessionBundle[]> {
   )
 }
 
+/**
+ * The valid bundles in untrusted data (a backup file) - a list, or the
+ * id-keyed map they're stored as here - or null if it's neither.
+ */
+export function parseSessionBundles(raw: unknown): SessionBundle[] | null {
+  const list = Array.isArray(raw)
+    ? raw
+    : typeof raw === "object" && raw !== null
+      ? Object.values(raw)
+      : null
+  if (!list) return null
+  return list.filter(isSessionBundle).map((bundle) => ({ ...bundle, tabCount: bundle.tabs.length }))
+}
+
+/**
+ * The bundles in `incoming` that `current` doesn't have. Matched by id - an
+ * id is the bundle's creation timestamp, so the same bundle has the same id on
+ * every device and a backup restored twice adds it only once.
+ */
+export function missingSessionBundles(
+  current: SessionBundle[],
+  incoming: SessionBundle[]
+): SessionBundle[] {
+  const ids = new Set(current.map((bundle) => bundle.id))
+  return incoming.filter((bundle) => {
+    if (ids.has(bundle.id)) return false
+    ids.add(bundle.id)
+    return true
+  })
+}
+
+/**
+ * Saves every bundle in `incoming` this device doesn't have yet, never
+ * replacing one it does - a restore's Smart Merge. Returns how many it added.
+ */
+export async function addSessionBundles(incoming: SessionBundle[]): Promise<number> {
+  const map = await readSessionBundleMap()
+  const added = missingSessionBundles(Object.values(map), incoming)
+  if (added.length === 0) return 0
+
+  for (const bundle of added) map[bundle.id] = bundle
+  await writeSessionBundleMap(map)
+  return added.length
+}
+
 function tabToSessionTab(tab: chrome.tabs.Tab, index: number): SessionTab | null {
   if (isInternalUrl(tab.url)) return null
   return {
