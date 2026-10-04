@@ -640,8 +640,9 @@
         </a>
       </section>
 
-      <p class="support">
-        Need immediate help? Email <a href="mailto:support@stashwell.app">support@stashwell.app</a>
+      <!-- Hidden until CONFIG.supportEmail is set (see the script below). -->
+      <p class="support" id="support" hidden>
+        Need immediate help? Email <a id="support-email"></a>
       </p>
     </main>
 
@@ -662,7 +663,10 @@
         // Derived from the "key" in public/manifest.json, which fixes the
         // extension id. Correct once StashWell is published under that id.
         storeUrl: "https://chromewebstore.google.com/detail/nblkphiogednjkhgfhkomcmeebohmamc",
-        supportEmail: "support@stashwell.app",
+        // Empty until there's a real support inbox. While it is, the "Need
+        // immediate help?" line stays hidden and the send-failed message
+        // doesn't offer an email.
+        supportEmail: "",
       }
 
       // Same rule as the email check constraint in the migration, which is
@@ -681,6 +685,13 @@
       const honeypot = document.getElementById("website")
 
       document.getElementById("reinstall").href = CONFIG.storeUrl
+
+      if (CONFIG.supportEmail) {
+        const supportLink = document.getElementById("support-email")
+        supportLink.href = `mailto:${CONFIG.supportEmail}`
+        supportLink.textContent = CONFIG.supportEmail
+        document.getElementById("support").hidden = false
+      }
 
       /** The extension version Chrome put on the uninstall URL (?v=1.0.0), if any. */
       function extensionVersion() {
@@ -793,8 +804,10 @@
           console.error("[StashWell] Couldn't send uninstall feedback:", error)
           setSending(false)
           showError(
-            `Couldn't send your feedback. Please try again, or email us at ` +
-              `<a href="mailto:${CONFIG.supportEmail}">${CONFIG.supportEmail}</a>.`
+            CONFIG.supportEmail
+              ? `Couldn't send your feedback. Please try again, or email us at ` +
+                  `<a href="mailto:${CONFIG.supportEmail}">${CONFIG.supportEmail}</a>.`
+              : "Couldn't send your feedback. Please try again."
           )
         }
       })

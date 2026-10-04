@@ -1,7 +1,14 @@
 "use client"
 
 import * as React from "react"
-import { CreditCard, HelpCircle, LogOut, Settings, Sparkles, Zap } from "lucide-react"
+import {
+  CreditCard,
+  HelpCircle,
+  LogOut,
+  Settings,
+  Sparkles,
+  Zap,
+} from "lucide-react"
 
 import { useAuth } from "@/lib/auth-context"
 import { useIsPro } from "@/hooks/use-is-pro"
@@ -15,6 +22,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { ThemeSwitcher } from "@/components/ui/theme-switcher"
+import { SupportDialog } from "@/components/auth/support-dialog"
 
 function initialsOf(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean)
@@ -70,6 +78,9 @@ export function UserMenu({
 }) {
   const { user } = useAuth()
   const isPro = useIsPro()
+  // Local rather than lifted like Settings/What's New: this menu item is the
+  // only thing that opens it.
+  const [supportOpen, setSupportOpen] = React.useState(false)
   if (!user) return null
 
   const metadata = user.user_metadata as
@@ -87,80 +98,97 @@ export function UserMenu({
   const initials = initialsOf(displayName)
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger
           render={
-          <button
-            type="button"
-            aria-label="Account menu"
-            title={displayName}
-            className={cn(
-              "relative rounded-full border border-[var(--card-border)] shadow-[var(--shadow-soft)] backdrop-blur-md dark:border-white/15 dark:shadow-none",
-              className
-            )}
+            <button
+              type="button"
+              aria-label="Account menu"
+              title={displayName}
+              className={cn(
+                "relative rounded-full border border-[var(--card-border)] shadow-[var(--shadow-soft)] backdrop-blur-md dark:border-white/15 dark:shadow-none",
+                className
+              )}
+            />
+          }
+        >
+          <Avatar
+            avatarUrl={avatarUrl}
+            initials={initials}
+            className="size-9"
           />
-        }
-      >
-        <Avatar avatarUrl={avatarUrl} initials={initials} className="size-9" />
-        {hasUnread && (
-          <span className="absolute top-0 right-0 size-2.5 rounded-full bg-emerald-500 ring-2 ring-background" />
-        )}
-      </DropdownMenuTrigger>
+          {hasUnread && (
+            <span className="absolute top-0 right-0 size-2.5 rounded-full bg-emerald-500 ring-2 ring-background" />
+          )}
+        </DropdownMenuTrigger>
 
-      <DropdownMenuContent align="end" sideOffset={8} className="w-64">
-        <div className="flex items-center gap-2.5 px-2 py-2">
-          <Avatar avatarUrl={avatarUrl} initials={initials} className="size-9 text-sm" />
-          <div className="min-w-0 flex-1">
-            <div className="truncate text-sm font-medium text-[#1c1c1e] dark:text-white">
-              {displayName}
-            </div>
-            {rawName && email && (
-              <div className="truncate text-xs text-[#8e8e93] dark:text-white/50">
-                {email}
+        <DropdownMenuContent align="end" sideOffset={8} className="w-64">
+          <div className="flex items-center gap-2.5 px-2 py-2">
+            <Avatar
+              avatarUrl={avatarUrl}
+              initials={initials}
+              className="size-9 text-sm"
+            />
+            <div className="min-w-0 flex-1">
+              <div className="truncate text-sm font-medium text-[#1c1c1e] dark:text-white">
+                {displayName}
               </div>
+              {rawName && email && (
+                <div className="truncate text-xs text-[#8e8e93] dark:text-white/50">
+                  {email}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {isPro ? (
+            <div className="flex items-center gap-2 px-1.5 py-1 text-sm text-[#1c1c1e] dark:text-white">
+              <CreditCard className="size-4 text-[#8e8e93] dark:text-white/50" />
+              <span className="flex-1">Subscription</span>
+              <ProBadge />
+            </div>
+          ) : (
+            // No checkout flow exists yet - shown as a real button, but inert
+            // until there's somewhere for it to send the user.
+            <button
+              type="button"
+              className="mx-auto mb-3 flex w-[calc(100%-2rem)] items-center justify-center gap-1.5 rounded-full bg-emerald-500 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-600"
+            >
+              <Zap className="size-4 fill-current" /> Upgrade to Pro
+            </button>
+          )}
+
+          <DropdownMenuItem onClick={deferred(onOpenWhatsNew)}>
+            <Sparkles /> What&apos;s New
+            {hasUnread && (
+              <span className="ml-auto size-2 rounded-full bg-emerald-500" />
             )}
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={deferred(onOpenSettings)}>
+            <Settings /> Settings
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={deferred(() => setSupportOpen(true))}>
+            <HelpCircle /> Support
+          </DropdownMenuItem>
+
+          <div className="flex items-center justify-between gap-2 px-1.5 py-1 text-sm text-[#1c1c1e] dark:text-white">
+            <span>Theme</span>
+            <ThemeSwitcher />
           </div>
-        </div>
 
-        {isPro ? (
-          <div className="flex items-center gap-2 px-1.5 py-1 text-sm text-[#1c1c1e] dark:text-white">
-            <CreditCard className="size-4 text-[#8e8e93] dark:text-white/50" />
-            <span className="flex-1">Subscription</span>
-            <ProBadge />
-          </div>
-        ) : (
-          // No checkout flow exists yet - shown as a real button, but inert
-          // until there's somewhere for it to send the user.
-          <button
-            type="button"
-            className="mx-auto mb-3 flex w-[calc(100%-2rem)] items-center justify-center gap-1.5 rounded-full bg-emerald-500 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-600"
-          >
-            <Zap className="size-4 fill-current" /> Upgrade to Pro
-          </button>
-        )}
+          <DropdownMenuItem onClick={() => void supabase.auth.signOut()}>
+            <LogOut /> Sign out
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
 
-        <DropdownMenuItem onClick={deferred(onOpenWhatsNew)}>
-          <Sparkles /> What&apos;s New
-          {hasUnread && <span className="ml-auto size-2 rounded-full bg-emerald-500" />}
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={deferred(onOpenSettings)}>
-          <Settings /> Settings
-        </DropdownMenuItem>
-        {/* No help destination exists yet - shown but inert until there's
-            somewhere for it to go. */}
-        <DropdownMenuItem disabled>
-          <HelpCircle /> Support
-        </DropdownMenuItem>
-
-        <div className="flex items-center justify-between gap-2 px-1.5 py-1 text-sm text-[#1c1c1e] dark:text-white">
-          <span>Theme</span>
-          <ThemeSwitcher />
-        </div>
-
-        <DropdownMenuItem onClick={() => void supabase.auth.signOut()}>
-          <LogOut /> Sign out
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+      <SupportDialog
+        open={supportOpen}
+        onOpenChange={setSupportOpen}
+        defaultName={rawName ?? ""}
+        defaultEmail={email}
+      />
+    </>
   )
 }
