@@ -322,7 +322,16 @@ async function syncBookmarksOnce(userId: string, pull: boolean): Promise<Outcome
   return "done"
 }
 
-async function syncDashboardOnce(userId: string, pull: boolean): Promise<Outcome> {
+/**
+ * `syncSessions` false (a Free account - see lib/bundle-gate.ts) leaves saved
+ * sessions out entirely: they stay on this device, and their merge base is
+ * kept as it was, ready for the day they start syncing.
+ */
+async function syncDashboardOnce(
+  userId: string,
+  pull: boolean,
+  syncSessions: boolean
+): Promise<Outcome> {
   const stored = await readMeta()
   // Someone else signed in on this device: what's stored here is the previous
   // account's. Show this account's own data, and never upload the other's.
@@ -342,11 +351,14 @@ async function syncDashboardOnce(userId: string, pull: boolean): Promise<Outcome
 
   const dirty =
     changedSince(snapshotOf(todos, cardId), base.todos) ||
-    changedSince(snapshotOf(sessions, bundleId), base.sessions) ||
+    (syncSessions && changedSince(snapshotOf(sessions, bundleId), base.sessions)) ||
     unitsChangedSince(local.units, base.settings) ||
     unitsChangedSince(appearance.units, base.appearance)
   const neverSynced =
-    base.todos === null || base.sessions === null || base.settings === null || base.appearance === null
+    base.todos === null ||
+    (syncSessions && base.sessions === null) ||
+    base.settings === null ||
+    base.appearance === null
   if (!pull && !dirty && !neverSynced && !switchedAccount) return "done"
 
   if (dirty) setStatus("saving")
@@ -363,9 +375,23 @@ async function syncDashboardOnce(userId: string, pull: boolean): Promise<Outcome
   let mergedSessions: SessionBundle[]
   let mergedSettings: SyncUnits
   let mergedAppearance: AppearanceUnits
+  if (!syncSessions) {
+    mergedSessions = sessions
+  } else if (switchedAccount) {
+    mergedSessions = remoteSessions ?? []
+  } else {
+    mergedSessions = sortedBundles(
+      mergeCollections({
+        base: base.sessions,
+        local: sessions,
+        remote: remoteSessions,
+        getId: bundleId,
+        missing: missingSessionBundles,
+      })
+    )
+  }
   if (switchedAccount) {
     mergedTodos = remoteTodos ?? []
-    mergedSessions = remoteSessions ?? []
     mergedSettings = remoteSettings ?? {}
     mergedAppearance = remoteAppearance ?? {}
   } else {
@@ -376,15 +402,6 @@ async function syncDashboardOnce(userId: string, pull: boolean): Promise<Outcome
       getId: cardId,
       missing: missingKanbanCards,
     })
-    mergedSessions = sortedBundles(
-      mergeCollections({
-        base: base.sessions,
-        local: sessions,
-        remote: remoteSessions,
-        getId: bundleId,
-        missing: missingSessionBundles,
-      })
-    )
     mergedSettings = mergeSettings(base.settings, local.units, remoteSettings)
     mergedAppearance = mergeSettings(base.appearance, appearance.units, remoteAppearance)
   }
@@ -421,7 +438,10 @@ async function syncDashboardOnce(userId: string, pull: boolean): Promise<Outcome
     if (remoteTodos === null || hashValue(mergedTodos) !== hashValue(remoteTodos)) {
       patch.todos = mergedTodos
     }
-    if (remoteSessions === null || hashValue(mergedSessions) !== hashValue(remoteSessions)) {
+    if (
+      syncSessions &&
+      (remoteSessions === null || hashValue(mergedSessions) !== hashValue(remoteSessions))
+    ) {
       patch.session_bundles = bundleMap(mergedSessions)
     }
     if (remoteSettings === null || hashValue(mergedSettings) !== hashValue(remoteSettings)) {
@@ -443,7 +463,8 @@ async function syncDashboardOnce(userId: string, pull: boolean): Promise<Outcome
   await writeMeta({
     userId,
     todos: todosWritten ? snapshotOf(mergedTodos, cardId) : base.todos,
-    sessions: sessionsWritten ? snapshotOf(mergedSessions, bundleId) : base.sessions,
+    sessions:
+      syncSessions && sessionsWritten ? snapshotOf(mergedSessions, bundleId) : base.sessions,
     settings: settingsWritten ? hashUnits(mergedSettings) : base.settings,
     appearance: appearanceWritten ? hashUnits(mergedAppearance) : base.appearance,
   })
@@ -451,9 +472,9 @@ async function syncDashboardOnce(userId: string, pull: boolean): Promise<Outcome
   return allWritten ? "done" : "retry"
 }
 
-async function syncOnce(userId: string, pull: boolean): Promise<Outcome> {
+async function syncOnce(userId: string, pull: boolean, options: SyncOptions): Promise<Outcome> {
   const bookmarks = await syncBookmarksOnce(userId, pull)
-  const dashboard = await syncDashboardOnce(userId, pull)
+  const dashboard = await syncDashboardOnce(userId, pull, options.syncSessions)
   if (!isOnline()) {
     setStatus("offline")
   } else {
@@ -487,8 +508,13 @@ interface SyncSession {
   stop: () => void
 }
 
+export interface SyncOptions {
+  /** Saved sessions sync on Pro only (lib/bundle-gate.ts). */
+  syncSessions: boolean
+}
+
 /** Starts syncing for `userId`. */
-function attach(userId: string): SyncSession {
+function attach(userId: string, options: SyncOptions): SyncSession {
   let stopped = false
   let running = false
   let queued = false
@@ -522,7 +548,7 @@ function attach(userId: string): SyncSession {
     let outcome: Outcome = "retry"
     try {
       for (let attempt = 0; attempt < MAX_ATTEMPTS && outcome === "retry" && !stopped; attempt++) {
-        outcome = await withSyncLock(() => syncOnce(userId, pull || attempt > 0))
+        outcome = await withSyncLock(() => syncOnce(userId, pull || attempt > 0, options))
       }
       if (pull) lastPullAt = Date.now()
     } catch (error) {
@@ -609,21 +635,23 @@ function attach(userId: string): SyncSession {
   }
 }
 
-let active: { userId: string; refs: number; session: SyncSession } | null = null
+let active: { key: string; refs: number; session: SyncSession } | null = null
 
 /**
  * Starts syncing this user's dashboard in this tab, and returns the function
  * that stops it. Reference-counted, so a double mount (React Strict Mode)
- * doesn't sync twice; starting for a different user stops the previous one.
+ * doesn't sync twice; starting for a different user - or the same user with
+ * different options, e.g. after upgrading to Pro - replaces the previous one.
  */
-export function startDashboardSync(userId: string): () => void {
+export function startDashboardSync(userId: string, options: SyncOptions): () => void {
   if (!hasStorageApi()) return () => {}
 
-  if (active && active.userId !== userId) {
+  const key = `${userId}:${options.syncSessions}`
+  if (active && active.key !== key) {
     active.session.stop()
     active = null
   }
-  if (!active) active = { userId, refs: 0, session: attach(userId) }
+  if (!active) active = { key, refs: 0, session: attach(userId, options) }
   const current = active
   current.refs += 1
 

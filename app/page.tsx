@@ -36,7 +36,14 @@ export default function Page() {
     })
   }, [])
 
-  if (view === "popup") return <SessionBundlesPopup />
+  // Wrapped for the account's plan (hooks/use-is-pro.ts): Free has a bundle limit.
+  if (view === "popup") {
+    return (
+      <AuthProvider>
+        <SessionBundlesPopup />
+      </AuthProvider>
+    )
+  }
   if (view === "kanban") return <KanbanBoard />
   if (view === "kanban-panel") return <KanbanPanel />
   if (view === "dashboard") {

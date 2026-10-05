@@ -12,8 +12,9 @@ import {
 
 import { useSignInPrompt } from "@/components/auth/sign-in-prompt"
 import { Button } from "@/components/ui/button"
-import { Group, PaneHeader, Row } from "@/components/settings/settings-parts"
+import { Group, PaneHeader, ProBadge, Row } from "@/components/settings/settings-parts"
 import { type SyncState, type SyncStatus, useSyncState } from "@/hooks/use-dashboard-sync"
+import { useIsPro } from "@/hooks/use-is-pro"
 import { useAuth } from "@/lib/auth-context"
 import { SYNC_VERSION, syncNow } from "@/lib/dashboard-sync-engine"
 import { cn, deferred } from "@/lib/utils"
@@ -57,7 +58,6 @@ const BOOKMARK_NOTES: Record<NonNullable<SyncState["bookmarks"]>, string> = {
 
 const SYNCED_ITEMS: { label: string; hint: string }[] = [
   { label: "Dashboard layout", hint: "Card order, hidden cards, grid or list view" },
-  { label: "Saved sessions", hint: "Your saved tab bundles" },
   { label: "Tasks", hint: "The kanban board" },
   { label: "Appearance", hint: "Wallpaper, greeting and card style - uploaded backgrounds stay on this PC" },
 ]
@@ -103,6 +103,7 @@ export function SyncSettings({ onCloseSettings }: { onCloseSettings: () => void 
   const { user } = useAuth()
   const { status, lastSyncedAt, bookmarks } = useSyncState()
   const openSignIn = useSignInPrompt()
+  const isPro = useIsPro()
 
   if (!user) {
     return (
@@ -153,6 +154,19 @@ export function SyncSettings({ onCloseSettings }: { onCloseSettings: () => void 
           label="Bookmarks"
           hint={BOOKMARK_NOTES[bookmarks ?? "stashwell"]}
           control={<SyncedMark on={bookmarks !== "chrome" && bookmarks !== "other-account"} />}
+        />
+        <Row
+          label={
+            <span className="flex items-center gap-1.5">
+              Saved sessions {!isPro && <ProBadge />}
+            </span>
+          }
+          hint={
+            isPro
+              ? "Your saved tab bundles - restore any of them on another PC"
+              : "Kept on this PC only. Pro Cloud Sync restores them on your other PCs."
+          }
+          control={<SyncedMark on={isPro} />}
         />
         {SYNCED_ITEMS.map((item) => (
           <Row key={item.label} label={item.label} hint={item.hint} control={<SyncedMark on />} />

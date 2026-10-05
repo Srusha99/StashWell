@@ -223,23 +223,31 @@ export async function readCurrentWindowTabs(): Promise<SessionTab[]> {
     .filter((tab): tab is SessionTab => tab !== null)
 }
 
+export type CreateBundleResult =
+  | { status: "saved"; bundle: SessionBundle }
+  /** No tabs to save, or no chrome.tabs API (the popup outside the extension). */
+  | { status: "empty" }
+  /** Already `maxBundles` saved - counted from storage, so another popup's save counts too. */
+  | { status: "limit-reached" }
+
 /**
  * Snapshots every non-internal tab in the current window into a new named
- * bundle. Returns null when there's nothing to save (no tabs, or no
- * chrome.tabs API - e.g. running the popup outside the extension).
+ * bundle - unless `maxBundles` are saved already (see lib/bundle-gate.ts).
  */
 export async function createSessionBundleFromCurrentWindow(
-  name: string
-): Promise<SessionBundle | null> {
+  name: string,
+  maxBundles = Infinity
+): Promise<CreateBundleResult> {
   if (!hasTabsApi()) {
     warnUnavailable()
-    return null
+    return { status: "empty" }
   }
 
   const sessionTabs = await readCurrentWindowTabs()
-  if (sessionTabs.length === 0) return null
+  if (sessionTabs.length === 0) return { status: "empty" }
 
   const map = await readSessionBundleMap()
+  if (Object.keys(map).length >= maxBundles) return { status: "limit-reached" }
   const id = reserveBundleId(map)
   const bundle: SessionBundle = {
     id,
@@ -251,7 +259,7 @@ export async function createSessionBundleFromCurrentWindow(
 
   map[id] = bundle
   await writeSessionBundleMap(map)
-  return bundle
+  return { status: "saved", bundle }
 }
 
 export async function deleteSessionBundle(id: string): Promise<void> {

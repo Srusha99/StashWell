@@ -46,7 +46,7 @@ const THIRD_PARTY_SERVICES = [
     icon: Database,
     label: "Supabase",
     description:
-      "While you're signed in, stores your account, profile, tasks, saved sessions, dashboard layout, appearance settings, and the bookmarks your dashboard shows (the Bookmarks Bar and your StashWell workspaces - titles and links) over HTTPS, protected by Row-Level Security scoped to your account, so they're the same on every device you sign in on. Other bookmarks are never read. Where Chrome Sync already syncs a device's bookmarks, StashWell doesn't upload them. Zero network requests while signed out.",
+      "While you're signed in, stores your account, profile, tasks, saved sessions (Pro), dashboard layout, appearance settings, and the bookmarks your dashboard shows (the Bookmarks Bar and your StashWell workspaces - titles and links) over HTTPS, protected by Row-Level Security scoped to your account, so they're the same on every device you sign in on. Other bookmarks are never read. Where Chrome Sync already syncs a device's bookmarks, StashWell doesn't upload them. Zero network requests while signed out.",
   },
   {
     icon: CalendarDays,

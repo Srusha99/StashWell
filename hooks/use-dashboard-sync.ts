@@ -20,11 +20,14 @@ export type { SyncState, SyncStatus }
  * above anything keyed by workspace - a workspace switch shouldn't restart
  * syncing.
  */
-export function useDashboardSync(userId: string | null): SyncState {
+export function useDashboardSync(
+  userId: string | null,
+  { syncSessions }: { syncSessions: boolean }
+): SyncState {
   React.useEffect(() => {
     if (!userId) return
-    return startDashboardSync(userId)
-  }, [userId])
+    return startDashboardSync(userId, { syncSessions })
+  }, [userId, syncSessions])
 
   return useSyncState()
 }

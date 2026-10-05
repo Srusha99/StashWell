@@ -1,7 +1,7 @@
 "use client"
 
 /**
- * Shared by the Quick Share panel and an expanded BundleCard so both tab
+ * Shared by the Quick Share panel and an expanded BundlePill so both tab
  * lists select and share the same way: a count + Select All / Deselect All
  * header above the list, and a centered "Share" pill below it. Each list
  * passes its own tone - green in Quick Share, blue in a saved bundle.
@@ -16,7 +16,7 @@ import { cn } from "@/lib/utils"
 
 /** Checkbox style for a shareable tab row, tinted to match its Share pill. */
 export function shareCheckboxClass(tone: Tone): string {
-  return cn("size-3.5 shrink-0 rounded-sm border border-black/20", TONES[tone].checkbox)
+  return cn("size-3.5 shrink-0 rounded-sm border border-[#cbd5e1]", TONES[tone].checkbox)
 }
 
 export function TabSelectionHeader({
@@ -36,9 +36,9 @@ export function TabSelectionHeader({
 }) {
   return (
     <div className={cn("flex items-center justify-between gap-2", className)}>
-      <p className="text-[11px] font-semibold">
+      <p className="text-xs font-semibold text-[#0f172a]">
         {label && `${label} `}
-        <span className="font-normal text-neutral-500">
+        <span className="font-normal text-[#64748b]">
           {label && "· "}
           {selectedCount} of {totalCount} selected
         </span>
@@ -47,14 +47,14 @@ export function TabSelectionHeader({
         <button
           type="button"
           onClick={onSelectAll}
-          className="text-[10px] font-medium text-neutral-500 transition hover:text-neutral-900 hover:underline"
+          className="text-[0.7rem] font-medium text-[#64748b] transition hover:text-[#0f172a] hover:underline"
         >
           Select All
         </button>
         <button
           type="button"
           onClick={onDeselectAll}
-          className="text-[10px] font-medium text-neutral-500 transition hover:text-neutral-900 hover:underline"
+          className="text-[0.7rem] font-medium text-[#64748b] transition hover:text-[#0f172a] hover:underline"
         >
           Deselect All
         </button>
@@ -95,7 +95,7 @@ export function ShareTabsButton({
   const Icon = copied ? CheckIcon : CopyIcon
 
   return (
-    <div className={cn("flex flex-col items-center gap-1.5 border-t border-black/10 pt-2", className)}>
+    <div className={cn("flex flex-col items-center gap-1.5 border-t border-[#e2e8f0] pt-2.5", className)}>
       {/* min-w keeps the pill from jumping in size when the label swaps to
           "Copied!". */}
       <button
@@ -103,7 +103,7 @@ export function ShareTabsButton({
         onClick={handleCopy}
         disabled={tabs.length === 0}
         className={cn(
-          "flex min-w-[88px] items-center justify-center gap-1 rounded-full px-4 py-1 text-[11px] font-medium whitespace-nowrap text-white shadow-sm transition active:scale-[0.97] disabled:pointer-events-none disabled:opacity-40",
+          "flex min-w-[96px] items-center justify-center gap-1.5 rounded-full px-4 py-1.5 text-xs font-semibold whitespace-nowrap text-white transition active:scale-[0.97] disabled:pointer-events-none disabled:opacity-40",
           TONES[tone].button
         )}
       >
@@ -111,7 +111,7 @@ export function ShareTabsButton({
         {copied ? "Copied!" : "Share"}
       </button>
       {copyFailed && (
-        <p className="text-[10px] text-red-600">Couldn&apos;t copy to the clipboard - try again.</p>
+        <p className="text-[0.7rem] text-[#ef4444]">Couldn&apos;t copy to the clipboard - try again.</p>
       )}
     </div>
   )

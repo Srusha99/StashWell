@@ -60,13 +60,14 @@ export function BookmarkApp() {
   // single-column dashboard each time.
   const { count: columnCount, isReady: columnCountReady } = useColumnCount()
   // Also hoisted above the workspace key: a switch mustn't restart syncing.
+  // Saved sessions only sync on Pro (lib/bundle-gate.ts).
   const { user } = useAuth()
-  useDashboardSync(user?.id ?? null)
+  const isPro = useIsPro()
+  useDashboardSync(user?.id ?? null, { syncSessions: isPro })
   const { resolvedTheme } = useTheme()
   const isLight = resolvedTheme === "light"
   const appearance = useAppearanceSettings()
   const { settings, setColorMode, setCustomBackgroundId } = appearance
-  const isPro = useIsPro()
   const [customBackgrounds, setCustomBackgrounds] = React.useState<
     CustomBackgroundItem[]
   >([])
