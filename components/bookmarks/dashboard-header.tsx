@@ -47,14 +47,14 @@ export function DashboardHeader({
   }
 
   return (
-    <div className="mb-7 flex flex-col items-center gap-1 pt-4 text-center text-[#1c1c1e] dark:text-white">
-      <span className="text-5xl font-semibold tracking-tight tabular-nums">{time}</span>
-      <div className="text-sm text-[#8e8e93] dark:text-white/50">{date}</div>
+    <div className="mb-5 flex flex-col items-center gap-0.5 pt-2 text-center text-[#1c1c1e] dark:text-white">
+      <span className="text-4xl font-semibold tracking-tight tabular-nums">{time}</span>
+      <div className="text-xs text-[#8e8e93] dark:text-white/50">{date}</div>
       {greetingEnabled && (
         <TextType
           as="div"
           text={greeting}
-          className="text-sm text-[#1c1c1e]/70 dark:text-white/70"
+          className="text-xs text-[#1c1c1e]/70 dark:text-white/70"
           typingSpeed={120}
           initialDelay={200}
           loop={false}
@@ -64,17 +64,17 @@ export function DashboardHeader({
         />
       )}
       {searchBarEnabled && (
-        <form onSubmit={handleSearchSubmit} className="mt-3 w-full max-w-[320px]">
+        <form onSubmit={handleSearchSubmit} className="mt-2.5 w-full max-w-[280px]">
           <BorderBeam size="line" colorVariant="colorful" theme={isLight ? "light" : "dark"} duration={3.1} borderRadius={20}>
-            <div className="relative h-[42px] w-full overflow-hidden rounded-[64px]">
+            <div className="relative h-[36px] w-full overflow-hidden rounded-[64px]">
               <div
                 className={
                   isLight
-                    ? "absolute inset-0 flex items-center gap-2.5 rounded-[20px] bg-white px-[13px] shadow-[inset_0_0_0_1px_rgba(0,0,0,0.08),inset_0_0_50px_0_rgba(0,0,0,0.02)]"
-                    : "absolute inset-0 flex items-center gap-2.5 rounded-[20px] bg-white/[0.04] px-[13px] backdrop-blur-md shadow-[inset_0_0_0_1px_rgba(255,255,255,0.1)]"
+                    ? "absolute inset-0 flex items-center gap-2 rounded-[20px] bg-white px-[13px] shadow-[inset_0_0_0_1px_rgba(0,0,0,0.08),inset_0_0_50px_0_rgba(0,0,0,0.02)]"
+                    : "absolute inset-0 flex items-center gap-2 rounded-[20px] bg-white/[0.04] px-[13px] backdrop-blur-md shadow-[inset_0_0_0_1px_rgba(255,255,255,0.1)]"
                 }
               >
-                <Search className={isLight ? "h-5 w-5 shrink-0 text-[#8e8e93]" : "h-5 w-5 shrink-0 text-white/40"} strokeWidth={2} />
+                <Search className={isLight ? "h-4 w-4 shrink-0 text-[#8e8e93]" : "h-4 w-4 shrink-0 text-white/40"} strokeWidth={2} />
                 <input
                   type="text"
                   value={query}
@@ -82,8 +82,8 @@ export function DashboardHeader({
                   placeholder="What's on your mind today?"
                   className={
                     isLight
-                      ? "w-full bg-transparent text-[15px] leading-[18px] text-[#1c1c1e] outline-none placeholder:text-[#8e8e93]"
-                      : "w-full bg-transparent text-[15px] leading-[18px] text-white outline-none placeholder:text-white/40"
+                      ? "w-full bg-transparent text-[13px] leading-[16px] text-[#1c1c1e] outline-none placeholder:text-[#8e8e93]"
+                      : "w-full bg-transparent text-[13px] leading-[16px] text-white outline-none placeholder:text-white/40"
                   }
                 />
               </div>

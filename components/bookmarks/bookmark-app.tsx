@@ -114,7 +114,7 @@ export function BookmarkApp() {
     if (settings.customBackgroundId === id) {
       const fallback = remaining[0] ?? null
       setCustomBackgroundId(fallback?.id ?? null)
-      if (!fallback) setColorMode("molten")
+      if (!fallback) setColorMode("lightrays")
     }
   }
 

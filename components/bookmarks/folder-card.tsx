@@ -130,7 +130,7 @@ export function FolderCard({
         <div className="absolute inset-x-2 bottom-0 h-0.5 rounded-full bg-primary" />
       )}
 
-      <div className="mb-2 flex items-center gap-1.5">
+      <div className="mb-1.5 flex items-center gap-1.5">
         <h2 className={CARD_TITLE}>{title}</h2>
         {allUrls.length > 0 && (
           <Button
@@ -229,7 +229,7 @@ function FolderIconGrid({
   onDrillInto: (folderId: string) => void
 }) {
   return (
-    <div className="grid grid-cols-5 gap-2">
+    <div className="grid grid-cols-5 gap-1.5">
       {items.map((item) =>
         isFolder(item) ? (
           <button
@@ -239,7 +239,7 @@ function FolderIconGrid({
             title={item.title}
             className="flex aspect-square items-center justify-center opacity-90 hover:opacity-100"
           >
-            <Folder className="size-8 text-[#8e8e93] dark:text-white/50" />
+            <Folder className="size-7 text-[#8e8e93] dark:text-white/50" />
           </button>
         ) : (
           <GridIconItem key={item.id} item={item} />
@@ -251,7 +251,7 @@ function FolderIconGrid({
 
 function GridIconItem({ item }: { item: BookmarkNode }) {
   const [customIcon] = useCustomIcon(item.url ?? null)
-  const fallbackIcon = <Grid2x2 className="size-8 text-[#8e8e93] dark:text-white/50" />
+  const fallbackIcon = <Grid2x2 className="size-7 text-[#8e8e93] dark:text-white/50" />
 
   return (
     <a
@@ -261,12 +261,12 @@ function GridIconItem({ item }: { item: BookmarkNode }) {
     >
       {customIcon ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={customIcon} alt="" className="size-8 rounded-lg object-contain" />
+        <img src={customIcon} alt="" className="size-7 rounded-lg object-contain" />
       ) : item.url ? (
         <FaviconImg
           url={item.url}
           size={128}
-          className="size-8 rounded-lg object-contain"
+          className="size-7 rounded-lg object-contain"
           fallback={fallbackIcon}
         />
       ) : (

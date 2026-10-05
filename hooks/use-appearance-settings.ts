@@ -58,11 +58,11 @@ export { localDayKey }
 
 const DEFAULT_SETTINGS: AppearanceSettings = {
   ...DEFAULT_CARD_FEEL,
-  colorMode: "molten",
+  colorMode: "lightrays",
   backgroundEnabled: true,
-  cursorGlowEnabled: true,
+  cursorGlowEnabled: false,
   customBackgroundId: null,
-  greetingName: "Srush",
+  greetingName: "",
   greetingEnabled: true,
   searchBarEnabled: true,
   use24HourClock: false,

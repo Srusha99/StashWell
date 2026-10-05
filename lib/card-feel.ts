@@ -60,7 +60,7 @@ export function cardFeelVars(feel: CardFeel): Record<string, string> {
     "--card-alpha": `${round(scale(feel.cardOpacity, 0, 1))}`,
     "--card-blur": `${round(scale(feel.blurIntensity, 0, 40), 1)}px`,
     "--card-radius": `${round(scale(feel.cardRadius, 4, 28), 1)}px`,
-    "--card-pad": `${round(scale(feel.density, 8, 22), 1)}px`,
+    "--card-pad": `${round(scale(feel.density, 6, 18), 1)}px`,
     "--grid-gap": `${round(scale(feel.gridSpacing, 6, 28), 1)}px`,
     "--card-glow-alpha": `${round(scale(feel.glow, 0, 0.14))}`,
   }

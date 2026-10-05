@@ -116,7 +116,7 @@ export function UserMenu({
           <Avatar
             avatarUrl={avatarUrl}
             initials={initials}
-            className="size-9"
+            className="size-7"
           />
           {hasUnread && (
             <span className="absolute top-0 right-0 size-2.5 rounded-full bg-emerald-500 ring-2 ring-background" />

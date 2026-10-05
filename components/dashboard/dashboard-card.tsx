@@ -16,4 +16,4 @@ export const CARD_SHELL =
 
 /** Shared header row: small uppercase label. */
 export const CARD_TITLE =
-  "min-w-0 flex-1 truncate text-[10.5px] font-semibold tracking-[0.06em] text-[#1c1c1e]/80 uppercase dark:text-white/80"
+  "min-w-0 flex-1 truncate text-[10px] font-semibold tracking-[0.06em] text-[#1c1c1e]/80 uppercase dark:text-white/80"

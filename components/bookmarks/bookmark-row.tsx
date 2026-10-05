@@ -46,9 +46,9 @@ export function BookmarkRow({
       <button
         type="button"
         onClick={() => onDrillInto(node.id)}
-        className="flex w-full items-center gap-2 py-1 text-left"
+        className="flex w-full items-center gap-2 py-0.5 text-left"
       >
-        <Folder className="size-4 shrink-0 text-[#8e8e93] dark:text-white/50" />
+        <Folder className="size-3.5 shrink-0 text-[#8e8e93] dark:text-white/50" />
         <span className="truncate text-bookmark text-[#1c1c1e] dark:text-white/85">
           {node.title || "(untitled)"}
         </span>
@@ -56,7 +56,7 @@ export function BookmarkRow({
     )
   }
 
-  const fallbackIcon = <Folder className="size-4 shrink-0 text-[#8e8e93] dark:text-white/50" />
+  const fallbackIcon = <Folder className="size-3.5 shrink-0 text-[#8e8e93] dark:text-white/50" />
   const host = hostOf(node.url)
 
   async function handleCopy(event: React.MouseEvent) {
@@ -87,15 +87,15 @@ export function BookmarkRow({
   }
 
   return (
-    <div className="group/row relative flex items-center gap-2 py-1">
+    <div className="group/row relative flex items-center gap-2 py-0.5">
       <a href={node.url} className="flex min-w-0 flex-1 items-center gap-2">
         {customIcon ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={customIcon} alt="" className="size-4 shrink-0 rounded-[3px]" />
+          <img src={customIcon} alt="" className="size-3.5 shrink-0 rounded-[3px]" />
         ) : node.url ? (
           <FaviconImg
             url={node.url}
-            className="size-4 shrink-0 rounded-[3px]"
+            className="size-3.5 shrink-0 rounded-[3px]"
             fallback={fallbackIcon}
           />
         ) : (
@@ -110,7 +110,7 @@ export function BookmarkRow({
         <Button
           variant="ghost"
           size="icon-xs"
-          className="text-[#8e8e93] hover:bg-black/[0.04] hover:text-[#1c1c1e] dark:text-white/70 dark:hover:bg-white/10 dark:hover:text-white"
+          className="size-5 text-[#8e8e93] hover:bg-black/[0.04] hover:text-[#1c1c1e] dark:text-white/70 dark:hover:bg-white/10 dark:hover:text-white"
           onClick={(event: React.MouseEvent) => {
             event.preventDefault()
             onEdit(node)
@@ -122,7 +122,7 @@ export function BookmarkRow({
         <Button
           variant="ghost"
           size="icon-xs"
-          className="text-[#8e8e93] hover:bg-black/[0.04] hover:text-[#1c1c1e] dark:text-white/70 dark:hover:bg-white/10 dark:hover:text-white"
+          className="size-5 text-[#8e8e93] hover:bg-black/[0.04] hover:text-[#1c1c1e] dark:text-white/70 dark:hover:bg-white/10 dark:hover:text-white"
           onClick={handleCopy}
           aria-label="Copy URL"
         >
@@ -131,7 +131,7 @@ export function BookmarkRow({
         <Button
           variant="ghost"
           size="icon-xs"
-          className="text-[#8e8e93] hover:bg-black/[0.04] hover:text-[#1c1c1e] dark:text-white/70 dark:hover:bg-white/10 dark:hover:text-white"
+          className="size-5 text-[#8e8e93] hover:bg-black/[0.04] hover:text-[#1c1c1e] dark:text-white/70 dark:hover:bg-white/10 dark:hover:text-white"
           render={<a href={node.url} target="_blank" rel="noreferrer" />}
           aria-label="Open in new tab"
         >
@@ -140,7 +140,7 @@ export function BookmarkRow({
         <Button
           variant="ghost"
           size="icon-xs"
-          className="text-[#8e8e93] hover:bg-destructive/10 hover:text-destructive dark:text-white/70 dark:hover:bg-destructive/20"
+          className="size-5 text-[#8e8e93] hover:bg-destructive/10 hover:text-destructive dark:text-white/70 dark:hover:bg-destructive/20"
           onClick={(event: React.MouseEvent) => {
             event.preventDefault()
             onDelete(node)

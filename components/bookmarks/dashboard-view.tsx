@@ -263,11 +263,11 @@ export function DashboardView({
   }
 
   return (
-    <div className="h-screen w-screen overflow-y-auto p-6">
+    <div className="h-screen w-screen overflow-y-auto p-4">
       {/* Top-left corner, mirroring the fixed settings button in the opposite
           corner. z-40 keeps it under the z-50 menus and dialogs it opens. */}
-      <WorkspaceSwitcher className="fixed top-6 left-6 z-40" />
-      <div className="fixed top-6 right-6 z-40 flex items-center gap-2">
+      <WorkspaceSwitcher className="fixed top-4 left-4 z-40" />
+      <div className="fixed top-4 right-4 z-40 flex items-center gap-2">
         <ViewSwitcher
           currentView={currentView}
           onViewChange={handleViewChange}
@@ -300,15 +300,15 @@ export function DashboardView({
           resolved.status reads "missing-folder" for a frame on every load
           without this - a false positive, not a real repair prompt. */}
       {isReady && resolved.status !== "ok" && (
-        <div className="mx-auto mb-4 w-full max-w-[960px]">
+        <div className="mx-auto mb-4 w-full max-w-[840px]">
           <WorkspaceRepairNotice />
         </div>
       )}
 
       {/* Capped and centred rather than stretched edge to edge: with flex-1
           columns on a wide screen each card ballooned past 360px, which is what
-          made the dashboard feel heavy. ~228px per column at 4 columns. */}
-      <div className="mx-auto flex w-full max-w-[960px] gap-[var(--grid-gap)]">
+          made the dashboard feel heavy. ~200px per column at 4 columns. */}
+      <div className="mx-auto flex w-full max-w-[840px] gap-[var(--grid-gap)]">
         {bookmarksLoading || (root && !layoutReady) ? (
           // Chrome's bookmarks.getTree() or the saved layout hasn't resolved
           // yet - shown instead of an empty grid so that wait reads as
@@ -321,7 +321,7 @@ export function DashboardView({
               key={columnIndex}
               className="flex min-w-0 flex-1 flex-col gap-[var(--grid-gap)]"
             >
-              <div className={CARD_SHELL + " h-40 animate-pulse"} />
+              <div className={CARD_SHELL + " h-32 animate-pulse"} />
             </div>
           ))
         ) : (
@@ -393,7 +393,7 @@ export function DashboardView({
               parentId: root.id,
             })
           }
-          className="mx-auto mt-5 flex items-center gap-1 text-[11px] text-[#8e8e93] transition-colors hover:text-[#1c1c1e] dark:text-white/40 dark:hover:text-white"
+          className="mx-auto mt-4 flex items-center gap-1 text-[11px] text-[#8e8e93] transition-colors hover:text-[#1c1c1e] dark:text-white/40 dark:hover:text-white"
         >
           <Plus className="size-3" /> New section
         </button>
@@ -430,8 +430,8 @@ export function DashboardView({
           />
           <div
             style={{
-              top: kanbanAnchor?.top ?? 64,
-              right: kanbanAnchor?.right ?? 24,
+              top: kanbanAnchor?.top ?? 52,
+              right: kanbanAnchor?.right ?? 16,
             }}
             className="fixed z-50 max-h-[70vh] w-[min(640px,calc(100vw-3rem))] origin-top-right overflow-y-auto rounded-2xl border border-[var(--card-border)] bg-white p-4 shadow-2xl ring-1 ring-black/5 animate-in fade-in-0 zoom-in-95 slide-in-from-top-2 duration-150 dark:border-white/15 dark:bg-neutral-900 dark:ring-white/10"
             onClick={(event) => event.stopPropagation()}
