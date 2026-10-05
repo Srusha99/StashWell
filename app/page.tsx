@@ -6,7 +6,7 @@ import { SessionBundlesPopup } from "@/components/session-bundles/session-bundle
 import { KanbanBoard } from "@/components/kanban/kanban-board"
 import { KanbanPanel } from "@/components/kanban/kanban-panel"
 import { AuthProvider, useAuth } from "@/lib/auth-context"
-import { AuthForm } from "@/components/auth/auth-form"
+import { SignInPromptProvider } from "@/components/auth/sign-in-prompt"
 
 type View = "dashboard" | "popup" | "kanban" | "kanban-panel"
 
@@ -49,10 +49,18 @@ export default function Page() {
   return null
 }
 
+/**
+ * Signed in or not, it's the dashboard: signed out is "Local Mode", where
+ * everything stays on this device, and signing in (from the sync pill or the
+ * account menu) is what turns on syncing to the user's other devices.
+ */
 function DashboardGate() {
-  const { user, loading } = useAuth()
+  const { loading } = useAuth()
 
   if (loading) return null
-  if (!user) return <AuthForm />
-  return <BookmarkApp />
+  return (
+    <SignInPromptProvider>
+      <BookmarkApp />
+    </SignInPromptProvider>
+  )
 }

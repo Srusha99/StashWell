@@ -41,7 +41,6 @@ import {
   readDashboardLayout,
   writeDashboardLayout,
 } from "@/lib/dashboard-layout-storage"
-import { pushDashboardLayout } from "@/lib/dashboard-layout-sync"
 import { readFolderViewMode, writeFolderViewMode } from "@/lib/folder-view-mode"
 import { readHiddenFolders, writeHiddenFolders } from "@/lib/hidden-folders"
 import {
@@ -728,9 +727,7 @@ async function restoreTarget(
   writeHiddenFolders(workspace.id, remapIds(hidden, idMap))
 
   if (layout) {
-    const restored = remapLayout(layout, idMap)
-    await writeDashboardLayout(workspace.id, restored)
-    if (restored.arrangedByUser) pushDashboardLayout(workspace.id, restored)
+    await writeDashboardLayout(workspace.id, remapLayout(layout, idMap))
   }
 
   if (root) {

@@ -5,9 +5,11 @@
  * Storage key and shape are kept in sync with the plain-JS duplicate in
  * `public/background.js` (which opens this popup from the right-click context
  * menu and can't import this module - see that file's header comment).
+ *
+ * Syncing to the user's other devices happens in
+ * lib/dashboard-sync-engine.ts, which watches this key for changes - so
+ * nothing here (or in background.js) needs to know about the cloud.
  */
-
-import { pushToCloud } from "@/lib/syncEngine"
 
 export interface SessionTab {
   id: string
@@ -24,7 +26,7 @@ export interface SessionBundle {
   tabs: SessionTab[]
 }
 
-type SessionBundleMap = Record<string, SessionBundle>
+export type SessionBundleMap = Record<string, SessionBundle>
 
 export const STORAGE_KEY = "stashwell_sessions"
 
@@ -102,7 +104,7 @@ function isSessionBundle(value: unknown): value is SessionBundle {
   )
 }
 
-async function readSessionBundleMap(): Promise<SessionBundleMap> {
+export async function readSessionBundleMap(): Promise<SessionBundleMap> {
   if (!hasTabsApi()) {
     warnUnavailable()
     return {}
@@ -119,15 +121,12 @@ async function readSessionBundleMap(): Promise<SessionBundleMap> {
   return map
 }
 
-async function writeSessionBundleMap(map: SessionBundleMap): Promise<void> {
+export async function writeSessionBundleMap(map: SessionBundleMap): Promise<void> {
   if (!hasTabsApi()) {
     warnUnavailable()
     return
   }
-  // Local-first: chrome.storage.local write completes (and is awaited by the
-  // caller) before the Supabase upsert is even fired, let alone resolved.
   await chrome.storage.local.set({ [STORAGE_KEY]: map })
-  pushToCloud({ sessions: map })
 }
 
 /** All saved bundles, newest first. */

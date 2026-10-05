@@ -10,11 +10,11 @@ import {
   readCardFeel,
 } from "@/lib/card-feel"
 /**
- * Purely local - wallpaper/appearance settings never sync to Supabase, so
- * this key lives here instead of lib/syncEngine.ts. Kept identical to the
- * window.localStorage key this used before moving to chrome.storage.local,
- * so an existing local value migrates in place instead of appearing to
- * reset.
+ * Signed in, these settings sync to the user's other devices field by field
+ * (lib/settings-sync.ts), except uploaded backgrounds, which stay on the
+ * device they were added on. Kept identical to the window.localStorage key
+ * this used before moving to chrome.storage.local, so an existing local value
+ * migrates in place instead of appearing to reset.
  */
 const SETTINGS_STORAGE_KEY = "bm:appearance"
 
@@ -69,6 +69,11 @@ const DEFAULT_SETTINGS: AppearanceSettings = {
   dailyWallpaperEnabled: false,
   lastWallpaperRotation: null,
   bookmarkTextScale: BOOKMARK_TEXT_SCALE.default,
+}
+
+export {
+  SETTINGS_STORAGE_KEY as APPEARANCE_STORAGE_KEY,
+  DEFAULT_SETTINGS as DEFAULT_APPEARANCE_SETTINGS,
 }
 
 function hasChromeStorage(): boolean {

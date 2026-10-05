@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { Lock } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 
@@ -118,6 +119,20 @@ export function Row({
       </div>
       <div className={cn(stacked ? "w-full" : "shrink-0")}>{control}</div>
     </div>
+  )
+}
+
+/** Marks a setting that needs StashWell Pro. */
+export function ProBadge({ className }: { className?: string }) {
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center gap-0.5 rounded-full bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-amber-600 dark:text-amber-400",
+        className
+      )}
+    >
+      <Lock className="size-2.5" aria-hidden /> Pro
+    </span>
   )
 }
 

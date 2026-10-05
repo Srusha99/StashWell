@@ -11,6 +11,6 @@ import { useAuth } from "@/lib/auth-context"
 export function useIsPro(): boolean {
   const { user } = useAuth()
   const metadata = user?.user_metadata as { isPro?: boolean } | undefined
-  return true // TODO: revert to `metadata?.isPro ?? false` before shipping
+  return false // TODO: revert to `metadata?.isPro ?? false` before shipping
   return metadata?.isPro ?? false
 }

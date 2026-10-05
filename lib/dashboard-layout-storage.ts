@@ -31,9 +31,9 @@ export interface DashboardLayout {
   /** The count most recently arranged by hand. Counts with nothing saved are laid out from it. */
   primaryCount: number
   /**
-   * False while this is only the auto-generated first arrangement - which a
-   * cloud backup may replace (see lib/dashboard-layout-sync.ts). True once the
-   * user has moved a card.
+   * False while this is only the auto-generated first arrangement - which is
+   * never synced, so another device's arrangement replaces it (see
+   * lib/dashboard-sync-layouts.ts). True once the user has moved a card.
    */
   arrangedByUser: boolean
 }
@@ -143,8 +143,8 @@ export async function writeDashboardLayout(
 
 /**
  * Listens for this workspace's layout changing from elsewhere - another open
- * tab moving a card, a cloud backup being restored, or the Privacy panel
- * clearing it (reported as null). No-op outside the extension, since
+ * tab moving a card, another device's arrangement arriving through sync, or
+ * the Privacy panel clearing it (reported as null). No-op outside the extension, since
  * window.localStorage has no equivalent cross-context change event this app
  * relies on.
  */

@@ -10,6 +10,7 @@ import SoftAurora from "@/components/SoftAurora"
 import GlowCursor from "@/components/GlowCursor"
 import { useAppearanceSettings } from "@/hooks/use-appearance-settings"
 import { useColumnCount } from "@/hooks/use-column-count"
+import { useDashboardSync } from "@/hooks/use-dashboard-sync"
 import { useDailyWallpaper } from "@/hooks/use-daily-wallpaper"
 import { useHiddenFolders } from "@/hooks/use-hidden-folders"
 import { useWhatsNew } from "@/hooks/use-whats-new"
@@ -24,11 +25,17 @@ import {
   useWorkspaces,
 } from "@/components/workspaces/workspace-provider"
 import {
+  countCustomBackgrounds,
   deleteCustomBackground,
   listCustomBackgrounds,
+  replaceCustomBackground,
   saveCustomBackground,
   type CustomBackgroundKind,
+  type CustomBackgroundRecord,
 } from "@/lib/custom-background-store"
+import { useIsPro } from "@/hooks/use-is-pro"
+import { canReplaceWallpaper, canUploadWallpaper } from "@/lib/wallpaper-gate"
+import { useAuth } from "@/lib/auth-context"
 
 interface CustomBackgroundItem {
   id: string
@@ -37,16 +44,29 @@ interface CustomBackgroundItem {
   name: string
 }
 
+function toItem(record: CustomBackgroundRecord): CustomBackgroundItem {
+  return {
+    id: record.id,
+    url: URL.createObjectURL(record.blob),
+    kind: record.kind,
+    name: record.name,
+  }
+}
+
 export function BookmarkApp() {
   // Hoisted above the workspace key boundary on purpose: useColumnCount starts
   // at 1 to match the static-export markup and only reaches the real count in an
   // effect, so remounting it on every workspace switch would flash a
   // single-column dashboard each time.
   const { count: columnCount, isReady: columnCountReady } = useColumnCount()
+  // Also hoisted above the workspace key: a switch mustn't restart syncing.
+  const { user } = useAuth()
+  useDashboardSync(user?.id ?? null)
   const { resolvedTheme } = useTheme()
   const isLight = resolvedTheme === "light"
   const appearance = useAppearanceSettings()
   const { settings, setColorMode, setCustomBackgroundId } = appearance
+  const isPro = useIsPro()
   const [customBackgrounds, setCustomBackgrounds] = React.useState<
     CustomBackgroundItem[]
   >([])
@@ -58,17 +78,22 @@ export function BookmarkApp() {
 
   React.useEffect(() => {
     let items: CustomBackgroundItem[] = []
-    listCustomBackgrounds().then((records) => {
-      items = records.map((record) => ({
-        id: record.id,
-        url: URL.createObjectURL(record.blob),
-        kind: record.kind,
-        name: record.name,
-      }))
-      setCustomBackgrounds(items)
-      setCustomBackgroundsLoaded(true)
-    })
+    let active = true
+    listCustomBackgrounds()
+      .then((records) => {
+        if (!active) return
+        items = records.map(toItem)
+        setCustomBackgrounds(items)
+      })
+      .catch((error: unknown) => {
+        // Built-in wallpapers still work; only the uploads are missing.
+        console.warn("[StashWell] Couldn't load uploaded wallpapers:", error)
+      })
+      .finally(() => {
+        if (active) setCustomBackgroundsLoaded(true)
+      })
     return () => {
+      active = false
       items.forEach((item) => URL.revokeObjectURL(item.url))
     }
   }, [])
@@ -79,21 +104,39 @@ export function BookmarkApp() {
   )
 
   useDailyWallpaper({
-    settings,
+    // The daily slideshow is Pro. The setting itself is kept, so it picks up
+    // where it left off if the user upgrades.
+    settings: isPro ? settings : { ...settings, dailyWallpaperEnabled: false },
     customBackgroundIds,
     customBackgroundsLoaded,
     applyDailyWallpaper: appearance.applyDailyWallpaper,
   })
 
+  // Both reject with a message the Appearance panel shows as-is. The panel
+  // checks the plan's limits first; this checks again against the stored
+  // count, which also includes uploads made in another open tab.
   async function handleCustomBackgroundUpload(file: File) {
-    const record = await saveCustomBackground(file)
-    const item: CustomBackgroundItem = {
-      id: record.id,
-      url: URL.createObjectURL(record.blob),
-      kind: record.kind,
-      name: record.name,
-    }
+    const gate = canUploadWallpaper(isPro, await countCustomBackgrounds(), file)
+    if (!gate.allowed) throw new Error(gate.message)
+
+    const item = toItem(await saveCustomBackground(file))
     setCustomBackgrounds((current) => [...current, item])
+    setColorMode("custom")
+    setCustomBackgroundId(item.id)
+  }
+
+  async function handleReplaceCustomBackground(id: string, file: File) {
+    const gate = canReplaceWallpaper(isPro, file)
+    if (!gate.allowed) throw new Error(gate.message)
+
+    const item = toItem(await replaceCustomBackground(id, file))
+    setCustomBackgrounds((current) => {
+      const previous = current.find((entry) => entry.id === item.id)
+      if (previous) URL.revokeObjectURL(previous.url)
+      return previous
+        ? current.map((entry) => (entry.id === item.id ? item : entry))
+        : [...current, item]
+    })
     setColorMode("custom")
     setCustomBackgroundId(item.id)
   }
@@ -104,7 +147,13 @@ export function BookmarkApp() {
   }
 
   async function handleDeleteCustomBackground(id: string) {
-    await deleteCustomBackground(id)
+    try {
+      await deleteCustomBackground(id)
+    } catch (error) {
+      // Left showing, since it's still stored.
+      console.warn("[StashWell] Couldn't remove an uploaded wallpaper:", error)
+      return
+    }
     const removed = customBackgrounds.find((item) => item.id === id)
     if (removed) URL.revokeObjectURL(removed.url)
 
@@ -125,6 +174,7 @@ export function BookmarkApp() {
       appearance={appearance}
       customBackgrounds={customBackgrounds}
       onUploadCustomBackground={handleCustomBackgroundUpload}
+      onReplaceCustomBackground={handleReplaceCustomBackground}
       onSelectCustomBackground={handleSelectCustomBackground}
       onDeleteCustomBackground={handleDeleteCustomBackground}
     />
@@ -264,6 +314,7 @@ function AppContent({
   appearance,
   customBackgrounds,
   onUploadCustomBackground,
+  onReplaceCustomBackground,
   onSelectCustomBackground,
   onDeleteCustomBackground,
 }: {
@@ -271,7 +322,8 @@ function AppContent({
   columnCountReady: boolean
   appearance: ReturnType<typeof useAppearanceSettings>
   customBackgrounds: CustomBackgroundItem[]
-  onUploadCustomBackground: (file: File) => void
+  onUploadCustomBackground: (file: File) => Promise<void>
+  onReplaceCustomBackground: (id: string, file: File) => Promise<void>
   onSelectCustomBackground: (id: string) => void
   onDeleteCustomBackground: (id: string) => void
 }) {
@@ -345,6 +397,7 @@ function AppContent({
         appearance={appearance}
         customBackgrounds={customBackgrounds}
         onUploadCustomBackground={onUploadCustomBackground}
+        onReplaceCustomBackground={onReplaceCustomBackground}
         onSelectCustomBackground={onSelectCustomBackground}
         onDeleteCustomBackground={onDeleteCustomBackground}
         bookmarksFolderId={bookmarksFolderId}

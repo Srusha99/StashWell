@@ -1,6 +1,11 @@
-import { readWorkspaceJson, writeWorkspaceJson } from "@/lib/workspace-storage"
+import { notifyLocalSettingChanged } from "@/lib/local-setting-events"
+import { readWorkspaceJson, workspaceKey, writeWorkspaceJson } from "@/lib/workspace-storage"
 
 const STORAGE_NAME = "hidden-folders"
+
+export function hiddenFoldersKey(workspaceId: string): string {
+  return workspaceKey(workspaceId, STORAGE_NAME)
+}
 
 export function readHiddenFolders(workspaceId: string): string[] {
   return readWorkspaceJson<string[]>(workspaceId, STORAGE_NAME, [], (parsed) =>
@@ -10,6 +15,7 @@ export function readHiddenFolders(workspaceId: string): string[] {
 
 export function writeHiddenFolders(workspaceId: string, ids: string[]): void {
   writeWorkspaceJson(workspaceId, STORAGE_NAME, ids)
+  notifyLocalSettingChanged(hiddenFoldersKey(workspaceId))
 }
 
 /**

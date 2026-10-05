@@ -20,7 +20,7 @@ export interface PermissionInfo {
 
 /**
  * One entry per permission StashWell actually asks Chrome for - see each
- * permission's own usage (lib/bookmarks.ts, lib/syncEngine.ts,
+ * permission's own usage (lib/bookmarks.ts, lib/dashboard-sync-engine.ts,
  * public/background.js, lib/favicon.ts, lib/googleAuth.ts + lib/gcal-service.ts).
  * Keyed by the exact string in manifest.json's `permissions` array.
  */

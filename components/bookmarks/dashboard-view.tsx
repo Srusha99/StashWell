@@ -149,8 +149,8 @@ export function DashboardView({
     () => Array.from(cardsById.keys()),
     [cardsById]
   )
-  // Backs itself up to Supabase on each drag - see lib/dashboard-layout-sync.ts
-  // for why only a drag, and why the backup never overwrites this device.
+  // Syncs to the user's other devices from storage - see
+  // lib/dashboard-sync-layouts.ts for how card ids are matched across them.
   const [columns, moveCard, layoutReady] = useCardColumns(
     defaultOrder,
     columnCount,

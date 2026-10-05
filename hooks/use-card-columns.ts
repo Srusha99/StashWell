@@ -9,7 +9,6 @@ import {
   type Columns,
   type DashboardLayout,
 } from "@/lib/dashboard-layout-storage"
-import { pushDashboardLayout } from "@/lib/dashboard-layout-sync"
 
 export type { Columns }
 
@@ -67,12 +66,20 @@ function reflow(source: Columns, count: number): Columns {
  * This count's own saved arrangement if it has one; otherwise the most recently
  * hand-arranged count's, reflowed to fit; otherwise the bookmark order dealt
  * across the columns.
+ *
+ * Another device's arrangement arrives as just its primary count (see
+ * lib/dashboard-sync-layouts.ts), so a screen with a different column count
+ * shows it through the reflow - minus the cards this device doesn't have,
+ * which would otherwise leave gaps in the dealing.
  */
 function arrange(defaultIds: string[], layout: DashboardLayout | null, count: number): Columns {
   const own = layout?.byCount[count]
   if (own) return placeCards(defaultIds, own)
   const source = layout?.byCount[layout.primaryCount]
-  return placeCards(defaultIds, source ? reflow(source, count) : emptyColumns(count))
+  if (!source) return placeCards(defaultIds, emptyColumns(count))
+  const present = new Set(defaultIds)
+  const known = source.map((col) => col.filter((id) => present.has(id)))
+  return placeCards(defaultIds, reflow(known, count))
 }
 
 export function useCardColumns(
@@ -230,8 +237,9 @@ export function useCardColumns(
       arrangedByUser: true,
     }
     setLayout(saved)
+    // Reaches the user's other devices through lib/dashboard-sync-engine.ts,
+    // which watches this storage key.
     void writeDashboardLayout(workspaceId, saved)
-    pushDashboardLayout(workspaceId, saved)
   }
 
   return [columns, moveCard, isReady]

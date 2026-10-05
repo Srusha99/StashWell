@@ -4,13 +4,16 @@ import * as React from "react"
 import {
   CreditCard,
   HelpCircle,
+  LogIn,
   LogOut,
   Settings,
   Sparkles,
+  UserRound,
   Zap,
 } from "lucide-react"
 
 import { useAuth } from "@/lib/auth-context"
+import { useSignInPrompt } from "@/components/auth/sign-in-prompt"
 import { useIsPro } from "@/hooks/use-is-pro"
 import { supabase } from "@/lib/supabaseClient"
 import { cn, deferred } from "@/lib/utils"
@@ -65,23 +68,83 @@ function Avatar({
   )
 }
 
-export function UserMenu({
-  onOpenSettings,
-  hasUnread,
-  onOpenWhatsNew,
-  className,
-}: {
+interface MenuProps {
   onOpenSettings: () => void
   hasUnread: boolean
   onOpenWhatsNew: () => void
   className?: string
-}) {
+}
+
+const TRIGGER_CLASS =
+  "relative rounded-full border border-[var(--card-border)] shadow-[var(--shadow-soft)] backdrop-blur-md dark:border-white/15 dark:shadow-none"
+
+/** Signed out (Local Mode): no account to show, but Settings still has to be reachable. */
+function GuestMenu({ onOpenSettings, hasUnread, onOpenWhatsNew, className }: MenuProps) {
+  const openSignIn = useSignInPrompt()
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger
+        render={
+          <button
+            type="button"
+            aria-label="Account menu"
+            title="Local Mode - not signed in"
+            className={cn(TRIGGER_CLASS, className)}
+          />
+        }
+      >
+        <span className="flex size-7 items-center justify-center rounded-full bg-white text-[#1c1c1e] dark:bg-black/40 dark:text-white">
+          <UserRound className="size-4" />
+        </span>
+        {hasUnread && (
+          <span className="absolute top-0 right-0 size-2.5 rounded-full bg-emerald-500 ring-2 ring-background" />
+        )}
+      </DropdownMenuTrigger>
+
+      <DropdownMenuContent align="end" sideOffset={8} className="w-64">
+        <div className="px-2 py-2">
+          <div className="text-sm font-medium text-[#1c1c1e] dark:text-white">Local Mode</div>
+          <div className="text-xs text-[#8e8e93] dark:text-white/50">
+            Saved on this device only. Sign in to sync with your other devices.
+          </div>
+        </div>
+        <DropdownMenuItem onClick={deferred(openSignIn)}>
+          <LogIn /> Sign in
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onClick={deferred(onOpenWhatsNew)}>
+          <Sparkles /> What&apos;s New
+          {hasUnread && <span className="ml-auto size-2 rounded-full bg-emerald-500" />}
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={deferred(onOpenSettings)}>
+          <Settings /> Settings
+        </DropdownMenuItem>
+        <div className="flex items-center justify-between gap-2 px-1.5 py-1 text-sm text-[#1c1c1e] dark:text-white">
+          <span>Theme</span>
+          <ThemeSwitcher />
+        </div>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
+}
+
+export function UserMenu({ onOpenSettings, hasUnread, onOpenWhatsNew, className }: MenuProps) {
   const { user } = useAuth()
   const isPro = useIsPro()
   // Local rather than lifted like Settings/What's New: this menu item is the
   // only thing that opens it.
   const [supportOpen, setSupportOpen] = React.useState(false)
-  if (!user) return null
+  if (!user) {
+    return (
+      <GuestMenu
+        onOpenSettings={onOpenSettings}
+        hasUnread={hasUnread}
+        onOpenWhatsNew={onOpenWhatsNew}
+        className={className}
+      />
+    )
+  }
 
   const metadata = user.user_metadata as
     | {
@@ -106,10 +169,7 @@ export function UserMenu({
               type="button"
               aria-label="Account menu"
               title={displayName}
-              className={cn(
-                "relative rounded-full border border-[var(--card-border)] shadow-[var(--shadow-soft)] backdrop-blur-md dark:border-white/15 dark:shadow-none",
-                className
-              )}
+              className={cn(TRIGGER_CLASS, className)}
             />
           }
         >

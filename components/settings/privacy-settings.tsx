@@ -46,7 +46,7 @@ const THIRD_PARTY_SERVICES = [
     icon: Database,
     label: "Supabase",
     description:
-      "Stores your account, profile, saved sessions, and dashboard layout over HTTPS, protected by Row-Level Security scoped to your account. Your tasks and bookmarks are never uploaded - they stay on this device. Zero network requests while signed out.",
+      "While you're signed in, stores your account, profile, tasks, saved sessions, dashboard layout, appearance settings, and the bookmarks your dashboard shows (the Bookmarks Bar and your StashWell workspaces - titles and links) over HTTPS, protected by Row-Level Security scoped to your account, so they're the same on every device you sign in on. Other bookmarks are never read. Where Chrome Sync already syncs a device's bookmarks, StashWell doesn't upload them. Zero network requests while signed out.",
   },
   {
     icon: CalendarDays,
@@ -67,13 +67,13 @@ const SECURITY_COMMITMENTS = [
     icon: Laptop,
     label: "Local-first by design",
     description:
-      "Your tasks and bookmarks never leave this device - they're stored in this browser's local storage and Chrome's own bookmark store, not synced to any server.",
+      "Everything is saved on this device first and works offline. Signed out (Local Mode), nothing leaves this device; signed in, your dashboard syncs to your account and back.",
   },
   {
     icon: ShieldCheck,
     label: "Row-Level Security",
     description:
-      "Cloud data (your account and saved sessions) is strictly locked to your authenticated user ID - only you can read or write it.",
+      "Cloud data (your account, bookmarks, tasks, saved sessions, layout and settings) is strictly locked to your authenticated user ID - only you can read or write it.",
   },
   {
     icon: KeyRound,
@@ -261,7 +261,7 @@ export function PrivacySettings({
           />
           <Row
             label="Clear local cache"
-            hint="Removes cached tasks, saved sessions, and dashboard layout stored on this device."
+            hint="Removes cached tasks, saved sessions, and dashboard layout stored on this device. Your account's synced copy isn't affected."
             control={
               <Button
                 size="sm"
@@ -282,8 +282,9 @@ export function PrivacySettings({
             <DialogTitle>Clear local cache?</DialogTitle>
             <DialogDescription>
               Tasks, saved tab sessions, and dashboard layouts stored on this
-              device will be permanently removed. This can&apos;t be undone -
-              export a backup first if you want to keep them.
+              device will be removed. Anything already synced to your account
+              stays there and comes back the next time this device syncs -
+              only changes that haven&apos;t synced yet are lost for good.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

@@ -1,7 +1,16 @@
 "use client"
 
 import * as React from "react"
-import { Bookmark, Layers, Lock, Palette, Plug, ShieldCheck, SlidersHorizontal } from "lucide-react"
+import {
+  Bookmark,
+  Layers,
+  Lock,
+  Palette,
+  Plug,
+  RefreshCw,
+  ShieldCheck,
+  SlidersHorizontal,
+} from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
@@ -11,6 +20,7 @@ import { AppearanceSettingsPanel } from "@/components/settings/appearance-settin
 import { PermissionsSettings } from "@/components/settings/permissions-settings"
 import { IntegrationsSettings } from "@/components/settings/integrations-settings"
 import { PrivacySettings } from "@/components/settings/privacy-settings"
+import { SyncSettings } from "@/components/settings/sync-settings"
 import { BookmarkManager } from "@/components/bookmarks/bookmark-manager"
 import { WorkspacesSettings } from "@/components/workspaces/workspaces-settings"
 import { Group, PaneHeader } from "@/components/settings/settings-parts"
@@ -29,6 +39,7 @@ export type SettingsSection =
   | "appearance"
   | "workspaces"
   | "bookmarks"
+  | "sync"
   | "integrations"
   | "permissions"
   | "privacy"
@@ -39,6 +50,7 @@ const SECTIONS: { id: SettingsSection; label: string; icon: typeof Palette }[] =
     { id: "appearance", label: "Appearance", icon: Palette },
     { id: "workspaces", label: "Workspaces", icon: Layers },
     { id: "bookmarks", label: "Bookmarks", icon: Bookmark },
+    { id: "sync", label: "Sync", icon: RefreshCw },
     { id: "integrations", label: "Integrations", icon: Plug },
     { id: "permissions", label: "Permissions", icon: ShieldCheck },
     { id: "privacy", label: "Privacy", icon: Lock },
@@ -62,6 +74,7 @@ export function SettingsDialog({
   appearance,
   customBackgrounds,
   onUploadCustomBackground,
+  onReplaceCustomBackground,
   onSelectCustomBackground,
   onDeleteCustomBackground,
   bookmarksFolderId,
@@ -76,7 +89,8 @@ export function SettingsDialog({
   onSectionChange: (section: SettingsSection) => void
   appearance: ReturnType<typeof useAppearanceSettings>
   customBackgrounds: CustomBackgroundItem[]
-  onUploadCustomBackground: (file: File) => void
+  onUploadCustomBackground: (file: File) => Promise<void>
+  onReplaceCustomBackground: (id: string, file: File) => Promise<void>
   onSelectCustomBackground: (id: string) => void
   onDeleteCustomBackground: (id: string) => void
   /** Folder the organiser should open at, e.g. the card that was clicked. */
@@ -140,6 +154,7 @@ export function SettingsDialog({
                   onCursorGlowEnabledChange={appearance.setCursorGlowEnabled}
                   customBackgrounds={customBackgrounds}
                   onUploadCustomBackground={onUploadCustomBackground}
+                  onReplaceCustomBackground={onReplaceCustomBackground}
                   onSelectCustomBackground={onSelectCustomBackground}
                   onDeleteCustomBackground={onDeleteCustomBackground}
                   onDailyWallpaperEnabledChange={
@@ -171,6 +186,8 @@ export function SettingsDialog({
                   onUnhideFolder={onUnhideFolder}
                 />
               )}
+
+              {section === "sync" && <SyncSettings onCloseSettings={() => onOpenChange(false)} />}
 
               {section === "integrations" && <IntegrationsSettings />}
 

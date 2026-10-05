@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { useTheme } from "next-themes"
-import { Check, Plus, RotateCcw, Trash2 } from "lucide-react"
+import { Check, Clapperboard, Plus, RotateCcw, Trash2 } from "lucide-react"
 
 import {
   CARD_FEEL_KEYS,
@@ -17,9 +17,19 @@ import { Switch } from "@/components/ui/switch"
 import {
   Group,
   PaneHeader,
+  ProBadge,
   Row,
   SegmentedControl,
 } from "@/components/settings/settings-parts"
+import { WallpaperLimitModal } from "@/components/settings/wallpaper-limit-modal"
+import { ProUpgradeModal } from "@/components/dashboard/pro-upgrade-modal"
+import { useIsPro } from "@/hooks/use-is-pro"
+import {
+  WALLPAPER_ACCEPT,
+  WALLPAPER_LIMITS,
+  canUploadWallpaper,
+  describeSlotUsage,
+} from "@/lib/wallpaper-gate"
 import {
   type AppearanceSettings,
   type BackgroundColorMode,
@@ -33,6 +43,29 @@ interface CustomBackgroundItem {
   url: string
   kind: CustomBackgroundKind
   name: string
+}
+
+const PRO_PITCH = `Pro gives you ${WALLPAPER_LIMITS.pro.slots} upload slots, video and GIF wallpapers, and a new wallpaper every day.`
+
+const UPGRADE_PROMPTS = {
+  video: {
+    title: "Pro Feature: Live Video Wallpapers",
+    description: `Set a video or animated GIF as your wallpaper. ${PRO_PITCH}`,
+  },
+  slideshow: {
+    title: "Pro Feature: Daily Wallpaper Slideshow",
+    description: `Wake up to a different wallpaper every day, cycling the built-ins and your uploads. ${PRO_PITCH}`,
+  },
+  slots: {
+    title: "Upgrade to StashWell Pro",
+    description: `Keep up to ${WALLPAPER_LIMITS.pro.slots} custom wallpapers instead of ${WALLPAPER_LIMITS.free.slots}. ${PRO_PITCH}`,
+  },
+} as const
+
+type UpgradePrompt = keyof typeof UPGRADE_PROMPTS
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error && error.message ? error.message : "Couldn't save that wallpaper."
 }
 
 /** "system" is next-themes' name for it; "Auto" is what the pill says. */
@@ -51,6 +84,7 @@ export function AppearanceSettingsPanel({
   onCursorGlowEnabledChange,
   customBackgrounds,
   onUploadCustomBackground,
+  onReplaceCustomBackground,
   onSelectCustomBackground,
   onDeleteCustomBackground,
   onDailyWallpaperEnabledChange,
@@ -63,7 +97,9 @@ export function AppearanceSettingsPanel({
   onBackgroundEnabledChange: (enabled: boolean) => void
   onCursorGlowEnabledChange: (enabled: boolean) => void
   customBackgrounds: CustomBackgroundItem[]
-  onUploadCustomBackground: (file: File) => void
+  /** Rejects with a message to show if the upload can't be saved. */
+  onUploadCustomBackground: (file: File) => Promise<void>
+  onReplaceCustomBackground: (id: string, file: File) => Promise<void>
   onSelectCustomBackground: (id: string) => void
   onDeleteCustomBackground: (id: string) => void
   onDailyWallpaperEnabledChange: (enabled: boolean) => void
@@ -75,6 +111,20 @@ export function AppearanceSettingsPanel({
   const isLight = resolvedTheme === "light"
   const fileInputRef = React.useRef<HTMLInputElement>(null)
   const rotationPoolSize = ROTATING_BUILT_INS.length + customBackgrounds.length
+  const isPro = useIsPro()
+  const [uploadError, setUploadError] = React.useState<string | null>(null)
+  const [busy, setBusy] = React.useState(false)
+  // A file waiting on the "slots full" choice: replace, or upgrade.
+  const [pendingFile, setPendingFile] = React.useState<File | null>(null)
+  const [upgradePrompt, setUpgradePrompt] = React.useState<UpgradePrompt | null>(null)
+
+  // "Replace Current Wallpaper": the upload on screen now, or else the newest.
+  const replaceTarget =
+    customBackgrounds.find(
+      (item) => settings.colorMode === "custom" && item.id === settings.customBackgroundId
+    ) ??
+    customBackgrounds.at(-1) ??
+    null
 
   // A wallpaper being on means no plain theme is selected, so the pill shows
   // nothing highlighted rather than claiming Dark.
@@ -82,10 +132,51 @@ export function AppearanceSettingsPanel({
     ? null
     : ((theme ?? "system") as ThemeValue)
 
+  async function save(work: () => Promise<void>) {
+    setBusy(true)
+    try {
+      await work()
+    } catch (error) {
+      setUploadError(errorMessage(error))
+    } finally {
+      setBusy(false)
+    }
+  }
+
   function handleFileChange(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0]
-    if (file) onUploadCustomBackground(file)
     event.target.value = ""
+    if (!file) return
+    setUploadError(null)
+
+    const gate = canUploadWallpaper(isPro, customBackgrounds.length, file)
+    if (gate.allowed) {
+      if (isLight) setTheme("dark")
+      void save(() => onUploadCustomBackground(file))
+    } else if (gate.reason === "slots-full" && replaceTarget) {
+      setPendingFile(file)
+    } else if (gate.reason === "pro-format") {
+      setUpgradePrompt("video")
+    } else {
+      setUploadError(gate.message)
+    }
+  }
+
+  function handleReplace() {
+    const file = pendingFile
+    const target = replaceTarget
+    setPendingFile(null)
+    if (!file || !target) return
+    if (isLight) setTheme("dark")
+    void save(() => onReplaceCustomBackground(target.id, file))
+  }
+
+  function handleDailyWallpaperChange(enabled: boolean) {
+    if (!isPro) {
+      setUpgradePrompt("slideshow")
+      return
+    }
+    onDailyWallpaperEnabledChange(enabled)
   }
 
   // Picking a theme means the plain flat theme: Dark is a solid dark UI, not
@@ -208,7 +299,7 @@ export function AppearanceSettingsPanel({
             <input
               ref={fileInputRef}
               type="file"
-              accept="image/*,video/*"
+              accept={WALLPAPER_ACCEPT}
               className="hidden"
               onChange={handleFileChange}
             />
@@ -216,20 +307,71 @@ export function AppearanceSettingsPanel({
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="flex aspect-video flex-col items-center justify-center gap-1 rounded-xl border border-dashed border-border text-muted-foreground transition-colors hover:border-foreground/30 hover:text-foreground"
+              disabled={busy}
+              className="flex aspect-video flex-col items-center justify-center gap-1 rounded-xl border border-dashed border-border text-muted-foreground transition-colors hover:border-foreground/30 hover:text-foreground disabled:opacity-50"
             >
               <Plus className="size-4" />
-              <span className="text-[0.7rem] font-medium">Add your own</span>
+              <span className="text-[0.7rem] font-medium">
+                {busy ? "Saving…" : isPro ? "Add your own" : "Add an image"}
+              </span>
             </button>
+
+            {/* Videos are Pro, so on Free they get a tile of their own that
+                says so, rather than failing quietly inside the file picker. */}
+            {!isPro && (
+              <button
+                type="button"
+                onClick={() => setUpgradePrompt("video")}
+                className="relative flex aspect-video flex-col items-center justify-center gap-1 rounded-xl border border-dashed border-border text-muted-foreground transition-colors hover:border-foreground/30 hover:text-foreground"
+              >
+                {/* Cornered like the selected tile's check, so the label
+                    below stays on one line however narrow the tile gets. */}
+                <ProBadge className="absolute top-1.5 right-1.5" />
+                <Clapperboard className="size-4" />
+                <span className="text-[0.7rem] font-medium whitespace-nowrap">Add a video</span>
+              </button>
+            )}
           </div>
 
+          <div className="flex items-center justify-between gap-3 text-[11px] text-muted-foreground">
+            <span>
+              {describeSlotUsage(isPro, customBackgrounds.length)}
+              {isPro
+                ? " - images, videos and GIFs up to 100 MB"
+                : " - JPG, PNG or WebP up to 5 MB"}
+            </span>
+            {!isPro && (
+              <button
+                type="button"
+                onClick={() => setUpgradePrompt("slots")}
+                className="shrink-0 font-medium text-emerald-600 hover:underline dark:text-emerald-400"
+              >
+                Get {WALLPAPER_LIMITS.pro.slots} slots
+              </button>
+            )}
+          </div>
+
+          {uploadError && (
+            <p role="alert" className="text-[11px] text-destructive">
+              {uploadError}
+            </p>
+          )}
+
           <Row
-            label="New wallpaper each day"
-            hint={`Switches at midnight, cycling ${rotationPoolSize}: ${ROTATING_BUILT_INS.length} built-in + ${customBackgrounds.length} uploaded.`}
+            label={
+              <span className="flex items-center gap-1.5">
+                New wallpaper each day {!isPro && <ProBadge />}
+              </span>
+            }
+            hint={
+              isPro
+                ? `Switches at midnight, cycling ${rotationPoolSize}: ${ROTATING_BUILT_INS.length} built-in + ${customBackgrounds.length} uploaded.`
+                : "A slideshow that switches your wallpaper at midnight."
+            }
             control={
               <Switch
-                checked={settings.dailyWallpaperEnabled}
-                onCheckedChange={onDailyWallpaperEnabledChange}
+                checked={isPro && settings.dailyWallpaperEnabled}
+                onCheckedChange={handleDailyWallpaperChange}
               />
             }
           />
@@ -290,6 +432,31 @@ export function AppearanceSettingsPanel({
             ))}
           </div>
         </Group>
+
+        <WallpaperLimitModal
+          open={pendingFile !== null}
+          onOpenChange={(open) => {
+            if (!open) setPendingFile(null)
+          }}
+          isPro={isPro}
+          fileName={pendingFile?.name ?? ""}
+          replaceName={replaceTarget?.name ?? ""}
+          busy={busy}
+          onReplace={handleReplace}
+          onUpgrade={() => {
+            setPendingFile(null)
+            setUpgradePrompt("slots")
+          }}
+        />
+
+        <ProUpgradeModal
+          open={upgradePrompt !== null}
+          onOpenChange={(open) => {
+            if (!open) setUpgradePrompt(null)
+          }}
+          title={upgradePrompt ? UPGRADE_PROMPTS[upgradePrompt].title : undefined}
+          description={upgradePrompt ? UPGRADE_PROMPTS[upgradePrompt].description : undefined}
+        />
 
         <Group title="Text size">
           <Row

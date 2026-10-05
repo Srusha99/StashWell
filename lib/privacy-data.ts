@@ -9,6 +9,7 @@
 
 import { STORAGE_KEY as KANBAN_STORAGE_KEY, readKanbanCards } from "@/lib/kanban"
 import { findNode, getTree, isFolder } from "@/lib/bookmarks"
+import { SYNC_META_KEY, withSyncLock } from "@/lib/dashboard-sync-engine"
 import {
   PENDING_SAVE_KEY,
   STORAGE_KEY as SESSIONS_STORAGE_KEY,
@@ -57,19 +58,27 @@ export async function exportUserData(workspaces: Workspace[]): Promise<void> {
  * settings alone - those aren't "cache" in the sense this button describes,
  * and wiping the auth token would silently sign the user out (that's already
  * its own explicit action in the avatar menu).
+ *
+ * Only this device's copy: the record of what last synced goes too, so the
+ * next sync treats this as a fresh device and downloads the account's copy -
+ * rather than reading the empty board as "everything was deleted here" and
+ * wiping it from every other device.
  */
 export async function clearLocalCache(): Promise<void> {
   if (!hasStorageApi()) return
 
-  const all = await chrome.storage.local.get(null)
-  const keysToRemove = Object.keys(all).filter(
-    (key) =>
-      key === KANBAN_STORAGE_KEY ||
-      key === SESSIONS_STORAGE_KEY ||
-      key === PENDING_SAVE_KEY ||
-      (key.startsWith("bm:ws:") && key.endsWith(":dashboard-columns"))
-  )
+  await withSyncLock(async () => {
+    const all = await chrome.storage.local.get(null)
+    const keysToRemove = Object.keys(all).filter(
+      (key) =>
+        key === KANBAN_STORAGE_KEY ||
+        key === SESSIONS_STORAGE_KEY ||
+        key === PENDING_SAVE_KEY ||
+        key === SYNC_META_KEY ||
+        (key.startsWith("bm:ws:") && key.endsWith(":dashboard-columns"))
+    )
 
-  if (keysToRemove.length === 0) return
-  await chrome.storage.local.remove(keysToRemove)
+    if (keysToRemove.length === 0) return
+    await chrome.storage.local.remove(keysToRemove)
+  })
 }

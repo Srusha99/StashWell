@@ -2,7 +2,12 @@
 
 import * as React from "react"
 
-import { readHiddenFolders, writeHiddenFolders } from "@/lib/hidden-folders"
+import { hiddenFoldersKey, readHiddenFolders, writeHiddenFolders } from "@/lib/hidden-folders"
+import { subscribeLocalSettings } from "@/lib/local-setting-events"
+
+function sameIds(a: Set<string>, b: string[]): boolean {
+  return a.size === new Set(b).size && b.every((id) => a.has(id))
+}
 
 /**
  * Hidden dashboard folders, scoped to a workspace.
@@ -59,6 +64,21 @@ export function useHiddenFolders(workspaceId: string): {
       ids: new Set(readHiddenFolders(current.workspaceId)),
     }))
   }, [])
+
+  // Another tab hiding a folder, or another device's list arriving through
+  // sync (lib/dashboard-sync-layouts.ts). This hook's own writes land here too,
+  // and are skipped because they already match.
+  React.useEffect(() => {
+    const key = hiddenFoldersKey(workspaceId)
+    return subscribeLocalSettings((changed) => {
+      if (changed !== key) return
+      setState((current) => {
+        if (current.workspaceId !== workspaceId) return current
+        const ids = readHiddenFolders(workspaceId)
+        return sameIds(current.ids, ids) ? current : { workspaceId, ids: new Set(ids) }
+      })
+    })
+  }, [workspaceId])
 
   // A render-phase setState above has not landed yet when this render reads the
   // set, so take the list for the workspace being asked about either way.

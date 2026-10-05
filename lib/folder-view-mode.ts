@@ -4,15 +4,17 @@
  * restore it without importing a "use client" module.
  */
 
+import { notifyLocalSettingChanged } from "@/lib/local-setting-events"
+
 export type FolderViewMode = "list" | "grid"
 
-function storageKey(folderId: string) {
+export function folderViewModeKey(folderId: string): string {
   return `bm:view:${folderId}`
 }
 
 export function readFolderViewMode(folderId: string): FolderViewMode {
   try {
-    return window.localStorage.getItem(storageKey(folderId)) === "grid" ? "grid" : "list"
+    return window.localStorage.getItem(folderViewModeKey(folderId)) === "grid" ? "grid" : "list"
   } catch {
     return "list"
   }
@@ -20,8 +22,9 @@ export function readFolderViewMode(folderId: string): FolderViewMode {
 
 export function writeFolderViewMode(folderId: string, mode: FolderViewMode): void {
   try {
-    window.localStorage.setItem(storageKey(folderId), mode)
+    window.localStorage.setItem(folderViewModeKey(folderId), mode)
   } catch {
     // ignore write failures (e.g. storage disabled)
   }
+  notifyLocalSettingChanged(folderViewModeKey(folderId))
 }
