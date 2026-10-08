@@ -4,7 +4,8 @@
  *
  * Bookmarks are real Chrome bookmarks, so isolation is backed by real folders:
  *  - Workspace "default" maps to the Bookmarks Bar, so nothing the user already
- *    had moves when the feature ships.
+ *    had moves when the feature ships. It is a system workspace: always bound
+ *    to whichever bar getBookmarksBar resolves, never deleted or recreated.
  *  - Every other workspace gets a real folder under
  *    Other Bookmarks > "StashWell Workspaces".
  *
@@ -17,12 +18,15 @@
 import {
   BOOKMARKS_BAR_ID,
   type BookmarkNode,
-  OTHER_BOOKMARKS_ID,
   createFolder,
   findNode,
+  getAllOtherBookmarks,
+  getBookmarksBar,
+  getOtherBookmarks,
   getTree,
   hasBookmarksApi,
   isFolder,
+  isTreeHydrated,
 } from "@/lib/bookmarks"
 import { clearWorkspaceData, migrateGlobalKey } from "@/lib/workspace-storage"
 
@@ -51,6 +55,10 @@ export const DEFAULT_WORKSPACE_ID = "default"
  * The first workspace is a synchronous constant, not the result of a Chrome
  * call. That is what keeps the app usable in `next dev`, where chrome.bookmarks
  * doesn't exist at all: there is always at least one workspace to render.
+ *
+ * Its stored folderId is only a placeholder: the bar's real id differs between
+ * a local and an account-stored bar, so it's bound to the resolved bar at read
+ * time (bindWorkspaceFolder) and never trusted as an id.
  */
 export const DEFAULT_WORKSPACE: Workspace = {
   id: DEFAULT_WORKSPACE_ID,
@@ -61,6 +69,14 @@ export const DEFAULT_WORKSPACE: Workspace = {
 }
 
 export const DEFAULT_EMOJI = "🗂️"
+
+/**
+ * The Bookmarks-Bar-backed workspace: it can't be deleted, its folder can't be
+ * recreated or moved, and renaming it never renames a Chrome folder.
+ */
+export function isSystemWorkspace(workspace: Pick<Workspace, "id"> | string): boolean {
+  return (typeof workspace === "string" ? workspace : workspace.id) === DEFAULT_WORKSPACE_ID
+}
 
 /* -------------------------------------------------------------------------- */
 /* Persistence                                                                 */
@@ -86,11 +102,17 @@ function isWorkspace(value: unknown): value is Workspace {
 /** Guarantees a usable state: the default workspace present, activeId valid. */
 function normalizeState(state: WorkspaceState): WorkspaceState {
   const seen = new Set<string>()
-  const workspaces = state.workspaces.filter((workspace) => {
-    if (seen.has(workspace.id)) return false
-    seen.add(workspace.id)
-    return true
-  })
+  const workspaces = state.workspaces
+    .filter((workspace) => {
+      if (seen.has(workspace.id)) return false
+      seen.add(workspace.id)
+      return true
+    })
+    // A bound copy (see bindWorkspaceFolder) can be handed back to be saved,
+    // e.g. by a backup restore - store the placeholder, not this device's id.
+    .map((workspace) =>
+      isSystemWorkspace(workspace) ? { ...workspace, folderId: BOOKMARKS_BAR_ID } : workspace
+    )
 
   if (!workspaces.some((workspace) => workspace.id === DEFAULT_WORKSPACE_ID)) {
     workspaces.unshift(DEFAULT_WORKSPACE)
@@ -221,9 +243,11 @@ export function runWorkspaceMigrations(state: WorkspaceState): WorkspaceState {
  * deletion in Chrome's own manager would strand every workspace at once.
  */
 export function findContainerCandidates(tree: BookmarkNode[]): BookmarkNode[] {
-  const other = findNode(tree, OTHER_BOOKMARKS_ID)
-  if (!other?.children) return []
-  return other.children.filter((node) => isFolder(node) && node.title === CONTAINER_TITLE)
+  // Both Other Bookmarks folders when Chrome keeps an account and a local one:
+  // a container made before the user signed in sits in the local one.
+  return getAllOtherBookmarks(tree).flatMap((other) =>
+    (other.children ?? []).filter((node) => isFolder(node) && node.title === CONTAINER_TITLE)
+  )
 }
 
 /**
@@ -243,9 +267,17 @@ export function pickContainer(candidates: BookmarkNode[]): BookmarkNode | null {
 export type WorkspaceFolderStatus =
   /** Resolved to a real folder in the right place. */
   | "ok"
+  /**
+   * The tree hasn't loaded yet, or came back empty at browser startup. Never
+   * shown as a problem - the provider re-reads until it resolves.
+   */
+  | "loading"
   /** chrome.bookmarks isn't available - normal in `next dev` in a plain tab. */
   | "no-api"
-  /** The folder id no longer resolves; deleted from Chrome's own manager. */
+  /**
+   * The folder id no longer resolves; deleted from Chrome's own manager. Never
+   * reported for the system workspace, which reads "loading" instead.
+   */
   | "missing-folder"
   /** Resolves, but has been dragged outside the workspaces container. */
   | "misplaced"
@@ -270,12 +302,17 @@ export interface ResolvedWorkspace {
 export function resolveWorkspace(tree: BookmarkNode[], workspace: Workspace): ResolvedWorkspace {
   if (!hasBookmarksApi()) return { workspace, status: "no-api", node: null }
 
+  // An empty tree is one that hasn't loaded, not one whose folders are gone.
+  if (!isTreeHydrated(tree)) return { workspace, status: "loading", node: null }
+
   // The Bookmarks Bar is permanent: it can't be deleted or moved, so it needs
-  // no container check. While the tree is still loading, treat it as pending
-  // rather than missing.
-  if (workspace.folderId === BOOKMARKS_BAR_ID) {
-    const bar = findNode(tree, BOOKMARKS_BAR_ID)
-    return { workspace, status: bar ? "ok" : "missing-folder", node: bar }
+  // no container check - and is never "missing". If it can't be resolved the
+  // tree is still settling, and the provider's next read heals it.
+  if (isSystemWorkspace(workspace)) {
+    const bar = getBookmarksBar(tree)
+    return bar
+      ? { workspace: bindWorkspaceFolder(tree, workspace), status: "ok", node: bar }
+      : { workspace, status: "loading", node: null }
   }
 
   // Resolve against the already-fetched tree rather than chrome.bookmarks.get(),
@@ -295,6 +332,29 @@ export function resolveWorkspace(tree: BookmarkNode[], workspace: Workspace): Re
   return { workspace, status: "misplaced", node }
 }
 
+/**
+ * The workspace with folderId pointing at its live folder: the system
+ * workspace's placeholder swapped for the resolved bar's real id, any other
+ * workspace unchanged. The provider hands workspaces out bound, so consumers
+ * can use folderId as a Chrome id directly.
+ */
+export function bindWorkspaceFolder(tree: BookmarkNode[], workspace: Workspace): Workspace {
+  if (!isSystemWorkspace(workspace)) return workspace
+  const bar = getBookmarksBar(tree)
+  return bar && bar.id !== workspace.folderId ? { ...workspace, folderId: bar.id } : workspace
+}
+
+/**
+ * The workspace's folder node in `tree`, or null if it isn't there. Unlike
+ * resolveWorkspace there's no placement check - this is for reading a
+ * workspace's contents from a freshly fetched tree (backups, exports).
+ */
+export function findWorkspaceRoot(tree: BookmarkNode[], workspace: Workspace): BookmarkNode | null {
+  if (isSystemWorkspace(workspace)) return getBookmarksBar(tree)
+  const node = findNode(tree, workspace.folderId)
+  return node && isFolder(node) ? node : null
+}
+
 /* -------------------------------------------------------------------------- */
 /* Folder provisioning                                                         */
 /* -------------------------------------------------------------------------- */
@@ -311,7 +371,9 @@ export async function ensureWorkspacesContainer(): Promise<string | null> {
   const existing = pickContainer(findContainerCandidates(tree))
   if (existing) return existing.id
 
-  const created = await createFolder({ parentId: OTHER_BOOKMARKS_ID, title: CONTAINER_TITLE })
+  const other = getOtherBookmarks(tree)
+  if (!other) return null
+  const created = await createFolder({ parentId: other.id, title: CONTAINER_TITLE })
   return created?.id ?? null
 }
 

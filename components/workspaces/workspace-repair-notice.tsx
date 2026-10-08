@@ -3,7 +3,7 @@
 import * as React from "react"
 import { FolderX, Info, MoveRight, RefreshCw } from "lucide-react"
 
-import { CONTAINER_TITLE } from "@/lib/workspaces"
+import { CONTAINER_TITLE, isSystemWorkspace } from "@/lib/workspaces"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { CARD_SHELL } from "@/components/dashboard/dashboard-card"
@@ -22,7 +22,13 @@ import { useWorkspaces } from "@/components/workspaces/workspace-provider"
 export function WorkspaceRepairNotice() {
   const { resolved, activeWorkspace, isBusy, repairWorkspace, relocateWorkspace } = useWorkspaces()
 
-  if (resolved.status === "ok") return null
+  // Loading is the dashboard's skeleton, not a problem to report.
+  if (resolved.status === "ok" || resolved.status === "loading") return null
+
+  // The Bookmarks Bar can't be deleted or moved, so neither repair applies -
+  // and either one would rebind Personal away from the bar. resolveWorkspace
+  // never reports either for it; this is the belt to that braces.
+  if (isSystemWorkspace(activeWorkspace) && resolved.status !== "no-api") return null
 
   if (resolved.status === "no-api") {
     return (

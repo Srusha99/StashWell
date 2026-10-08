@@ -8,7 +8,7 @@
  */
 
 import { STORAGE_KEY as KANBAN_STORAGE_KEY, readKanbanCards } from "@/lib/kanban"
-import { findNode, getTree, isFolder } from "@/lib/bookmarks"
+import { getTree } from "@/lib/bookmarks"
 import { SYNC_META_KEY, withSyncLock } from "@/lib/dashboard-sync-engine"
 import {
   PENDING_SAVE_KEY,
@@ -16,7 +16,7 @@ import {
   readSessionBundles,
 } from "@/lib/session-bundles"
 import { type WorkspaceSnapshot, downloadBackup, snapshotWorkspace } from "@/lib/workspace-backup"
-import type { Workspace } from "@/lib/workspaces"
+import { type Workspace, findWorkspaceRoot } from "@/lib/workspaces"
 
 function hasStorageApi(): boolean {
   return typeof chrome !== "undefined" && !!chrome.storage?.local
@@ -37,10 +37,10 @@ export async function exportUserData(workspaces: Workspace[]): Promise<void> {
   const workspaceFolderIds = new Set(workspaces.map((workspace) => workspace.folderId))
   const snapshots: WorkspaceSnapshot[] = []
   for (const workspace of workspaces) {
-    const root = findNode(tree, workspace.folderId)
+    const root = findWorkspaceRoot(tree, workspace)
     // A workspace whose folder is gone has nothing to back up - its
     // dashboard's repair notice is where that gets fixed.
-    if (!root || !isFolder(root)) continue
+    if (!root) continue
     snapshots.push(await snapshotWorkspace(workspace, root, workspaceFolderIds))
   }
 

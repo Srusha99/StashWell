@@ -28,7 +28,7 @@
 import {
   BOOKMARKS_BAR_ID,
   type BookmarkNode,
-  findNode,
+  getBookmarksBar,
   getTree,
   isFolder,
   removeNode,
@@ -64,6 +64,11 @@ interface BookmarkBase {
   tree: SyncedBookmarks
   /** The cloud row's updated_at when this was saved, to skip unchanged pulls. */
   remoteVersion: string | null
+  /**
+   * The Chrome id of the Bookmarks Bar `tree.bar` was read from. A base saved
+   * before this was recorded was always read from the legacy id.
+   */
+  barId: string
 }
 
 /* -------------------------------------------------------------------------- */
@@ -111,8 +116,17 @@ function toSynced(nodes: BookmarkNode[]): SyncedNode[] {
   })
 }
 
+/**
+ * The bar sync reads and writes - the same one the Personal workspace shows.
+ * Null while the tree is still loading; callers skip the sync rather than read
+ * an empty bar, which would look like every bookmark was deleted.
+ */
+export function syncedBar(tree: BookmarkNode[]): BookmarkNode | null {
+  return getBookmarksBar(tree)
+}
+
 export function readLocalBookmarks(tree: BookmarkNode[]): SyncedBookmarks {
-  const bar = findNode(tree, BOOKMARKS_BAR_ID)
+  const bar = syncedBar(tree)
   // Only the container new workspaces go into - a duplicate one (two devices
   // each made one before they converged) is left to lib/workspaces.ts.
   const container = pickContainer(findContainerCandidates(tree))
@@ -124,7 +138,7 @@ export function readLocalBookmarks(tree: BookmarkNode[]): SyncedBookmarks {
  * per node). Older Chrome doesn't say, and is treated as not syncing.
  */
 export function chromeSyncsBookmarks(tree: BookmarkNode[]): boolean {
-  return findNode(tree, BOOKMARKS_BAR_ID)?.syncing === true
+  return syncedBar(tree)?.syncing === true
 }
 
 function countNodes(nodes: SyncedNode[]): number {
@@ -293,7 +307,10 @@ async function reconcileFolder(folderId: string, target: SyncedNode[]): Promise<
 
 /** Makes this device's dashboard bookmarks match `target`. */
 export async function applyBookmarks(target: SyncedBookmarks): Promise<void> {
-  await reconcileFolder(BOOKMARKS_BAR_ID, target.bar)
+  const bar = syncedBar(await getTree())
+  // Never fall back to another folder: the bar's contents would land there.
+  if (!bar) throw new Error("The Bookmarks Bar isn't available yet")
+  await reconcileFolder(bar.id, target.bar)
 
   const container = pickContainer(findContainerCandidates(await getTree()))
   if (!container && target.workspaces.length === 0) return
@@ -346,6 +363,7 @@ export async function readBookmarkBase(): Promise<BookmarkBase | null> {
     userId: raw.userId,
     tree,
     remoteVersion: typeof raw.remoteVersion === "string" ? raw.remoteVersion : null,
+    barId: typeof raw.barId === "string" && raw.barId ? raw.barId : BOOKMARKS_BAR_ID,
   }
 }
 

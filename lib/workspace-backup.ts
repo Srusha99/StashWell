@@ -25,10 +25,10 @@
 
 import {
   type BookmarkNode,
-  OTHER_BOOKMARKS_ID,
   createBookmark,
   createFolder,
   findNode,
+  getOtherBookmarks,
   getTree,
   isFolder,
   moveNode,
@@ -62,6 +62,8 @@ import {
   DEFAULT_EMOJI,
   type Workspace,
   ensureWorkspacesContainer,
+  findWorkspaceRoot,
+  isSystemWorkspace,
   newWorkspaceId,
 } from "@/lib/workspaces"
 
@@ -492,8 +494,7 @@ export function planRestore(
 ): RestorePlan | { error: string } {
   const workspaceFolderIds = new Set(workspaces.map((workspace) => workspace.folderId))
   function liveRoot(workspace: Workspace | null): BookmarkNode | null {
-    const root = workspace ? findNode(tree, workspace.folderId) : null
-    return root && isFolder(root) ? root : null
+    return workspace ? findWorkspaceRoot(tree, workspace) : null
   }
 
   function target(saved: SavedWorkspace, workspace: Workspace | null): RestoreTarget {
@@ -667,10 +668,16 @@ async function restoreTarget(
   registerWorkspace: (workspace: Workspace) => void
 ): Promise<void> {
   const { saved } = target
-  const live = target.workspace ? findNode(await getTree(), target.workspace.folderId) : null
-  const root = live && isFolder(live) ? live : null
+  const tree = await getTree()
+  const root = target.workspace ? findWorkspaceRoot(tree, target.workspace) : null
+  // Personal is the Bookmarks Bar or nothing: building it a new folder would
+  // rebind it away from the bar. No bar means the tree is still loading.
+  if (target.workspace && isSystemWorkspace(target.workspace) && !root) {
+    throw new Error("The Bookmarks Bar isn't available yet")
+  }
 
-  const staging = await createFolder({ parentId: OTHER_BOOKMARKS_ID, title: STAGING_TITLE })
+  const other = getOtherBookmarks(tree)
+  const staging = other ? await createFolder({ parentId: other.id, title: STAGING_TITLE }) : null
   if (!staging) throw new Error("chrome.bookmarks is unavailable")
 
   // Saved id -> the id of the node recreated in its place. The saved folder
@@ -805,8 +812,8 @@ async function mergeTarget(
   registerWorkspace: (workspace: Workspace) => void
 ): Promise<NodeCounts> {
   const { saved, workspace } = target
-  const live = workspace ? findNode(await getTree(), workspace.folderId) : null
-  if (!workspace || !live || !isFolder(live)) {
+  const live = workspace ? findWorkspaceRoot(await getTree(), workspace) : null
+  if (!workspace || !live) {
     await restoreTarget(target, workspaceFolderIds, registerWorkspace)
     return countNodes(saved.bookmarks)
   }

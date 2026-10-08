@@ -39,6 +39,7 @@ import {
   readBookmarkBase,
   readLocalBookmarks,
   serializeBookmarks,
+  syncedBar,
   writeBookmarkBase,
 } from "@/lib/bookmark-sync"
 import {
@@ -303,6 +304,10 @@ async function syncBookmarksOnce(userId: string, pull: boolean, pref: BookmarkSy
   if (!hasBookmarksApi()) return "done"
 
   const tree = await getTree()
+  // Still loading (browser startup): an unread bar would sync as an empty one.
+  // The next scheduled sync picks it up.
+  const bar = syncedBar(tree)
+  if (!bar) return "done"
   if (pref !== "on" && chromeSyncsBookmarks(tree)) {
     setBookmarkMode("chrome")
     return "done"
@@ -316,7 +321,11 @@ async function syncBookmarksOnce(userId: string, pull: boolean, pref: BookmarkSy
   }
   setBookmarkMode("stashwell")
 
-  const base = stored?.tree ?? null
+  // A base read from a different bar - Chrome now reports an account bar
+  // alongside the local one, or the user signed in or out - can't tell a
+  // deletion from a bar that simply holds other bookmarks. Merge as a first
+  // sync instead, which combines both sides and deletes nothing.
+  const base = stored && stored.barId === bar.id ? stored.tree : null
   const local = readLocalBookmarks(tree)
   const dirty = base === null || hashValue(local) !== hashValue(base)
   if (!pull && !dirty) return "done"
@@ -349,7 +358,7 @@ async function syncBookmarksOnce(userId: string, pull: boolean, pref: BookmarkSy
     rememberOwnVersion(remoteVersion)
   }
 
-  await writeBookmarkBase({ userId, tree: merged, remoteVersion })
+  await writeBookmarkBase({ userId, tree: merged, remoteVersion, barId: bar.id })
   return "done"
 }
 

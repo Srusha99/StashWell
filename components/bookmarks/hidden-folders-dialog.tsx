@@ -6,6 +6,7 @@ import {
   BOOKMARKS_BAR_ID,
   type BookmarkNode,
   findNode,
+  isBookmarksBar,
 } from "@/hooks/use-bookmarks"
 import { Button } from "@/components/ui/button"
 import {
@@ -17,8 +18,9 @@ import {
 } from "@/components/ui/dialog"
 
 function labelFor(root: BookmarkNode | null, id: string): string {
-  if (id === BOOKMARKS_BAR_ID) return "Bookmarks Bar"
-  return findNode(root ? [root] : [], id)?.title || "(untitled)"
+  const node = findNode(root ? [root] : [], id)
+  if (node ? isBookmarksBar(node) : id === BOOKMARKS_BAR_ID) return "Bookmarks Bar"
+  return node?.title || "(untitled)"
 }
 
 /** Copy shared by the dialog and the Settings section, so both read the same. */

@@ -296,10 +296,10 @@ export function DashboardView({
 
       {/* Shown instead of the folder columns when the workspace's Chrome folder
           can't be resolved - never a fallback to another folder's contents.
-          Gated on isReady too: the tree starts empty and only loads async, so
-          resolved.status reads "missing-folder" for a frame on every load
-          without this - a false positive, not a real repair prompt. */}
-      {isReady && resolved.status !== "ok" && (
+          Not while "loading" (the tree is empty until getTree() answers, and
+          can stay empty briefly at browser startup) - that's the skeleton
+          below, not a repair prompt. */}
+      {isReady && resolved.status !== "ok" && resolved.status !== "loading" && (
         <div className="mx-auto mb-4 w-full max-w-[840px]">
           <WorkspaceRepairNotice />
         </div>
@@ -310,7 +310,7 @@ export function DashboardView({
           made the dashboard feel heavy. ~200px per column at 4 columns. Same
           width on a 14" laptop, a 15.6" and an ultrawide. */}
       <div className="mx-auto flex w-full max-w-[840px] gap-[var(--grid-gap)]">
-        {bookmarksLoading || (root && !layoutReady) ? (
+        {bookmarksLoading || resolved.status === "loading" || (root && !layoutReady) ? (
           // Chrome's bookmarks.getTree() or the saved layout hasn't resolved
           // yet - shown instead of an empty grid so that wait reads as
           // "loading", not "no bookmarks", and so cards appear once, already

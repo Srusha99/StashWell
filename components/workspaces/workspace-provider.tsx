@@ -4,11 +4,12 @@ import * as React from "react"
 
 import { copyFolderTree, uniqueChildTitle } from "@/lib/bookmark-copy"
 import {
-  BOOKMARKS_BAR_ID,
   type BookmarkNode,
   findNode,
   getTree,
+  hasBookmarksApi,
   isFolder,
+  isTreeHydrated,
   moveNode,
   removeNode,
   subscribeToChanges,
@@ -23,9 +24,11 @@ import {
   type WorkspaceState,
   adoptOrphanedFolders,
   applyStartupWorkspace,
+  bindWorkspaceFolder,
   clearWorkspaceData,
   createWorkspaceFolder,
   ensureWorkspacesContainer,
+  isSystemWorkspace,
   newWorkspaceId,
   readStartupWorkspaceId,
   readWorkspaceState,
@@ -70,6 +73,14 @@ interface WorkspaceContextValue {
 
 const WorkspaceContext = React.createContext<WorkspaceContextValue | null>(null)
 
+/**
+ * Re-reads of a tree that came back empty - Chrome can answer getTree() before
+ * it has loaded bookmarks at startup, and doesn't always fire a change event
+ * once it has. Backs off to a few seconds in all; a real change event after
+ * that still triggers a read.
+ */
+const HYDRATION_RETRY_DELAYS_MS = [250, 500, 1000, 2000, 4000]
+
 export function useWorkspaces(): WorkspaceContextValue {
   const context = React.useContext(WorkspaceContext)
   if (!context) {
@@ -103,11 +114,28 @@ export function WorkspaceProvider({
   // workspace's folder being deleted or moved in Chrome's own bookmark manager.
   React.useEffect(() => {
     let active = true
+    let retryTimer: ReturnType<typeof setTimeout> | undefined
+    let attempt = 0
 
     async function load() {
-      const nextTree = await getTree()
+      const nextTree = await getTree().catch(() => [] as BookmarkNode[])
       if (!active) return
       setTree(nextTree)
+      // Flipped here, after the await, rather than in a bare mount effect: the
+      // prerendered markup can't know which workspace is active, so consumers
+      // render a neutral label until the client has read persisted state.
+      // An unhydrated tree still counts - the workspace then reads "loading".
+      setIsReady(true)
+
+      clearTimeout(retryTimer)
+      if (hasBookmarksApi() && !isTreeHydrated(nextTree)) {
+        const delay = HYDRATION_RETRY_DELAYS_MS[attempt]
+        attempt += 1
+        if (delay !== undefined) retryTimer = setTimeout(load, delay)
+        // Nothing to adopt from an empty tree.
+        return
+      }
+      attempt = 0
       // Adopt container folders no record points at - this is what makes the
       // feature work on a second synced device, where the folders arrived but
       // localStorage did not.
@@ -116,10 +144,6 @@ export function WorkspaceProvider({
         if (adopted !== current) writeWorkspaceState(adopted)
         return adopted
       })
-      // Flipped here, after the await, rather than in a bare mount effect: the
-      // prerendered markup can't know which workspace is active, so consumers
-      // render a neutral label until the client has read persisted state.
-      setIsReady(true)
     }
 
     load()
@@ -127,6 +151,7 @@ export function WorkspaceProvider({
 
     return () => {
       active = false
+      clearTimeout(retryTimer)
       unsubscribe()
     }
   }, [])
@@ -136,8 +161,16 @@ export function WorkspaceProvider({
     setState(next)
   }, [])
 
+  // What consumers see: the system workspace's placeholder folderId bound to
+  // the bar Chrome actually reports, so folderId is always a usable Chrome id.
+  // `state` keeps the placeholder and stays what's written back.
+  const liveWorkspaces = React.useMemo(
+    () => state.workspaces.map((workspace) => bindWorkspaceFolder(tree, workspace)),
+    [state.workspaces, tree]
+  )
+
   const activeWorkspace =
-    state.workspaces.find((workspace) => workspace.id === state.activeId) ?? state.workspaces[0]
+    liveWorkspaces.find((workspace) => workspace.id === state.activeId) ?? liveWorkspaces[0]
 
   const switchTo = React.useCallback(
     (id: string) => {
@@ -236,7 +269,7 @@ export function WorkspaceProvider({
       // Keep the Chrome folder's title in step, or it drifts from the workspace
       // name and adoption on another device picks up the stale one. The
       // Bookmarks Bar is a root folder - chrome.bookmarks.update throws on it.
-      if (name && target.folderId !== BOOKMARKS_BAR_ID) {
+      if (name && !isSystemWorkspace(target)) {
         await updateBookmark(target.folderId, { title: name })
         setTree(await getTree())
       }
@@ -246,15 +279,15 @@ export function WorkspaceProvider({
 
   const deleteWorkspace = React.useCallback(
     async (id: string, { deleteBookmarks }: { deleteBookmarks: boolean }) => {
-      // The Bookmarks-Bar-backed workspace is permanent: removeTree("1") would
-      // target a root folder, and there must always be somewhere to land.
-      if (id === DEFAULT_WORKSPACE_ID) return
+      // The Bookmarks-Bar-backed workspace is permanent: removeTree on the bar
+      // would target a root folder, and there must always be somewhere to land.
+      if (isSystemWorkspace(id)) return
       const target = state.workspaces.find((workspace) => workspace.id === id)
       if (!target || state.workspaces.length <= 1) return
 
       setIsBusy(true)
       try {
-        if (deleteBookmarks && target.folderId !== BOOKMARKS_BAR_ID) {
+        if (deleteBookmarks) {
           await removeNode(target.folderId, true)
         }
 
@@ -295,7 +328,7 @@ export function WorkspaceProvider({
 
       // A workspace's own root folder is not transferable - nesting one workspace
       // inside another would make both show the same bookmarks.
-      if (state.workspaces.some((workspace) => workspace.folderId === folderId)) return null
+      if (liveWorkspaces.some((workspace) => workspace.folderId === folderId)) return null
 
       // Refuse rather than put a folder somewhere it wouldn't be shown.
       const destination = resolveWorkspace(tree, target)
@@ -303,18 +336,20 @@ export function WorkspaceProvider({
 
       return { target, destinationNode: destination.node }
     },
-    [state.workspaces, activeWorkspace.id, tree]
+    [state.workspaces, liveWorkspaces, activeWorkspace.id, tree]
   )
 
   const moveFolderToWorkspace = React.useCallback(
     async (folderId: string, targetWorkspaceId: string) => {
       const transfer = resolveTransfer(folderId, targetWorkspaceId)
       if (!transfer) return false
-      const { target } = transfer
+      const { target, destinationNode } = transfer
 
       setIsBusy(true)
       try {
-        const moved = await moveNode(folderId, { parentId: target.folderId })
+        // The resolved node's id, not target.folderId - for the system
+        // workspace that's only a placeholder.
+        const moved = await moveNode(folderId, { parentId: destinationNode.id })
         if (!moved) return false
         // Folder ids survive a move, so a hidden entry left over from an earlier
         // stint in the destination would make the folder arrive invisible.
@@ -338,7 +373,7 @@ export function WorkspaceProvider({
     async (folderId: string, targetWorkspaceId: string) => {
       const transfer = resolveTransfer(folderId, targetWorkspaceId)
       if (!transfer) return false
-      const { target, destinationNode } = transfer
+      const { destinationNode } = transfer
 
       const source = findNode(tree, folderId)
       if (!source || !isFolder(source)) return false
@@ -347,7 +382,7 @@ export function WorkspaceProvider({
       try {
         const created = await copyFolderTree(
           source,
-          target.folderId,
+          destinationNode.id,
           uniqueChildTitle(destinationNode, source.title)
         )
         if (!created) return false
@@ -362,6 +397,9 @@ export function WorkspaceProvider({
 
   const repairWorkspace = React.useCallback(
     async (id: string) => {
+      // Recreating would rebind Personal from the Bookmarks Bar to a new, empty
+      // folder - the bar can't go missing, it can only still be loading.
+      if (isSystemWorkspace(id)) return
       const target = state.workspaces.find((workspace) => workspace.id === id)
       if (!target) return
 
@@ -385,6 +423,8 @@ export function WorkspaceProvider({
 
   const relocateWorkspace = React.useCallback(
     async (id: string) => {
+      // The bar is a root folder - it can't be moved anywhere.
+      if (isSystemWorkspace(id)) return
       const target = state.workspaces.find((workspace) => workspace.id === id)
       if (!target) return
 
@@ -407,8 +447,8 @@ export function WorkspaceProvider({
   )
 
   const workspaceFolderIds = React.useMemo(
-    () => new Set(state.workspaces.map((workspace) => workspace.folderId)),
-    [state.workspaces]
+    () => new Set(liveWorkspaces.map((workspace) => workspace.folderId)),
+    [liveWorkspaces]
   )
 
   // Only workspaces whose own folder currently resolves, so the move menu can't
@@ -416,12 +456,12 @@ export function WorkspaceProvider({
   // API, which correctly hides the move option outside the extension.
   const moveTargets = React.useMemo(
     () =>
-      state.workspaces.filter(
+      liveWorkspaces.filter(
         (workspace) =>
           workspace.id !== activeWorkspace.id &&
           resolveWorkspace(tree, workspace).status === "ok"
       ),
-    [state.workspaces, activeWorkspace.id, tree]
+    [liveWorkspaces, activeWorkspace.id, tree]
   )
 
   // The key can outlive its workspace (deleted from another tab), so never
@@ -432,7 +472,7 @@ export function WorkspaceProvider({
 
   const value = React.useMemo<WorkspaceContextValue>(
     () => ({
-      workspaces: state.workspaces,
+      workspaces: liveWorkspaces,
       activeWorkspace,
       activeId: activeWorkspace.id,
       startupId: validStartupId,
@@ -453,7 +493,7 @@ export function WorkspaceProvider({
       relocateWorkspace,
     }),
     [
-      state.workspaces,
+      liveWorkspaces,
       activeWorkspace,
       validStartupId,
       resolved,

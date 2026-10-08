@@ -8,6 +8,7 @@ import {
   type BookmarkNode,
   findNode,
   flattenFolders,
+  isBookmarksBar,
   isFolder,
 } from "@/hooks/use-bookmarks"
 import { Button } from "@/components/ui/button"
@@ -39,8 +40,9 @@ function collectFolderIds(nodes: BookmarkNode[]): string[] {
 }
 
 function labelFor(root: BookmarkNode | null, id: string): string {
-  if (id === BOOKMARKS_BAR_ID) return "Bookmarks Bar"
-  return findNode(root ? [root] : [], id)?.title || "(untitled)"
+  const node = findNode(root ? [root] : [], id)
+  if (node ? isBookmarksBar(node) : id === BOOKMARKS_BAR_ID) return "Bookmarks Bar"
+  return node?.title || "(untitled)"
 }
 
 interface FormDialogState {

@@ -218,15 +218,13 @@
     button.style.transition = ""
   }
 
-  // "Sticks to corner" - after a drag, the icon snaps to whichever screen
-  // corner it ended up closest to, flush against it, so it never stays
-  // floating mid-screen.
+  // "Sticks to side" - after a drag, the icon snaps horizontally to whichever
+  // side (left/right) it ended up closer to, flush against it, while keeping
+  // the vertical spot it was dropped at - so it never floats mid-screen.
   function snapToEdge(left, top) {
-    const centerX = left + ICON_SIZE / 2
-    const centerY = top + ICON_SIZE / 2
-    const snappedLeft = centerX < window.innerWidth / 2 ? 0 : window.innerWidth - ICON_SIZE
-    const snappedTop = centerY < window.innerHeight / 2 ? 0 : window.innerHeight - ICON_SIZE
-    return { left: snappedLeft, top: snappedTop }
+    const center = left + ICON_SIZE / 2
+    const snappedLeft = center < window.innerWidth / 2 ? 0 : window.innerWidth - ICON_SIZE
+    return { left: snappedLeft, top }
   }
 
   // Positioned synchronously (while still invisible via the CSS above) so

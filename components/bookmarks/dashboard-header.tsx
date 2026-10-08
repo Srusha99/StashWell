@@ -8,11 +8,12 @@ import { BorderBeam } from "@/components/ui/border-beam-search"
 import { useNow } from "@/hooks/use-now"
 
 function getGreeting(hour: number, name: string) {
-  const who = name.trim() || "there"
-  if (hour >= 6 && hour < 12) return `Good Morning ${who}`
-  if (hour >= 12 && hour < 17) return `Good Afternoon ${who}`
-  if (hour >= 17 && hour < 21) return `Good Evening ${who}`
-  return `Good Night ${who}`
+  const who = name.trim()
+  const suffix = who ? ` ${who}` : ""
+  if (hour >= 6 && hour < 12) return `Good Morning${suffix}`
+  if (hour >= 12 && hour < 17) return `Good Afternoon${suffix}`
+  if (hour >= 17 && hour < 21) return `Good Evening${suffix}`
+  return `Good Night${suffix}`
 }
 
 export function DashboardHeader({

@@ -12,6 +12,7 @@ import {
   flattenFolders,
   getPath,
   getTree,
+  isBookmarksBar,
   isFolder,
   moveNode,
   removeNode,
@@ -23,15 +24,16 @@ import {
 // to lib/bookmarks.ts so pure lib/ modules (workspace folder resolution) can
 // use them without importing this "use client" module.
 export type { BookmarkNode, FlatFolder }
-export { BOOKMARKS_BAR_ID, findNode, flattenFolders, getPath, isFolder }
+export { BOOKMARKS_BAR_ID, findNode, flattenFolders, getPath, isBookmarksBar, isFolder }
 
 /**
  * Reads the bookmark subtree a single workspace owns.
  *
  * `rootFolderId` is the Chrome folder backing the workspace, and it is required
  * and non-nullable on purpose: `root` resolves to exactly that folder or to
- * null. There is deliberately no `?? tree[0]` / `?? findNode(tree, "1")`
- * fallback - that one line is how a workspace would silently start showing
+ * null. For the Personal workspace, the provider has already bound it to the
+ * resolved Bookmarks Bar (lib/workspaces.ts bindWorkspaceFolder). There is
+ * deliberately no `?? tree[0]` / `?? findNode(tree, "1")` fallback - that one line is how a workspace would silently start showing
  * another workspace's bookmarks. A null `root` is a state the UI renders as a
  * repair prompt, not something to paper over here.
  */
