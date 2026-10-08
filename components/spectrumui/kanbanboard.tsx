@@ -26,7 +26,7 @@ import { useAppearanceSettings } from '@/hooks/use-appearance-settings';
 
 const DEFAULT_PRIORITY: KanbanPriority = 'medium';
 
-const COLUMN_COLOR: Record<KanbanStatus, string> = {
+export const COLUMN_COLOR: Record<KanbanStatus, string> = {
   todo: '#8B7355',
   'in-progress': '#6B8E23',
   done: '#556B2F',

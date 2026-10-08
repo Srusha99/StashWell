@@ -14,6 +14,7 @@ import {
 } from "lucide-react"
 
 import { getTree } from "@/lib/bookmarks"
+import { withSyncLock } from "@/lib/dashboard-sync-engine"
 import {
   type RestoreCounts,
   type RestorePlan,
@@ -152,12 +153,18 @@ export function PrivacySettings({
     if (!pendingRestore) throw new Error("No backup is waiting to be restored")
     const { plan } = pendingRestore
     try {
-      if (mode === "merge") {
-        const { failed, added } = await mergeBackup(plan, workspaces, registerWorkspace)
-        return { mode, failed, added }
-      }
-      const { failed } = await restoreBackup(plan, workspaces, registerWorkspace)
-      return { mode, failed }
+      // Holding the sync lock keeps bookmark sync (in this tab or any other)
+      // from reconciling the same folders mid-restore - each removal here would
+      // otherwise start a sync that deletes or rebuilds folders out from under
+      // the restore ("Can't find parent bookmark for id").
+      return await withSyncLock(async (): Promise<RestoreOutcome> => {
+        if (mode === "merge") {
+          const { failed, added } = await mergeBackup(plan, workspaces, registerWorkspace)
+          return { mode, failed, added }
+        }
+        const { failed } = await restoreBackup(plan, workspaces, registerWorkspace)
+        return { mode, failed }
+      })
     } finally {
       onReloadHiddenFolders()
     }

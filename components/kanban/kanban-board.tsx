@@ -4,6 +4,7 @@ import * as React from "react"
 
 import { KanbanIcon } from "@/components/icons/kanban-icon"
 import SharedKanbanBoard from "@/components/spectrumui/kanbanboard"
+import { KanbanProGate } from "@/components/kanban/kanban-pro-gate"
 import { hasStorageApi } from "@/lib/kanban"
 
 /**
@@ -77,7 +78,9 @@ export function KanbanBoard() {
           implementation for add/edit/delete/drag/autosize, so this window
           can't silently drift out of sync with it again. */}
       <div className="flex-1 overflow-y-auto p-2.5">
-        <SharedKanbanBoard variant="compact" />
+        <KanbanProGate>
+          <SharedKanbanBoard variant="compact" />
+        </KanbanProGate>
       </div>
     </div>
   )

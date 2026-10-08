@@ -3,6 +3,7 @@
 import * as React from "react"
 
 import SharedKanbanBoard from "@/components/spectrumui/kanbanboard"
+import { KanbanProGate } from "@/components/kanban/kanban-pro-gate"
 
 /**
  * Renders inside content.js's docked-icon iframe (index.html?view=kanban-panel).
@@ -82,7 +83,10 @@ export function KanbanPanel() {
         ref={cardRef}
         className="w-full max-h-[600px] overflow-y-auto rounded-2xl border border-[var(--card-border)] bg-white p-6 dark:border-white/15 dark:bg-neutral-900"
       >
-        <SharedKanbanBoard columnMinHeight="220px" />
+        {/* Inside the measured card, so the iframe hugs the lock notice too. */}
+        <KanbanProGate preview>
+          <SharedKanbanBoard columnMinHeight="220px" />
+        </KanbanProGate>
       </div>
     </>
   )

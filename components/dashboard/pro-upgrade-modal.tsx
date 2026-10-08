@@ -16,7 +16,7 @@ export function ProUpgradeModal({
   open,
   onOpenChange,
   title = "Upgrade to StashWell Pro",
-  description = "Kanban Board is a Pro feature. Upgrade to drag your folders and bookmarks through custom stages, plus everything else in Pro.",
+  description = "Kanban Board is a Pro feature. Upgrade to drag your tasks through To Do, In Progress, and Done, plus everything else in Pro.",
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void

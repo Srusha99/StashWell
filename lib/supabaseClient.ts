@@ -62,8 +62,16 @@ const isOverlayPanel =
   typeof window !== 'undefined' &&
   new URLSearchParams(window.location.search).get('view') === 'kanban-panel'
 
+/**
+ * Where the session is saved in chrome.storage.local. The same value
+ * supabase-js derives by default, spelled out so lib/pro-status.ts can read
+ * the session without a client - changing it would sign everyone out.
+ */
+export const AUTH_STORAGE_KEY = `sb-${new URL(supabaseUrl).hostname.split(".")[0]}-auth-token`
+
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
+    storageKey: AUTH_STORAGE_KEY,
     storage: chromeStorageAdapter,
     persistSession: !isOverlayPanel,
     autoRefreshToken: !isOverlayPanel,

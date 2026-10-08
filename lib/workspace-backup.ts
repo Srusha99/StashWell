@@ -607,6 +607,18 @@ const STAGING_TITLE = "StashWell restore in progress"
  * awaiting each in turn is what keeps the saved order. Unlike an import, empty
  * untitled folders are kept - they were cards on the dashboard.
  */
+/**
+ * Runs one bookmarks call, naming it in any error: Chrome's own messages
+ * ("Can't find parent bookmark for id.") don't say which call or which id.
+ */
+async function step<T>(label: string, run: () => Promise<T>): Promise<T> {
+  try {
+    return await run()
+  } catch (error) {
+    throw new Error(`${label}: ${error instanceof Error ? error.message : String(error)}`)
+  }
+}
+
 async function createNodes(
   nodes: BackupNode[],
   parentId: string,
@@ -614,10 +626,11 @@ async function createNodes(
 ): Promise<BookmarkNode[]> {
   const created: BookmarkNode[] = []
   for (const node of nodes) {
-    const next =
+    const next = await step(`Creating "${node.title}" in folder ${parentId}`, () =>
       node.url !== undefined
-        ? await createBookmark({ parentId, title: node.title, url: node.url })
-        : await createFolder({ parentId, title: node.title })
+        ? createBookmark({ parentId, title: node.title, url: node.url })
+        : createFolder({ parentId, title: node.title })
+    )
     if (!next) throw new Error("chrome.bookmarks is unavailable")
 
     if (node.id) idMap.set(node.id, next.id)
@@ -677,7 +690,10 @@ async function restoreTarget(
   }
 
   const other = getOtherBookmarks(tree)
-  const staging = other ? await createFolder({ parentId: other.id, title: STAGING_TITLE }) : null
+  if (!other) throw new Error("Other Bookmarks isn't available yet")
+  const staging = await step(`Creating the staging folder in ${other.id}`, () =>
+    createFolder({ parentId: other.id, title: STAGING_TITLE })
+  )
   if (!staging) throw new Error("chrome.bookmarks is unavailable")
 
   // Saved id -> the id of the node recreated in its place. The saved folder
@@ -686,10 +702,9 @@ async function restoreTarget(
   let folder = root
   let created: BookmarkNode[]
   try {
-    folder ??= await createFolder({
-      parentId: staging.id,
-      title: target.workspace?.name || saved.name,
-    })
+    folder ??= await step(`Creating the workspace folder in ${staging.id}`, () =>
+      createFolder({ parentId: staging.id, title: target.workspace?.name || saved.name })
+    )
     if (!folder) throw new Error("chrome.bookmarks is unavailable")
     idMap.set(saved.folderId ?? folder.id, folder.id)
     // An existing folder's new contents wait loose in staging to be moved in;
@@ -724,7 +739,9 @@ async function restoreTarget(
     const current = findNode(await getTree(), root.id)
     for (const child of current?.children ?? []) {
       if (workspaceFolderIds.has(child.id)) continue
-      await removeNode(child.id, isFolder(child))
+      await step(`Removing the old "${child.title}" (${child.id})`, () =>
+        removeNode(child.id, isFolder(child))
+      )
     }
   }
 
@@ -739,7 +756,9 @@ async function restoreTarget(
 
   if (root) {
     for (const node of created) {
-      await moveNode(node.id, { parentId: root.id })
+      await step(`Moving "${node.title}" (${node.id}) into ${root.id}`, () =>
+        moveNode(node.id, { parentId: root.id })
+      )
     }
   } else {
     // Registered before it moves into the container: the provider adopts any
@@ -748,7 +767,10 @@ async function restoreTarget(
     registerWorkspace(workspace)
     const containerId = await ensureWorkspacesContainer()
     if (!containerId) throw new Error("chrome.bookmarks is unavailable")
-    await moveNode(folder.id, { parentId: containerId })
+    const built = folder
+    await step(`Moving the workspace folder (${built.id}) into ${containerId}`, () =>
+      moveNode(built.id, { parentId: containerId })
+    )
   }
 
   // remove(), not removeTree(): it refuses a folder that isn't empty, so

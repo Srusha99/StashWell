@@ -10,7 +10,7 @@ const WHATS_NEW_ITEMS = [
   {
     title: "Task Flow",
     description:
-      "Turn any folder into a kanban board and drag bookmarks through custom stages.",
+      "Plan your work on a kanban board and drag tasks through To Do, In Progress, and Done.",
     icon: KanbanIcon,
     iconClassName: "bg-gradient-to-br from-blue-700 to-blue-500",
   },

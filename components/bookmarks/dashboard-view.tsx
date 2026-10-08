@@ -19,6 +19,7 @@ import { ViewSwitcher, type ViewMode } from "@/components/dashboard/view-switche
 import KanbanBoard from "@/components/spectrumui/kanbanboard"
 import { WorkspaceRepairNotice } from "@/components/workspaces/workspace-repair-notice"
 import { useWorkspaces } from "@/components/workspaces/workspace-provider"
+import { useIsPro } from "@/hooks/use-is-pro"
 import {
   BookmarkFormDialog,
   type BookmarkFormMode,
@@ -75,6 +76,9 @@ export function DashboardView({
     useWorkspaces()
   const bookmarks = useBookmarks(activeWorkspace.folderId)
   const { root, isLoading: bookmarksLoading } = bookmarks
+  // ViewSwitcher already refuses to open Kanban without Pro; this also closes
+  // it if the account stops being Pro (sign-out, downgrade) while it's open.
+  const isPro = useIsPro()
 
   const [formDialog, setFormDialog] = React.useState<FormDialogState | null>(
     null
@@ -421,7 +425,7 @@ export function DashboardView({
         bookmarks={bookmarks}
       />
 
-      {currentView === "kanban" && (
+      {currentView === "kanban" && isPro && (
         <>
           {/* Click-outside-to-close backdrop, transparent so the dashboard
               stays visible behind the popover rather than being dimmed. */}
