@@ -3,7 +3,14 @@
 import * as React from "react"
 
 import {
+  BOOKMARK_SYNC_PREF_KEY,
+  type BookmarkSyncPref,
+  readBookmarkSyncPref,
+} from "@/lib/bookmark-sync"
+import { subscribeLocalSettings } from "@/lib/local-setting-events"
+import {
   IDLE_SYNC_STATE,
+  type SyncOptions,
   type SyncState,
   type SyncStatus,
   getSyncState,
@@ -22,14 +29,25 @@ export type { SyncState, SyncStatus }
  */
 export function useDashboardSync(
   userId: string | null,
-  { syncSessions }: { syncSessions: boolean }
+  { syncSessions, bookmarks, live }: SyncOptions
 ): SyncState {
   React.useEffect(() => {
     if (!userId) return
-    return startDashboardSync(userId, { syncSessions })
-  }, [userId, syncSessions])
+    return startDashboardSync(userId, { syncSessions, bookmarks, live })
+  }, [userId, syncSessions, bookmarks, live])
 
   return useSyncState()
+}
+
+function subscribeBookmarkSyncPref(listener: () => void): () => void {
+  return subscribeLocalSettings((key) => {
+    if (key === BOOKMARK_SYNC_PREF_KEY) listener()
+  })
+}
+
+/** This device's "Sync Bookmarks" setting, kept current across tabs. */
+export function useBookmarkSyncPref(): BookmarkSyncPref {
+  return React.useSyncExternalStore(subscribeBookmarkSyncPref, readBookmarkSyncPref, () => null)
 }
 
 /** The current sync state, for UI that only displays it. */

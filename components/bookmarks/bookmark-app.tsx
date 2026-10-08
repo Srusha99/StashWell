@@ -10,7 +10,7 @@ import SoftAurora from "@/components/SoftAurora"
 import GlowCursor from "@/components/GlowCursor"
 import { useAppearanceSettings } from "@/hooks/use-appearance-settings"
 import { useColumnCount } from "@/hooks/use-column-count"
-import { useDashboardSync } from "@/hooks/use-dashboard-sync"
+import { useBookmarkSyncPref, useDashboardSync } from "@/hooks/use-dashboard-sync"
 import { useDailyWallpaper } from "@/hooks/use-daily-wallpaper"
 import { useHiddenFolders } from "@/hooks/use-hidden-folders"
 import { useWhatsNew } from "@/hooks/use-whats-new"
@@ -60,10 +60,16 @@ export function BookmarkApp() {
   // single-column dashboard each time.
   const { count: columnCount, isReady: columnCountReady } = useColumnCount()
   // Also hoisted above the workspace key: a switch mustn't restart syncing.
-  // Saved sessions only sync on Pro (lib/bundle-gate.ts).
+  // Saved sessions and live (instant) sync are Pro only (lib/bundle-gate.ts);
+  // bookmarks follow this device's "Sync Bookmarks" setting.
   const { user } = useAuth()
   const isPro = useIsPro()
-  useDashboardSync(user?.id ?? null, { syncSessions: isPro })
+  const bookmarkSyncPref = useBookmarkSyncPref()
+  useDashboardSync(user?.id ?? null, {
+    syncSessions: isPro,
+    bookmarks: bookmarkSyncPref,
+    live: isPro,
+  })
   const { resolvedTheme } = useTheme()
   const isLight = resolvedTheme === "light"
   const appearance = useAppearanceSettings()

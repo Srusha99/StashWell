@@ -58,7 +58,7 @@ export default function Page() {
 
 /**
  * Signed in or not, it's the dashboard: signed out is "Local Mode", where
- * everything stays on this device, and signing in (from the sync pill or the
+ * everything stays on this device, and signing in (from Settings > Sync or the
  * account menu) is what turns on syncing to the user's other devices.
  */
 function DashboardGate() {

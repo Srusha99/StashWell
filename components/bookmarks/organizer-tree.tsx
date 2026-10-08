@@ -188,7 +188,7 @@ function OrganizerTreeItem({
           )}
           aria-label={expanded ? "Collapse" : "Expand"}
         >
-          <ChevronRight className={cn("size-3.5 transition-transform", expanded && "rotate-90")} />
+          <ChevronRight className={cn("size-3.5 shrink-0 transition-transform", expanded && "rotate-90")} />
         </button>
 
         <span className="flex min-w-0 flex-1 items-center gap-1.5 py-1 text-left">

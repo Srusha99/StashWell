@@ -2,19 +2,25 @@
 
 import * as React from "react"
 
-// Matches the sm/lg/xl breakpoints the dashboard's Pinterest-style columns
-// use, so the JS-driven layout always agrees with Tailwind's breakpoints.
+// The most columns that fit, rather than Tailwind breakpoints: the card grid is
+// capped at 840px (components/bookmarks/dashboard-view.tsx), so any ordinary
+// desktop window shows the same 4 columns. Breakpoints gave a 1366px laptop at
+// 125% scaling (~1093px) 3 columns and a 1920px monitor 4, so an arrangement
+// synced between them was re-dealt and every card moved.
 // Widths are CSS px at 100% zoom - see the two width sources below for how
 // that's kept true regardless of the page's actual zoom level.
-const BREAKPOINTS: { minWidth: number; count: number }[] = [
-  { minWidth: 1280, count: 4 },
-  { minWidth: 1024, count: 3 },
-  { minWidth: 640, count: 2 },
-]
+const MAX_COLUMNS = 4
+const GRID_MAX_WIDTH = 840
+const GRID_GAP = 13
+/** A card's width at 4 columns in the full-width grid - never squeezed narrower. */
+const MIN_CARD_WIDTH = 200
+/** The page's padding, plus the window frame and scrollbar chrome.windows counts. */
+const PAGE_CHROME = 64
 
 function countForWidth(width: number): number {
-  for (const bp of BREAKPOINTS) {
-    if (width >= bp.minWidth) return bp.count
+  const available = Math.min(width - PAGE_CHROME, GRID_MAX_WIDTH)
+  for (let count = MAX_COLUMNS; count > 1; count--) {
+    if (count * MIN_CARD_WIDTH + (count - 1) * GRID_GAP <= available) return count
   }
   return 1
 }

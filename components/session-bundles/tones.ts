@@ -34,6 +34,10 @@ export const CARD = "rounded-[18px] border border-[#e2e8f0] bg-white shadow-[0_1
 export const PILL =
   "rounded-full border border-[#e2e8f0] bg-white shadow-[0_1px_3px_rgba(0,0,0,0.04)] transition hover:-translate-y-px hover:border-[#cbd5e1] hover:shadow-[0_4px_12px_rgba(0,0,0,0.06)]"
 
+/** A saved bundle's row in the main list - a softer, rounded-rectangle card. */
+export const ROW =
+  "rounded-[20px] border border-[#eef1f6] bg-white shadow-[0_2px_8px_rgba(15,23,42,0.06)] transition hover:-translate-y-px hover:shadow-[0_6px_16px_rgba(15,23,42,0.08)]"
+
 /** The same pill, tinted for a bundle the free plan's limit is counting. */
 export const PILL_HIGHLIGHT = "rounded-full border border-[#fed7aa] bg-[#fff7ed] transition hover:shadow-[0_1px_3px_rgba(0,0,0,0.04)]"
 

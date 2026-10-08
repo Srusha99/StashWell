@@ -10,7 +10,7 @@ const SignInPromptContext = React.createContext<() => void>(() => {})
 
 /**
  * The dashboard works signed out ("Local Mode" - everything stays on this
- * device), so signing in is something opened on demand - from the sync pill or
+ * device), so signing in is something opened on demand - from Settings > Sync or
  * the account menu - rather than a gate in front of everything. It closes by
  * itself once a sign-in succeeds.
  */

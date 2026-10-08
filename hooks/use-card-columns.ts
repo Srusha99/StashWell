@@ -63,14 +63,24 @@ function reflow(source: Columns, count: number): Columns {
 }
 
 /**
+ * How many columns to show: a hand-arranged layout's own count whenever the
+ * window has room for it, so an arrangement - this device's or one synced from
+ * another (lib/dashboard-sync-layouts.ts) - looks exactly as it was made.
+ * Only a window too narrow for it falls back to `fits`, and a reflow.
+ */
+function displayCount(layout: DashboardLayout | null, fits: number): number {
+  if (!layout?.arrangedByUser || !layout.byCount[layout.primaryCount]) return fits
+  return layout.primaryCount <= fits ? layout.primaryCount : fits
+}
+
+/**
  * This count's own saved arrangement if it has one; otherwise the most recently
  * hand-arranged count's, reflowed to fit; otherwise the bookmark order dealt
  * across the columns.
  *
- * Another device's arrangement arrives as just its primary count (see
- * lib/dashboard-sync-layouts.ts), so a screen with a different column count
- * shows it through the reflow - minus the cards this device doesn't have,
- * which would otherwise leave gaps in the dealing.
+ * The reflow is only for a window narrower than the arrangement (see
+ * displayCount) - minus the cards this device doesn't have, which would
+ * otherwise leave gaps in the dealing.
  */
 function arrange(defaultIds: string[], layout: DashboardLayout | null, count: number): Columns {
   const own = layout?.byCount[count]
@@ -84,7 +94,8 @@ function arrange(defaultIds: string[], layout: DashboardLayout | null, count: nu
 
 export function useCardColumns(
   defaultIds: string[],
-  columnCount: number,
+  /** The most columns the window fits (hooks/use-column-count.ts). */
+  maxColumnCount: number,
   workspaceId: string,
   columnCountReady: boolean
 ): [
@@ -147,6 +158,7 @@ export function useCardColumns(
   // see hooks/use-column-count.ts). Showing a default arrangement in the
   // meantime is what made cards visibly jump into place on every load.
   const isReady = hasLoadedStorage && columnCountReady && defaultIds.length > 0
+  const columnCount = displayCount(layout, maxColumnCount)
 
   // Derived, never stored separately: the same inputs always give the same
   // arrangement, however many times the page is loaded.

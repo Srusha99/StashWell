@@ -130,7 +130,7 @@ export function FolderCard({
         <div className="absolute inset-x-2 bottom-0 h-0.5 rounded-full bg-primary" />
       )}
 
-      <div className="mb-1.5 flex items-center gap-1.5">
+      <div className="mb-1.5 flex min-w-0 items-center gap-1.5">
         <h2 className={CARD_TITLE}>{title}</h2>
         {allUrls.length > 0 && (
           <Button
@@ -141,7 +141,7 @@ export function FolderCard({
             className="size-5 shrink-0 text-[#8e8e93] hover:bg-black/[0.04] hover:text-[#1c1c1e] dark:text-white/40 dark:hover:bg-white/10 dark:hover:text-white/70"
             onClick={handleOpenAll}
           >
-            <SquareArrowOutUpRight className="size-3" />
+            <SquareArrowOutUpRight className="size-3 shrink-0" />
           </Button>
         )}
         <DropdownMenu>
@@ -155,7 +155,7 @@ export function FolderCard({
               />
             }
           >
-            <MoreVertical className="size-3" />
+            <MoreVertical className="size-3 shrink-0" />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuItem onClick={() => setViewMode(viewMode === "grid" ? "list" : "grid")}>
@@ -205,7 +205,7 @@ export function FolderCard({
       ) : viewMode === "grid" ? (
         <FolderIconGrid items={items} onDrillInto={actions.onDrillInto} />
       ) : (
-        <div className="flex flex-col">
+        <div className="flex min-w-0 flex-col">
           {items.map((item) => (
             <BookmarkRow
               key={item.id}
@@ -237,9 +237,9 @@ function FolderIconGrid({
             type="button"
             onClick={() => onDrillInto(item.id)}
             title={item.title}
-            className="flex aspect-square items-center justify-center opacity-90 hover:opacity-100"
+            className="flex aspect-square min-w-0 items-center justify-center opacity-90 hover:opacity-100"
           >
-            <Folder className="size-7 text-[#8e8e93] dark:text-white/50" />
+            <Folder className="size-7 shrink-0 text-[#8e8e93] dark:text-white/50" />
           </button>
         ) : (
           <GridIconItem key={item.id} item={item} />
@@ -251,22 +251,22 @@ function FolderIconGrid({
 
 function GridIconItem({ item }: { item: BookmarkNode }) {
   const [customIcon] = useCustomIcon(item.url ?? null)
-  const fallbackIcon = <Grid2x2 className="size-7 text-[#8e8e93] dark:text-white/50" />
+  const fallbackIcon = <Grid2x2 className="size-7 shrink-0 text-[#8e8e93] dark:text-white/50" />
 
   return (
     <a
       href={item.url}
       title={item.title || item.url}
-      className="flex aspect-square items-center justify-center opacity-90 hover:opacity-100"
+      className="flex aspect-square min-w-0 items-center justify-center opacity-90 hover:opacity-100"
     >
       {customIcon ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={customIcon} alt="" className="size-7 rounded-lg object-contain" />
+        <img src={customIcon} alt="" className="size-7 shrink-0 rounded-lg object-contain" />
       ) : item.url ? (
         <FaviconImg
           url={item.url}
           size={128}
-          className="size-7 rounded-lg object-contain"
+          className="size-7 shrink-0 rounded-lg object-contain"
           fallback={fallbackIcon}
         />
       ) : (

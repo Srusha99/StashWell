@@ -91,6 +91,7 @@
     .icon-btn.ready {
       opacity: 1;
       pointer-events: auto;
+      touch-action: none;
     }
     .icon-btn:hover {
       background: rgba(255, 255, 255, 0.35);
@@ -217,14 +218,15 @@
     button.style.transition = ""
   }
 
-  // "Sticks to side" (like the reference extension icons) - after a drag,
-  // the icon snaps horizontally to whichever edge it ended up closer to,
-  // flush against it, while keeping whatever vertical spot it was dropped
-  // at. Only the horizontal side snaps; dragging up/down stays free-form.
+  // "Sticks to corner" - after a drag, the icon snaps to whichever screen
+  // corner it ended up closest to, flush against it, so it never stays
+  // floating mid-screen.
   function snapToEdge(left, top) {
-    const center = left + ICON_SIZE / 2
-    const snappedLeft = center < window.innerWidth / 2 ? 0 : window.innerWidth - ICON_SIZE
-    return { left: snappedLeft, top }
+    const centerX = left + ICON_SIZE / 2
+    const centerY = top + ICON_SIZE / 2
+    const snappedLeft = centerX < window.innerWidth / 2 ? 0 : window.innerWidth - ICON_SIZE
+    const snappedTop = centerY < window.innerHeight / 2 ? 0 : window.innerHeight - ICON_SIZE
+    return { left: snappedLeft, top: snappedTop }
   }
 
   // Positioned synchronously (while still invisible via the CSS above) so
@@ -306,9 +308,12 @@
     setIconPosition(dragStart.iconLeft + dx, dragStart.iconTop + dy)
   })
 
-  button.addEventListener("pointerup", (event) => {
+  // Also runs on pointercancel / lostpointercapture - without those, a drag
+  // the browser interrupted (touch gesture, alt-tab, etc.) never got a
+  // pointerup and left the icon stuck wherever it was mid-drag.
+  function endDrag(event, isClick) {
     if (dragPointerId === null || event.pointerId !== dragPointerId) return
-    button.releasePointerCapture(dragPointerId)
+    if (button.hasPointerCapture(dragPointerId)) button.releasePointerCapture(dragPointerId)
     button.classList.remove("dragging")
     dragPointerId = null
 
@@ -322,11 +327,15 @@
           yFraction: snapped.top / window.innerHeight,
         },
       })
-    } else {
+    } else if (isClick) {
       // A drag with no real movement is just a click.
       setOpen(!open)
     }
-  })
+  }
+
+  button.addEventListener("pointerup", (event) => endDrag(event, true))
+  button.addEventListener("pointercancel", (event) => endDrag(event, false))
+  button.addEventListener("lostpointercapture", (event) => endDrag(event, false))
 
   // --- Panel open/close + positioning relative to wherever the icon is ---
   function setOpen(next) {

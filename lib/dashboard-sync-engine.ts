@@ -31,6 +31,7 @@
 
 import { getTree, hasBookmarksApi, subscribeToChanges } from "@/lib/bookmarks"
 import {
+  type BookmarkSyncPref,
   applyBookmarks,
   chromeSyncsBookmarks,
   mergeBookmarks,
@@ -47,6 +48,7 @@ import {
   fetchDashboard,
   saveBookmarks,
   saveDashboard,
+  subscribeRemoteChanges,
 } from "@/lib/dashboard-sync-service"
 import {
   type Snapshot,
@@ -91,7 +93,7 @@ import {
 import { APPEARANCE_STORAGE_KEY } from "@/hooks/use-appearance-settings"
 
 /**
- * Shown in the sync pill's tooltip, so it's easy to tell which build each
+ * Shown in Settings > Sync, so it's easy to tell which build each
  * device is on. Bump whenever what syncs changes. 3: bookmarks and appearance
  * settings.
  */
@@ -102,8 +104,10 @@ export type SyncStatus = "idle" | "saving" | "synced" | "offline" | "error"
 /** Who carries this device's bookmarks between devices. */
 export type BookmarkSyncMode =
   | "stashwell"
-  /** Chrome Sync already does - see chromeSyncsBookmarks. */
+  /** Chrome Sync already does, and "Sync Bookmarks" was never set - see chromeSyncsBookmarks. */
   | "chrome"
+  /** Nobody: "Sync Bookmarks" is off on this device. */
+  | "off"
   /** This Chrome profile's bookmarks last synced with a different StashWell account. */
   | "other-account"
 
@@ -117,8 +121,11 @@ const SYNC_LOCK = "stashwell-dashboard-sync"
 
 /** Long enough to batch a burst of edits (a drag writes once per drop, but a
  * restore writes many times) into one upload. */
-const LOCAL_CHANGE_DELAY_MS = 1500
-/** How often a visible dashboard checks for changes made on other devices. */
+const LOCAL_CHANGE_DELAY_MS = 500
+/** One save can touch both rows; this turns their two events into one pull. */
+const REMOTE_CHANGE_DELAY_MS = 250
+/** How often a visible dashboard checks for changes made on other devices -
+ * the fallback for live sync, and all there is without it. */
 const POLL_INTERVAL_MS = 60_000
 /** Returning to a tab pulls, but not again within this long. */
 const FOCUS_PULL_THROTTLE_MS = 10_000
@@ -268,12 +275,35 @@ function unitsChangedSince(units: Record<string, unknown>, base: Record<string, 
 
 type Outcome = "done" | "retry"
 
+/**
+ * Versions (as epoch ms) of rows this tab saved, so live sync can ignore the
+ * event its own save sends back. Compared as times, since Realtime and the
+ * REST API don't format updated_at the same way.
+ */
+const ownVersions = new Set<number>()
+const MAX_OWN_VERSIONS = 20
+
+function rememberOwnVersion(version: string) {
+  ownVersions.add(Date.parse(version))
+  if (ownVersions.size > MAX_OWN_VERSIONS) {
+    ownVersions.delete(ownVersions.values().next().value as number)
+  }
+}
+
+function isOwnVersion(version: string | null): boolean {
+  return version !== null && ownVersions.has(Date.parse(version))
+}
+
 /** Bookmarks first: the dashboard's settings name folders that may only exist once this has run. */
-async function syncBookmarksOnce(userId: string, pull: boolean): Promise<Outcome> {
+async function syncBookmarksOnce(userId: string, pull: boolean, pref: BookmarkSyncPref): Promise<Outcome> {
+  if (pref === "off") {
+    setBookmarkMode("off")
+    return "done"
+  }
   if (!hasBookmarksApi()) return "done"
 
   const tree = await getTree()
-  if (chromeSyncsBookmarks(tree)) {
+  if (pref !== "on" && chromeSyncsBookmarks(tree)) {
     setBookmarkMode("chrome")
     return "done"
   }
@@ -316,6 +346,7 @@ async function syncBookmarksOnce(userId: string, pull: boolean): Promise<Outcome
     remoteVersion = await saveBookmarks(userId, { bookmark_tree: serializeBookmarks(merged) }, row)
     // Another device saved first: merge again, against its copy.
     if (!remoteVersion) return "retry"
+    rememberOwnVersion(remoteVersion)
   }
 
   await writeBookmarkBase({ userId, tree: merged, remoteVersion })
@@ -453,8 +484,10 @@ async function syncDashboardOnce(
 
     if (Object.keys(patch).length > 0) {
       setStatus("saving")
+      const version = await saveDashboard(userId, patch, row)
       // Another device saved first: merge again, against its copy.
-      if (!(await saveDashboard(userId, patch, row))) return "retry"
+      if (!version) return "retry"
+      rememberOwnVersion(version)
     }
   }
 
@@ -473,7 +506,7 @@ async function syncDashboardOnce(
 }
 
 async function syncOnce(userId: string, pull: boolean, options: SyncOptions): Promise<Outcome> {
-  const bookmarks = await syncBookmarksOnce(userId, pull)
+  const bookmarks = await syncBookmarksOnce(userId, pull, options.bookmarks)
   const dashboard = await syncDashboardOnce(userId, pull, options.syncSessions)
   if (!isOnline()) {
     setStatus("offline")
@@ -511,6 +544,14 @@ interface SyncSession {
 export interface SyncOptions {
   /** Saved sessions sync on Pro only (lib/bundle-gate.ts). */
   syncSessions: boolean
+  /** This device's "Sync Bookmarks" setting (lib/bookmark-sync.ts). */
+  bookmarks: BookmarkSyncPref
+  /**
+   * Pull the moment another device saves (Pro's "Real-Time Live Sync") rather
+   * than on the next poll - in hidden tabs too, so switching to one shows it
+   * already up to date.
+   */
+  live: boolean
 }
 
 /** Starts syncing for `userId`. */
@@ -603,12 +644,24 @@ function attach(userId: string, options: SyncOptions): SyncSession {
   // Uploads bookmark edits, and lets a folder arriving from another device take
   // the card slot that device gave it (see rehydrate in
   // lib/dashboard-sync-layouts.ts) - hence a pull, not just a push.
-  const unsubscribeBookmarks = hasBookmarksApi()
-    ? subscribeToChanges(() => request(true, LOCAL_CHANGE_DELAY_MS))
-    : () => {}
+  // With "Sync Bookmarks" off, Chrome's bookmark events aren't listened to at all.
+  const unsubscribeBookmarks =
+    hasBookmarksApi() && options.bookmarks !== "off"
+      ? subscribeToChanges(() => request(true, LOCAL_CHANGE_DELAY_MS))
+      : () => {}
   document.addEventListener("visibilitychange", onVisibilityChange)
   window.addEventListener("online", onOnline)
   window.addEventListener("offline", onOffline)
+  const unsubscribeRemote = options.live
+    ? subscribeRemoteChanges(
+        userId,
+        (version) => {
+          if (!isOwnVersion(version)) request(true, REMOTE_CHANGE_DELAY_MS)
+        },
+        // Anything saved while disconnected sent no event.
+        () => request(true, 0)
+      )
+    : () => {}
   const poll = setInterval(() => {
     if (document.visibilityState === "visible") request(true, 0)
   }, POLL_INTERVAL_MS)
@@ -628,6 +681,7 @@ function attach(userId: string, options: SyncOptions): SyncSession {
       chrome.storage.onChanged.removeListener(onStorageChanged)
       unsubscribeSettings()
       unsubscribeBookmarks()
+      unsubscribeRemote()
       document.removeEventListener("visibilitychange", onVisibilityChange)
       window.removeEventListener("online", onOnline)
       window.removeEventListener("offline", onOffline)
@@ -646,7 +700,7 @@ let active: { key: string; refs: number; session: SyncSession } | null = null
 export function startDashboardSync(userId: string, options: SyncOptions): () => void {
   if (!hasStorageApi()) return () => {}
 
-  const key = `${userId}:${options.syncSessions}`
+  const key = `${userId}:${options.syncSessions}:${options.bookmarks}:${options.live}`
   if (active && active.key !== key) {
     active.session.stop()
     active = null

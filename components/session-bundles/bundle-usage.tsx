@@ -8,23 +8,17 @@ const RING_RADIUS = 15.9155
 
 /**
  * Free's "1/2 Used" badge beside "Saved Bundles": a progress ring and a count,
- * blue while there's room and orange once the limit is reached. Opens the
- * Active Bundles sheet.
+ * blue while there's room and orange once the limit is reached. Display only.
  */
-export function BundleUsageBadge({ count, onClick }: { count: number; onClick: () => void }) {
+export function BundleUsageBadge({ count }: { count: number }) {
   const full = count >= FREE_BUNDLE_LIMIT
   const percent = Math.min(100, (count / FREE_BUNDLE_LIMIT) * 100)
 
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      title="View active bundles"
+    <span
       className={cn(
-        "flex items-center gap-1.5 rounded-full border py-[5px] pr-2.5 pl-2 transition hover:-translate-y-px",
-        full
-          ? "border-[#ffedd5] bg-[#fff7ed] hover:bg-[#ffedd5] hover:shadow-[0_2px_6px_rgba(249,115,22,0.15)]"
-          : "border-[#dbeafe] bg-[#eff6ff] hover:bg-[#dbeafe] hover:shadow-[0_2px_6px_rgba(59,130,246,0.15)]"
+        "flex items-center gap-1.5 rounded-full border py-[5px] pr-2.5 pl-2",
+        full ? "border-[#ffedd5] bg-[#fff7ed]" : "border-[#dbeafe] bg-[#eff6ff]"
       )}
     >
       <svg viewBox="0 0 36 36" className="size-4 shrink-0 -rotate-90" aria-hidden>
@@ -57,6 +51,6 @@ export function BundleUsageBadge({ count, onClick }: { count: number; onClick: (
       >
         {count}/{FREE_BUNDLE_LIMIT} Used
       </span>
-    </button>
+    </span>
   )
 }

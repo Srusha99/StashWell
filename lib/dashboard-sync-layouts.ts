@@ -14,7 +14,8 @@
  * same dashboard is 4 columns on one PC and 3 on another - and syncing every
  * count let a PC keep showing an arrangement it once made at its own width long
  * after the user rearranged elsewhere. So the latest arrangement replaces them
- * all, and each screen reflows it to fit (hooks/use-card-columns.ts).
+ * all, and every screen wide enough shows it at its own count - card for card
+ * the same - while a narrower window reflows it (hooks/use-card-columns.ts).
  *
  * This never touches bookmarks. The folders themselves reach each device
  * through Chrome Sync, and a workspace's record through adoptOrphanedFolders

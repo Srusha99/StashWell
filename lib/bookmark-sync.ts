@@ -18,9 +18,11 @@
  * recreated, so it keeps its Chrome id - which the layout, hidden-card and
  * view-mode settings refer to it by.
  *
- * On a device whose bookmarks Chrome Sync already carries, none of this runs
- * (see chromeSyncsBookmarks): two devices on the same Chrome account would
- * each get every new bookmark twice - once from Chrome, once from here.
+ * Whether it runs at all is this device's "Sync Bookmarks" setting (Settings >
+ * Sync). Left unset, a device whose bookmarks Chrome Sync already carries (see
+ * chromeSyncsBookmarks) leaves them to Chrome: two devices on the same Chrome
+ * account would each get every new bookmark twice - once from Chrome, once
+ * from here. Turning it on syncs regardless; turning it off never syncs.
  */
 
 import {
@@ -32,6 +34,7 @@ import {
   removeNode,
 } from "@/lib/bookmarks"
 import { hashValue, mergeOrder } from "@/lib/dashboard-sync-merge"
+import { notifyLocalSettingChanged } from "@/lib/local-setting-events"
 import { ensureWorkspacesContainer, findContainerCandidates, pickContainer } from "@/lib/workspaces"
 
 /** A bookmark (`url` set) or folder (`children` set), with no Chrome ids. */
@@ -61,6 +64,38 @@ interface BookmarkBase {
   tree: SyncedBookmarks
   /** The cloud row's updated_at when this was saved, to skip unchanged pulls. */
   remoteVersion: string | null
+}
+
+/* -------------------------------------------------------------------------- */
+/* The "Sync Bookmarks" setting                                                */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * This device's choice, in localStorage - never synced, since whether Chrome
+ * Sync carries a PC's bookmarks is a fact about that PC.
+ */
+export const BOOKMARK_SYNC_PREF_KEY = "stashwell:bookmark-sync"
+
+/** "on" / "off" as chosen, or null if never set (see the file comment). */
+export type BookmarkSyncPref = "on" | "off" | null
+
+export function readBookmarkSyncPref(): BookmarkSyncPref {
+  if (typeof window === "undefined") return null
+  try {
+    const value = window.localStorage.getItem(BOOKMARK_SYNC_PREF_KEY)
+    return value === "on" || value === "off" ? value : null
+  } catch {
+    return null
+  }
+}
+
+export function writeBookmarkSyncPref(on: boolean): void {
+  try {
+    window.localStorage.setItem(BOOKMARK_SYNC_PREF_KEY, on ? "on" : "off")
+  } catch {
+    return
+  }
+  notifyLocalSettingChanged(BOOKMARK_SYNC_PREF_KEY)
 }
 
 /* -------------------------------------------------------------------------- */

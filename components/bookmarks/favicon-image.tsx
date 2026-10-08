@@ -3,6 +3,7 @@
 import * as React from "react"
 
 import { resolveFaviconSrc } from "@/lib/favicon"
+import { cn } from "@/lib/utils"
 
 /**
  * Renders a bookmark's favicon. Waits for resolveFaviconSrc to confirm a
@@ -58,7 +59,9 @@ export function FaviconImg({
     return () => URL.revokeObjectURL(resolvedSrc)
   }, [resolvedSrc])
 
-  if (resolvedSrc === undefined) return null
+  // Holds the icon's slot while resolving, so the title beside it doesn't
+  // jump sideways once the icon arrives.
+  if (resolvedSrc === undefined) return <span aria-hidden className={cn("inline-block", className)} />
   if (resolvedSrc === null || failed) return <>{fallback}</>
 
   return (

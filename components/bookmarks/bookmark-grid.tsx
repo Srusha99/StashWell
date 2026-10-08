@@ -64,9 +64,10 @@ export function BookmarkGrid({
 
   // Sized off the container, not the viewport: the grid lives in the Settings
   // dialog's Bookmarks pane, which is narrower than the window, so `lg:` and
-  // friends would pack five tiles into ~700px.
+  // friends would pack five tiles into ~700px. The min() keeps a single tile
+  // from overflowing a pane narrower than 250px.
   return (
-    <div className="grid grid-cols-[repeat(auto-fill,minmax(104px,1fr))] gap-2 p-2.5">
+    <div className="grid grid-cols-[repeat(auto-fit,minmax(min(250px,100%),1fr))] gap-3 p-2.5">
       {items.map((node) =>
         isFolder(node) ? (
           <FolderTile
@@ -136,7 +137,7 @@ function TileActionsMenu({ children }: { children: React.ReactNode }) {
           <Button
             variant="ghost"
             size="icon-xs"
-            className="absolute top-1 right-1 text-[#8e8e93] opacity-0 group-hover:opacity-100 hover:bg-black/[0.04] hover:text-[#1c1c1e] data-[popup-open]:opacity-100 dark:text-white/70 dark:hover:bg-white/10 dark:hover:text-white"
+            className="absolute top-1 right-1 shrink-0 text-[#8e8e93] opacity-0 group-hover:opacity-100 hover:bg-black/[0.04] hover:text-[#1c1c1e] data-[popup-open]:opacity-100 dark:text-white/70 dark:hover:bg-white/10 dark:hover:text-white"
             onClick={(event: React.MouseEvent) => {
               event.preventDefault()
               event.stopPropagation()
@@ -175,7 +176,7 @@ function FolderTile({
   return (
     <div className="group relative h-full cursor-pointer" onClick={onOpen}>
       <div className="relative flex h-full flex-col gap-1 rounded-xl border border-[#e5e5ea] bg-white p-2 text-left text-[#1c1c1e] dark:border-white/10 dark:bg-white/5 dark:text-white">
-        <FolderOpen className="size-4.5 text-[#8e8e93] dark:text-white/70" />
+        <FolderOpen className="size-4.5 shrink-0 text-[#8e8e93] dark:text-white/70" />
         <div className="flex min-w-0 flex-col">
           <span className="truncate text-[12px] font-medium">
             {node.title || "(untitled)"}
@@ -227,16 +228,16 @@ function BookmarkTile({
   onMove: (parentId: string) => void
 }) {
   const [customIcon] = useCustomIcon(node.url ?? null)
-  const fallbackIcon = <Folder className="size-4.5 text-[#8e8e93] dark:text-white/70" />
+  const fallbackIcon = <Folder className="size-4.5 shrink-0 text-[#8e8e93] dark:text-white/70" />
 
   return (
     <a href={node.url} className="group relative block h-full">
       <div className="relative flex h-full flex-col gap-1 rounded-xl border border-[#e5e5ea] bg-white p-2 text-[#1c1c1e] dark:border-white/10 dark:bg-white/5 dark:text-white">
         {customIcon ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={customIcon} alt="" className="size-4.5 rounded" />
+          <img src={customIcon} alt="" className="size-4.5 shrink-0 rounded" />
         ) : node.url ? (
-          <FaviconImg url={node.url} className="size-4.5 rounded" fallback={fallbackIcon} />
+          <FaviconImg url={node.url} className="size-4.5 shrink-0 rounded" fallback={fallbackIcon} />
         ) : (
           fallbackIcon
         )}
@@ -257,11 +258,11 @@ function BookmarkTile({
             onEdit()
           }}
           className={cn(
-            "absolute top-1 right-7 flex size-5 items-center justify-center rounded-md text-[#8e8e93] opacity-0 group-hover:opacity-100 hover:bg-black/[0.04] hover:text-[#1c1c1e] dark:text-white/70 dark:hover:bg-white/10 dark:hover:text-white"
+            "absolute top-1 right-7 flex size-5 shrink-0 items-center justify-center rounded-md text-[#8e8e93] opacity-0 group-hover:opacity-100 hover:bg-black/[0.04] hover:text-[#1c1c1e] dark:text-white/70 dark:hover:bg-white/10 dark:hover:text-white"
           )}
           aria-label="Edit bookmark"
         >
-          <Pencil className="size-3" />
+          <Pencil className="size-3 shrink-0" />
         </button>
 
         <TileActionsMenu>

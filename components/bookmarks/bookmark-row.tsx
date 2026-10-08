@@ -46,10 +46,10 @@ export function BookmarkRow({
       <button
         type="button"
         onClick={() => onDrillInto(node.id)}
-        className="flex w-full items-center gap-2 py-0.5 text-left"
+        className="flex w-full min-w-0 items-center gap-3 py-0.5 text-left"
       >
         <Folder className="size-3.5 shrink-0 text-[#8e8e93] dark:text-white/50" />
-        <span className="truncate text-bookmark text-[#1c1c1e] dark:text-white/85">
+        <span className="min-w-0 flex-1 truncate text-bookmark text-[#1c1c1e] dark:text-white/85">
           {node.title || "(untitled)"}
         </span>
       </button>
@@ -87,8 +87,8 @@ export function BookmarkRow({
   }
 
   return (
-    <div className="group/row relative flex items-center gap-2 py-0.5">
-      <a href={node.url} className="flex min-w-0 flex-1 items-center gap-2">
+    <div className="group/row relative flex min-w-0 items-center gap-3 py-0.5">
+      <a href={node.url} className="flex min-w-0 flex-1 items-center gap-3">
         {customIcon ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={customIcon} alt="" className="size-3.5 shrink-0 rounded-[3px]" />
@@ -106,7 +106,7 @@ export function BookmarkRow({
         </span>
       </a>
 
-      <div className="absolute inset-y-0 right-0 flex items-center gap-0.5 rounded-md bg-white/85 px-1 opacity-0 backdrop-blur-sm group-hover/row:opacity-100 dark:bg-black/50">
+      <div className="absolute inset-y-0 right-0 flex shrink-0 items-center gap-0.5 rounded-md bg-white/85 px-1 opacity-0 backdrop-blur-sm group-hover/row:opacity-100 dark:bg-black/50">
         <Button
           variant="ghost"
           size="icon-xs"

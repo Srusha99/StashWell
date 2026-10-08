@@ -6,7 +6,8 @@
  *
  * Schema, RLS and the updated_at triggers:
  * supabase/migrations/20261005120000_user_dashboards.sql and
- * supabase/migrations/20261005160000_user_bookmarks_and_settings.sql.
+ * supabase/migrations/20261005160000_user_bookmarks_and_settings.sql; live
+ * change events: supabase/migrations/20261007120000_sync_realtime.sql.
  */
 
 import { supabase } from "@/lib/supabaseClient"
@@ -157,4 +158,41 @@ export function saveBookmarks(
   row: BookmarksRow | null
 ): Promise<string | null> {
   return saveRow("user_bookmarks", userId, patch, row)
+}
+
+/**
+ * Calls `onChange` with the new version whenever either of this user's rows is
+ * saved - by any device, this one included. `onReconnect` runs when the
+ * connection comes back after dropping, since anything saved meanwhile was
+ * missed. supabase-js keeps the socket's auth current and reconnects on its
+ * own. Without the realtime migration this just never fires.
+ */
+export function subscribeRemoteChanges(
+  userId: string,
+  onChange: (version: string | null) => void,
+  onReconnect: () => void
+): () => void {
+  const filter = `user_id=eq.${userId}`
+  const handle = (payload: { new: unknown }) => {
+    const version = (payload.new as { updated_at?: unknown } | null)?.updated_at
+    onChange(typeof version === "string" ? version : null)
+  }
+  let dropped = false
+
+  const channel = supabase
+    .channel(`stashwell-sync:${userId}`)
+    .on("postgres_changes", { event: "*", schema: "public", table: "user_dashboards", filter }, handle)
+    .on("postgres_changes", { event: "*", schema: "public", table: "user_bookmarks", filter }, handle)
+    .subscribe((status) => {
+      if (status === "SUBSCRIBED") {
+        if (dropped) onReconnect()
+        dropped = false
+      } else {
+        dropped = true
+      }
+    })
+
+  return () => {
+    void supabase.removeChannel(channel)
+  }
 }

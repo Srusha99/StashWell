@@ -1,14 +1,14 @@
 "use client"
 
 import * as React from "react"
-import { GlobeIcon, PencilIcon, PlayIcon, Trash2Icon, XIcon } from "lucide-react"
+import { ChevronRightIcon, GlobeIcon, PencilIcon, PlayIcon, Trash2Icon, XIcon } from "lucide-react"
 
 import {
   ShareTabsButton,
   TabSelectionHeader,
   shareCheckboxClass,
 } from "@/components/session-bundles/tab-share-controls"
-import { CARD, MUTED, PILL, PILL_HIGHLIGHT, TEXT } from "@/components/session-bundles/tones"
+import { CARD, MUTED, PILL, PILL_HIGHLIGHT, ROW, TEXT } from "@/components/session-bundles/tones"
 import { type SessionBundle } from "@/lib/session-bundles"
 import { cn } from "@/lib/utils"
 
@@ -84,9 +84,9 @@ export function Favicon({ url }: { url: string }) {
 
 /**
  * One saved bundle as a pill: its initials, name and size, and restore /
- * delete. In the main list (`expandable`), clicking it opens the bundle's tabs
- * below - to open, remove, or share some of them - and renaming lives there
- * too.
+ * delete. In the main list (`expandable`) it's a rounded card led by a
+ * chevron instead, and clicking it opens the bundle's tabs below - to open,
+ * remove, or share some of them - and renaming lives there too.
  */
 export function BundlePill({
   bundle,
@@ -158,7 +158,17 @@ export function BundlePill({
     }
   }
 
-  const avatar = (
+  const avatar = expandable ? (
+    <span
+      className={cn(
+        "flex size-[30px] shrink-0 items-center justify-center rounded-full bg-[#f1f5f9] text-[#475569] transition",
+        expanded && "bg-[#e2e8f0]"
+      )}
+      aria-hidden
+    >
+      <ChevronRightIcon className={cn("size-4 transition-transform", expanded && "rotate-90")} />
+    </span>
+  ) : (
     <span
       className={cn(
         "flex size-[34px] shrink-0 items-center justify-center rounded-full border bg-gradient-to-br text-[0.7rem] font-bold",
@@ -170,7 +180,7 @@ export function BundlePill({
     </span>
   )
   const meta = (
-    <span className={cn("text-[0.6rem] whitespace-nowrap", MUTED)}>
+    <span className={cn("whitespace-nowrap", expandable ? "text-[0.7rem]" : "text-[0.6rem]", MUTED)}>
       {bundle.tabCount} tab{bundle.tabCount === 1 ? "" : "s"} · {formatDate(bundle.createdAt, withTime)}
     </span>
   )
@@ -179,8 +189,9 @@ export function BundlePill({
     <div className={TEXT}>
       <div
         className={cn(
-          highlight ? PILL_HIGHLIGHT : PILL,
-          "flex items-center justify-between gap-2 py-2 pr-2.5 pl-2"
+          highlight ? PILL_HIGHLIGHT : expandable ? ROW : PILL,
+          "flex items-center justify-between gap-2",
+          expandable ? "p-3" : "py-2 pr-2.5 pl-2"
         )}
       >
         {confirmingDelete ? (
@@ -238,8 +249,8 @@ export function BundlePill({
                 className="flex min-w-0 flex-1 items-center gap-2.5 text-left"
               >
                 {avatar}
-                <span className="flex min-w-0 flex-col">
-                  <span className="truncate text-[0.75rem] font-semibold">{bundle.name}</span>
+                <span className="flex min-w-0 flex-col gap-0.5">
+                  <span className="truncate text-[0.85rem] font-semibold">{bundle.name}</span>
                   {meta}
                 </span>
               </button>
@@ -253,23 +264,43 @@ export function BundlePill({
               </div>
             )}
 
-            <div className="flex shrink-0 gap-[5px]">
-              <IconButton
-                onClick={handleRestore}
-                disabled={isRestoring || bundle.tabs.length === 0}
-                aria-label="Restore bundle in a new window"
-                className="bg-[#eff6ff] text-[#3b82f6] hover:bg-[#3b82f6] hover:text-white hover:shadow-[0_4px_10px_rgba(59,130,246,0.3)]"
-              >
-                <PlayIcon className="size-[13px] fill-current" />
-              </IconButton>
-              <IconButton
-                onClick={() => setConfirmingDelete(true)}
-                aria-label="Delete bundle"
-                className="bg-[#f8fafc] text-[#94a3b8] hover:bg-[#fee2e2] hover:text-[#ef4444]"
-              >
-                <Trash2Icon className="size-[13px]" />
-              </IconButton>
-            </div>
+            {expandable ? (
+              <div className="flex shrink-0 gap-2">
+                <IconButton
+                  onClick={handleRestore}
+                  disabled={isRestoring || bundle.tabs.length === 0}
+                  aria-label="Restore bundle in a new window"
+                  className="size-8 bg-[#1a73e8] text-white shadow-[0_2px_6px_rgba(26,115,232,0.3)] hover:bg-[#1765cc]"
+                >
+                  <PlayIcon className="size-[15px] translate-x-px" />
+                </IconButton>
+                <IconButton
+                  onClick={() => setConfirmingDelete(true)}
+                  aria-label="Delete bundle"
+                  className="size-8 border border-[#e2e8f0] bg-[#f1f5f9] text-[#334155] hover:border-[#fecaca] hover:bg-[#fee2e2] hover:text-[#ef4444]"
+                >
+                  <Trash2Icon className="size-[15px]" />
+                </IconButton>
+              </div>
+            ) : (
+              <div className="flex shrink-0 gap-[5px]">
+                <IconButton
+                  onClick={handleRestore}
+                  disabled={isRestoring || bundle.tabs.length === 0}
+                  aria-label="Restore bundle in a new window"
+                  className="bg-[#eff6ff] text-[#3b82f6] hover:bg-[#3b82f6] hover:text-white hover:shadow-[0_4px_10px_rgba(59,130,246,0.3)]"
+                >
+                  <PlayIcon className="size-[13px] fill-current" />
+                </IconButton>
+                <IconButton
+                  onClick={() => setConfirmingDelete(true)}
+                  aria-label="Delete bundle"
+                  className="bg-[#f8fafc] text-[#94a3b8] hover:bg-[#fee2e2] hover:text-[#ef4444]"
+                >
+                  <Trash2Icon className="size-[13px]" />
+                </IconButton>
+              </div>
+            )}
           </>
         )}
       </div>

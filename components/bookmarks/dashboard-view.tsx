@@ -307,7 +307,8 @@ export function DashboardView({
 
       {/* Capped and centred rather than stretched edge to edge: with flex-1
           columns on a wide screen each card ballooned past 360px, which is what
-          made the dashboard feel heavy. ~200px per column at 4 columns. */}
+          made the dashboard feel heavy. ~200px per column at 4 columns. Same
+          width on a 14" laptop, a 15.6" and an ultrawide. */}
       <div className="mx-auto flex w-full max-w-[840px] gap-[var(--grid-gap)]">
         {bookmarksLoading || (root && !layoutReady) ? (
           // Chrome's bookmarks.getTree() or the saved layout hasn't resolved

@@ -18,6 +18,7 @@ import {
   renameSessionBundle,
   restoreSessionBundle,
   type SessionBundle,
+  STORAGE_KEY as SESSIONS_STORAGE_KEY,
 } from "@/lib/session-bundles"
 import { bundleLimit, canSaveBundle } from "@/lib/bundle-gate"
 import { useIsPro } from "@/hooks/use-is-pro"
@@ -82,8 +83,8 @@ export function SessionBundlesPopup() {
   // The plan isn't known until the session has loaded - deciding before then
   // would hold a Pro user to Free's limit for a moment.
   const { loading: planLoading } = useAuth()
-  // The Active Bundles sheet: from the usage badge, or in place of the save
-  // step once Free's limit is reached.
+  // The Active Bundles sheet, shown in place of the save step once Free's
+  // limit is reached.
   const [sheetOpen, setSheetOpen] = React.useState(false)
   const [pendingSave, setPendingSave] = React.useState(false)
   const atLimit = !planLoading && bundles !== null && !canSaveBundle(isPro, bundles.length).allowed
@@ -95,6 +96,22 @@ export function SessionBundlesPopup() {
     // directly (see public/background.js) so both ways of starting a save
     // land on the exact same "type a name, hit Save" step.
     consumePendingSaveFlag().then(setPendingSave)
+  }, [])
+
+  // A session saved or deleted elsewhere - another PC's, arriving through
+  // sync (lib/dashboard-sync-engine.ts), or another open popup's.
+  React.useEffect(() => {
+    if (typeof chrome === "undefined" || !chrome.storage?.onChanged) return
+    function handleChange(
+      changes: { [key: string]: chrome.storage.StorageChange },
+      areaName: chrome.storage.AreaName
+    ) {
+      if (areaName === "local" && changes[SESSIONS_STORAGE_KEY]) {
+        void readSessionBundles().then(setBundles)
+      }
+    }
+    chrome.storage.onChanged.addListener(handleChange)
+    return () => chrome.storage.onChanged.removeListener(handleChange)
   }, [])
 
   // That step goes through the same limit check as the Save button, once the
@@ -119,12 +136,6 @@ export function SessionBundlesPopup() {
   }
 
   const closeSheet = React.useCallback(() => setSheetOpen(false), [])
-
-  function handleSaveNew() {
-    setSheetOpen(false)
-    setIsSharing(false)
-    setIsCreating(true)
-  }
 
   function toggleSharing() {
     setIsCreating(false)
@@ -223,6 +234,12 @@ export function SessionBundlesPopup() {
         )}
         style={{ background: POPUP_BACKGROUND }}
       >
+        <div className="mb-4 flex items-center gap-2 px-1">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="logo/stashwell-logo.svg" alt="" className="size-7 shrink-0" />
+          <h1 className="text-[1.05rem] font-bold tracking-[-0.01em]">StashWell</h1>
+        </div>
+
         <div className="mb-5 flex flex-col gap-2.5">
           <div className="grid grid-cols-2 gap-2.5">
             <ActionCard
@@ -282,7 +299,7 @@ export function SessionBundlesPopup() {
         <div className="mb-2.5 flex items-center justify-between px-1">
           <p className="text-[0.8rem] font-bold">Saved Bundles</p>
           {showFreePlan && bundles !== null && (
-            <BundleUsageBadge count={bundles.length} onClick={() => setSheetOpen(true)} />
+            <BundleUsageBadge count={bundles.length} />
           )}
         </div>
 
@@ -306,6 +323,7 @@ export function SessionBundlesPopup() {
                 onDelete={handleDelete}
                 onDeleteTab={handleDeleteTab}
                 expandable
+                withTime
               />
             ))
           )}
@@ -313,15 +331,7 @@ export function SessionBundlesPopup() {
       </div>
 
       {showFreePlan && bundles !== null && (
-        <ActiveBundlesSheet
-          open={sheetOpen}
-          onClose={closeSheet}
-          bundles={bundles}
-          atLimit={atLimit}
-          onSaveNew={handleSaveNew}
-          onRestore={handleRestore}
-          onDelete={handleDelete}
-        />
+        <ActiveBundlesSheet open={sheetOpen} onClose={closeSheet} />
       )}
     </>
   )
