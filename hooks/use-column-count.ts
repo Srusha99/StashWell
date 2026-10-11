@@ -60,16 +60,25 @@ export function useColumnCount(): ColumnCountState {
     // stays put across zoom levels.
     if (hasChromeWindows()) {
       let cancelled = false
-      const applyWindow = (win: chrome.windows.Window | undefined) => {
-        if (cancelled || !win?.width) return
-        setCount(countForWidth(win.width))
-        setIsReady(true)
+      const applyCurrentWindow = () => {
+        chrome.windows.getCurrent().then((win) => {
+          if (cancelled || !win?.width) return
+          setCount(countForWidth(win.width))
+          setIsReady(true)
+        })
       }
-      chrome.windows.getCurrent().then(applyWindow)
-      chrome.windows.onBoundsChanged.addListener(applyWindow)
+      applyCurrentWindow()
+      // The page's own resize event says when to re-measure, getCurrent()
+      // which window to measure. Not chrome.windows.onBoundsChanged: that
+      // fires whenever any Chrome window's bounds change, so a narrow popup
+      // anywhere set this dashboard to that popup's width - one wide column
+      // until a reload. resize also covers this tab being dragged into a
+      // different-sized window, which changes no window's bounds. Zooming
+      // fires it too, harmlessly - the OS window's width hasn't changed.
+      window.addEventListener("resize", applyCurrentWindow)
       return () => {
         cancelled = true
-        chrome.windows.onBoundsChanged.removeListener(applyWindow)
+        window.removeEventListener("resize", applyCurrentWindow)
       }
     }
 

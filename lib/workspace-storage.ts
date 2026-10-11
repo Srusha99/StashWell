@@ -14,6 +14,8 @@
  *    workspaces. These are 64x64 PNG data URLs (~4-8KB each) against a 5MB
  *    origin quota, so duplicating them per workspace is the one thing here
  *    that could realistically hit QuotaExceededError.
+ *  - `bm:last-save-section` - the popup's Save Bookmark list spans every
+ *    workspace, and the folder id it holds is already unique across them.
  */
 
 const NAMESPACE = "bm:ws:"

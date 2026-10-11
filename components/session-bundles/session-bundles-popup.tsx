@@ -6,6 +6,7 @@ import { LinkIcon, ListIcon, type LucideIcon } from "lucide-react"
 import { ActiveBundlesSheet } from "@/components/session-bundles/active-bundles-sheet"
 import { BundlePill } from "@/components/session-bundles/bundle-pill"
 import { BundleUsageBadge } from "@/components/session-bundles/bundle-usage"
+import { SaveBookmarkCard } from "@/components/session-bundles/save-bookmark-card"
 import { ShareTabsPanel } from "@/components/session-bundles/share-tabs-panel"
 import { CARD, MUTED, POPUP_BACKGROUND, TEXT, TONES, type Tone } from "@/components/session-bundles/tones"
 import {
@@ -241,6 +242,8 @@ export function SessionBundlesPopup() {
         </div>
 
         <div className="mb-5 flex flex-col gap-2.5">
+          <SaveBookmarkCard />
+
           <div className="grid grid-cols-2 gap-2.5">
             <ActionCard
               tone="save"

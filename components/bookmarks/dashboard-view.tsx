@@ -267,7 +267,10 @@ export function DashboardView({
   }
 
   return (
-    <div className="h-screen w-screen overflow-y-auto p-4">
+    // Scrolls by wheel or trackpad once the cards outgrow the window, with the
+    // scrollbar itself hidden - Chrome's default one stood out against the
+    // wallpaper. Same as the session bundles popup.
+    <div className="h-screen w-screen overflow-y-auto p-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
       {/* Top-left corner, mirroring the fixed settings button in the opposite
           corner. z-40 keeps it under the z-50 menus and dialogs it opens. */}
       <WorkspaceSwitcher className="fixed top-4 left-4 z-40" />
