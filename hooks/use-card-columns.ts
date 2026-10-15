@@ -9,6 +9,7 @@ import {
   type Columns,
   type DashboardLayout,
 } from "@/lib/dashboard-layout-storage"
+import { DEFAULT_WORKSPACE_ID } from "@/lib/workspaces"
 
 export type { Columns }
 
@@ -67,6 +68,9 @@ function reflow(source: Columns, count: number): Columns {
  * window has room for it, so an arrangement - this device's or one synced from
  * another (lib/dashboard-sync-layouts.ts) - looks exactly as it was made.
  * Only a window too narrow for it falls back to `fits`, and a reflow.
+ *
+ * `layout` here is always the main workspace's (see useMainLayout), so every
+ * workspace shows the same number of columns.
  */
 function displayCount(layout: DashboardLayout | null, fits: number): number {
   if (!layout?.arrangedByUser || !layout.byCount[layout.primaryCount]) return fits
@@ -90,6 +94,57 @@ function arrange(defaultIds: string[], layout: DashboardLayout | null, count: nu
   const present = new Set(defaultIds)
   const known = source.map((col) => col.filter((id) => present.has(id)))
   return placeCards(defaultIds, reflow(known, count))
+}
+
+/**
+ * The main (Bookmarks Bar) workspace's saved layout, which sets the column
+ * count for every workspace. Each workspace used to take the count from its own
+ * layout, so one arranged at 3 columns sat next to a never-arranged one showing
+ * 4 - every card a different width, and with it the spacing of the card's
+ * 5-across icon grid. Each workspace still keeps its own card order.
+ *
+ * For the main workspace itself this is just its own layout.
+ */
+function useMainLayout(
+  workspaceId: string,
+  ownLayout: DashboardLayout | null,
+  ownLoaded: boolean
+): [DashboardLayout | null, boolean] {
+  const isMain = workspaceId === DEFAULT_WORKSPACE_ID
+  const [mainLayout, setMainLayout] = React.useState<DashboardLayout | null>(null)
+  const [mainLoaded, setMainLoaded] = React.useState(false)
+
+  React.useEffect(() => {
+    if (isMain) return
+    let active = true
+    // Same guard as useCardColumns' own read: a change that lands first is
+    // newer than whatever the mount-time read resolves with.
+    let changedBeforeLoad = false
+    const unsubscribe = subscribeDashboardLayout(DEFAULT_WORKSPACE_ID, (loaded) => {
+      changedBeforeLoad = true
+      setMainLayout(loaded)
+      setMainLoaded(true)
+    })
+    readDashboardLayout(DEFAULT_WORKSPACE_ID).then(
+      (loaded) => {
+        if (!active) return
+        if (!changedBeforeLoad) setMainLayout(loaded)
+        setMainLoaded(true)
+      },
+      // Unreadable: fall back to the count the window fits. Nothing is ever
+      // written to the main workspace's layout from here, so this can't
+      // clobber it.
+      () => {
+        if (active) setMainLoaded(true)
+      }
+    )
+    return () => {
+      active = false
+      unsubscribe()
+    }
+  }, [isMain])
+
+  return isMain ? [ownLayout, ownLoaded] : [mainLayout, mainLoaded]
 }
 
 export function useCardColumns(
@@ -153,12 +208,16 @@ export function useCardColumns(
     })
   }, [workspaceId])
 
+  const [mainLayout, mainLayoutLoaded] = useMainLayout(workspaceId, layout, hasLoadedStorage)
+
   // Nothing is arranged until every input is final: the saved layout, the
-  // bookmark ids, and the real column count (it starts at a placeholder 1 -
-  // see hooks/use-column-count.ts). Showing a default arrangement in the
-  // meantime is what made cards visibly jump into place on every load.
-  const isReady = hasLoadedStorage && columnCountReady && defaultIds.length > 0
-  const columnCount = displayCount(layout, maxColumnCount)
+  // main workspace's layout (it sets the column count), the bookmark ids, and
+  // the real column count (it starts at a placeholder 1 - see
+  // hooks/use-column-count.ts). Showing a default arrangement in the meantime
+  // is what made cards visibly jump into place on every load.
+  const isReady =
+    hasLoadedStorage && mainLayoutLoaded && columnCountReady && defaultIds.length > 0
+  const columnCount = displayCount(mainLayout, maxColumnCount)
 
   // Derived, never stored separately: the same inputs always give the same
   // arrangement, however many times the page is loaded.

@@ -93,6 +93,7 @@ export function WorkspacesSettings({
                 await updateWorkspace(workspace.id, patch)
                 setEditingId(null)
               }}
+              onEmojiChange={(emoji) => updateWorkspace(workspace.id, { emoji })}
             />
           ) : (
             <WorkspaceRow
@@ -114,7 +115,7 @@ export function WorkspacesSettings({
       {isCreating ? (
         <form
           onSubmit={handleCreate}
-          className="flex flex-col gap-2 border-t pt-3"
+          className="flex flex-col gap-2 pt-1"
         >
           <span className="text-xs font-medium text-muted-foreground">
             New workspace
@@ -158,7 +159,7 @@ export function WorkspacesSettings({
           )}
         </form>
       ) : (
-        <div className="border-t pt-3">
+        <div className="flex justify-center pt-1">
           <Button
             variant="outline"
             size="sm"
@@ -275,10 +276,12 @@ function WorkspaceEditRow({
   workspace,
   onCancel,
   onSave,
+  onEmojiChange,
 }: {
   workspace: Workspace
   onCancel: () => void
   onSave: (patch: { name: string; emoji: string }) => Promise<void>
+  onEmojiChange: (emoji: string) => void
 }) {
   const [name, setName] = React.useState(workspace.name)
   const [emoji, setEmoji] = React.useState(workspace.emoji)
@@ -299,7 +302,17 @@ function WorkspaceEditRow({
       onSubmit={handleSubmit}
       className="flex items-center gap-2 rounded-lg bg-accent/40 p-1.5"
     >
-      <EmojiPicker value={emoji} onChange={setEmoji} />
+      {/* A pick applies straight away rather than waiting for the check
+          button - otherwise closing the dialog with Done silently threw the
+          chosen emoji away. An empty custom field isn't saved (the provider
+          ignores a blank emoji) but stays empty here while typing. */}
+      <EmojiPicker
+        value={emoji}
+        onChange={(next) => {
+          setEmoji(next)
+          if (next) onEmojiChange(next)
+        }}
+      />
       <Input
         value={name}
         onChange={(event) => setName(event.target.value)}

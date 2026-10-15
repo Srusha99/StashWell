@@ -4,7 +4,6 @@ import * as React from "react"
 import { useTheme } from "next-themes"
 
 import MoltenMetal from "@/components/MoltenMetal"
-import ColorBends from "@/components/ColorBends"
 import LightRays from "@/components/LightRays"
 import SoftAurora from "@/components/SoftAurora"
 import GlowCursor from "@/components/GlowCursor"
@@ -37,6 +36,11 @@ import { useIsPro } from "@/hooks/use-is-pro"
 import { canReplaceWallpaper, canUploadWallpaper } from "@/lib/wallpaper-gate"
 import { useAuth } from "@/lib/auth-context"
 
+// The only wallpaper built on three.js, which is most of the page's script -
+// loaded only when it's the one showing, so every other new tab doesn't
+// download and parse it before the first card can render.
+const ColorBends = React.lazy(() => import("@/components/ColorBends"))
+
 interface CustomBackgroundItem {
   id: string
   url: string
@@ -61,11 +65,14 @@ export function BookmarkApp() {
   const { count: columnCount, isReady: columnCountReady } = useColumnCount()
   // Also hoisted above the workspace key: a switch mustn't restart syncing.
   // Saved sessions and live (instant) sync are Pro only (lib/bundle-gate.ts);
-  // bookmarks follow this device's "Sync Bookmarks" setting.
-  const { user } = useAuth()
+  // bookmarks follow this device's "Sync Bookmarks" setting. Only for a user
+  // Supabase has confirmed - the dashboard itself doesn't wait for that (see
+  // lib/auth-context.tsx), but nothing is synced on a session that may turn
+  // out to be revoked.
+  const { user, confirmed } = useAuth()
   const isPro = useIsPro()
   const bookmarkSyncPref = useBookmarkSyncPref()
-  useDashboardSync(user?.id ?? null, {
+  useDashboardSync(confirmed ? (user?.id ?? null) : null, {
     syncSessions: isPro,
     bookmarks: bookmarkSyncPref,
     live: isPro,
@@ -221,22 +228,24 @@ export function BookmarkApp() {
               playsInline
             />
           ) : settings.colorMode === "colorbends" ? (
-            <ColorBends
-              rotation={90}
-              speed={0.03}
-              colors={["#5227FF", "#0d5fe6", "#151be3"]}
-              transparent
-              autoRotate={0}
-              scale={1}
-              frequency={1}
-              warpStrength={1}
-              mouseInfluence={1}
-              parallax={0.5}
-              noise={0.1}
-              iterations={1}
-              intensity={2}
-              bandWidth={6}
-            />
+            <React.Suspense fallback={null}>
+              <ColorBends
+                rotation={90}
+                speed={0.03}
+                colors={["#5227FF", "#0d5fe6", "#151be3"]}
+                transparent
+                autoRotate={0}
+                scale={1}
+                frequency={1}
+                warpStrength={1}
+                mouseInfluence={1}
+                parallax={0.5}
+                noise={0.1}
+                iterations={1}
+                intensity={2}
+                bandWidth={6}
+              />
+            </React.Suspense>
           ) : settings.colorMode === "lightrays" ? (
             <LightRays
               raysOrigin="top-center"

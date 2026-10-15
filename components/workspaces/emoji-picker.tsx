@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input"
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 
@@ -33,11 +34,6 @@ export function EmojiPicker({
 }) {
   const [open, setOpen] = React.useState(false)
 
-  function pick(emoji: string) {
-    onChange(emoji)
-    setOpen(false)
-  }
-
   return (
     <DropdownMenu open={open} onOpenChange={setOpen}>
       <DropdownMenuTrigger
@@ -59,17 +55,20 @@ export function EmojiPicker({
       {/* w-auto overrides DropdownMenuContent's default w-(--anchor-width),
           which would otherwise squeeze the grid to the trigger's 32px. */}
       <DropdownMenuContent align="start" className="w-auto p-2">
+        {/* Real Menu.Items, not plain <button>s: Base UI's Menu is built around
+            its own items. They select on click, Enter and press-drag-release,
+            and close the menu themselves. */}
         <div className="grid grid-cols-8 gap-0.5">
           {PRESETS.map((emoji) => (
-            <button
+            <DropdownMenuItem
               key={emoji}
-              type="button"
-              onClick={() => pick(emoji)}
+              onClick={() => onChange(emoji)}
               aria-label={emoji}
-              className="flex size-7 items-center justify-center rounded-md text-base leading-none transition-colors hover:bg-accent"
+              data-selected={emoji === value || undefined}
+              className="size-7 justify-center p-0 text-base leading-none data-selected:bg-accent data-selected:ring-1 data-selected:ring-ring"
             >
               <span aria-hidden>{emoji}</span>
-            </button>
+            </DropdownMenuItem>
           ))}
         </div>
 
@@ -90,6 +89,14 @@ export function EmojiPicker({
               // slice them into pieces.
               const next = firstGrapheme(event.target.value)
               onChange(next)
+            }}
+            // Keep the menu's typeahead and arrow-key navigation from stealing
+            // keystrokes (and focus) out of the text field. Escape and Tab still
+            // reach the menu so it can close.
+            onKeyDown={(event) => {
+              if (event.key !== "Escape" && event.key !== "Tab") {
+                event.stopPropagation()
+              }
             }}
             className="mt-1 h-7 text-center text-base"
             maxLength={16}

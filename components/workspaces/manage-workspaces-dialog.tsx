@@ -43,8 +43,9 @@ export function ManageWorkspacesDialog({
           />
         )}
 
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+        {/* Slimmer than the default p-4 footer: it only holds one small button. */}
+        <DialogFooter className="py-2">
+          <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>
             Done
           </Button>
         </DialogFooter>

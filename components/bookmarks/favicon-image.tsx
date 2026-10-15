@@ -2,7 +2,7 @@
 
 import * as React from "react"
 
-import { resolveFaviconSrc } from "@/lib/favicon"
+import { peekFaviconSrc, resolveFaviconSrc } from "@/lib/favicon"
 import { cn } from "@/lib/utils"
 
 /**
@@ -13,6 +13,9 @@ import { cn } from "@/lib/utils"
  * none exists, or if the resolved source still somehow fails to load (a
  * network flake, not a "no icon" case - that's already been ruled out by
  * the time rendering starts).
+ *
+ * An icon resolved on an earlier load is cached (lib/favicon.ts), and is
+ * drawn on the very first render, with nothing to wait for.
  */
 export function FaviconImg({
   url,
@@ -28,7 +31,9 @@ export function FaviconImg({
   const key = `${url}:${size}`
   const [lastKey, setLastKey] = React.useState(key)
   // undefined = still resolving, null = confirmed no icon anywhere.
-  const [resolvedSrc, setResolvedSrc] = React.useState<string | null | undefined>(undefined)
+  const [resolvedSrc, setResolvedSrc] = React.useState<string | null | undefined>(() =>
+    peekFaviconSrc(url, size)
+  )
   const [failed, setFailed] = React.useState(false)
 
   // Reset during render rather than in the effect below, so the stale
@@ -36,10 +41,14 @@ export function FaviconImg({
   // effect gets a chance to run.
   if (key !== lastKey) {
     setLastKey(key)
-    setResolvedSrc(undefined)
+    setResolvedSrc(peekFaviconSrc(url, size))
     setFailed(false)
   }
 
+  // Runs even when the peek above already had an answer: that's what lets
+  // an old cached icon be re-checked in the background (see lib/favicon.ts).
+  // The object URLs it resolves to belong to that cache and are shared
+  // between every icon for the same site, so they're never revoked here.
   React.useEffect(() => {
     let active = true
     resolveFaviconSrc(url, size).then((src) => {
@@ -49,15 +58,6 @@ export function FaviconImg({
       active = false
     }
   }, [url, size])
-
-  // resolveFaviconSrc hands back an object URL for a resolved icon it
-  // fetched itself - that URL is only valid for this component's lifetime
-  // and must be released, or the blob it points to leaks for the rest of
-  // the page's life.
-  React.useEffect(() => {
-    if (!resolvedSrc?.startsWith("blob:")) return
-    return () => URL.revokeObjectURL(resolvedSrc)
-  }, [resolvedSrc])
 
   // Holds the icon's slot while resolving, so the title beside it doesn't
   // jump sideways once the icon arrives.

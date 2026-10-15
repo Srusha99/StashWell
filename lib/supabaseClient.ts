@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js'
+import { createClient, type User } from '@supabase/supabase-js'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
@@ -68,6 +68,26 @@ const isOverlayPanel =
  * the session without a client - changing it would sign everyone out.
  */
 export const AUTH_STORAGE_KEY = `sb-${new URL(supabaseUrl).hostname.split(".")[0]}-auth-token`
+
+/**
+ * The user of the session saved under AUTH_STORAGE_KEY, read straight from
+ * chrome.storage.local - no client, no token refresh, so it answers in
+ * milliseconds even offline. Who was signed in, not proof the session is
+ * still valid: only the client can say that. Null on any failure.
+ */
+export async function readStoredSessionUser(): Promise<User | null> {
+  try {
+    if (typeof chrome === 'undefined' || !chrome.storage?.local) return null
+    const stored = await chrome.storage.local.get(AUTH_STORAGE_KEY)
+    const raw = stored?.[AUTH_STORAGE_KEY]
+    if (typeof raw !== 'string') return null
+    const session = JSON.parse(raw) as { user?: User | null } | null
+    return session?.user ?? null
+  } catch {
+    // Malformed JSON, or "Extension context invalidated" after an update.
+    return null
+  }
+}
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {

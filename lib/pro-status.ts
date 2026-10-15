@@ -1,4 +1,4 @@
-import { AUTH_STORAGE_KEY } from "@/lib/supabaseClient"
+import { AUTH_STORAGE_KEY, readStoredSessionUser } from "@/lib/supabaseClient"
 
 /**
  * The one rule for "is this account Pro", shared by hooks/use-is-pro.ts (the
@@ -21,18 +21,8 @@ export function isProUser(user: { user_metadata?: unknown } | null | undefined):
  * token - the dashboard does that and rewrites this key when it does.
  */
 export async function readStoredIsPro(): Promise<boolean> {
-  try {
-    if (typeof chrome === "undefined" || !chrome.storage?.local) return false
-    const stored = await chrome.storage.local.get(AUTH_STORAGE_KEY)
-    const raw = stored?.[AUTH_STORAGE_KEY]
-    if (typeof raw !== "string") return false
-    const session = JSON.parse(raw) as { user?: { user_metadata?: unknown } } | null
-    return isProUser(session?.user)
-  } catch {
-    // Malformed JSON, or "Extension context invalidated" after an update -
-    // either way, locked rather than open.
-    return false
-  }
+  // An unreadable session reads as no user - locked rather than open.
+  return isProUser(await readStoredSessionUser())
 }
 
 /** Calls `onChange` whenever the saved session changes (sign-in, sign-out, refresh). */

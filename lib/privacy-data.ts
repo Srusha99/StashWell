@@ -9,6 +9,7 @@
 
 import { STORAGE_KEY as KANBAN_STORAGE_KEY, readKanbanCards } from "@/lib/kanban"
 import { getTree } from "@/lib/bookmarks"
+import { clearFaviconCache } from "@/lib/favicon"
 import { SYNC_META_KEY, withSyncLock } from "@/lib/dashboard-sync-engine"
 import {
   PENDING_SAVE_KEY,
@@ -54,7 +55,8 @@ export async function exportUserData(workspaces: Workspace[]): Promise<void> {
 /**
  * Removes cached app data from chrome.storage.local: kanban cards, saved tab
  * sessions, the one-shot pending-save flag, and every workspace's dashboard
- * column layout. Deliberately leaves the Supabase auth token and appearance
+ * column layout - plus the favicons cached in IndexedDB, which are fetched
+ * again as the dashboard needs them. Deliberately leaves the Supabase auth token and appearance
  * settings alone - those aren't "cache" in the sense this button describes,
  * and wiping the auth token would silently sign the user out (that's already
  * its own explicit action in the avatar menu).
@@ -66,6 +68,8 @@ export async function exportUserData(workspaces: Workspace[]): Promise<void> {
  */
 export async function clearLocalCache(): Promise<void> {
   if (!hasStorageApi()) return
+
+  await clearFaviconCache()
 
   await withSyncLock(async () => {
     const all = await chrome.storage.local.get(null)
